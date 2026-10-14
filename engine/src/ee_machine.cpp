@@ -7,11 +7,9 @@ namespace retroshelf::ee {
 
 EeMachine::EeMachine() : system_bus_(bus_, hardware_) { reset(); }
 void EeMachine::reset() { cpu_.reset(); bus_.reset(); hardware_.reset(); scheduler_.reset(); }
-
 bool EeMachine::load_word(std::uint32_t address, std::uint32_t word) {
     return bus_.write32(address, word);
 }
-
 bool EeMachine::step(std::string* error) {
     const auto pc = cpu_.pc();
     if (pc > 0xFFFFFFFFULL) {
@@ -27,13 +25,18 @@ bool EeMachine::step(std::string* error) {
         }
         return false;
     }
-    if (!cpu_.step(instruction, error)) return false;
+    const auto read_word = [this](std::uint32_t address, std::uint32_t& value) {
+        return system_bus_.read32(address, value);
+    };
+    const auto write_word = [this](std::uint32_t address, std::uint32_t value) {
+        return system_bus_.write32(address, value);
+    };
+    if (!cpu_.step(instruction, error, read_word, write_word)) return false;
     // Temporary one-cycle model for plumbing tests, not PS2 timing accuracy.
     scheduler_.advance(1);
     hardware_.advance(1);
     return true;
 }
-
 EeCpu& EeMachine::cpu() { return cpu_; }
 const EeCpu& EeMachine::cpu() const { return cpu_; }
 EeBus& EeMachine::bus() { return bus_; }
