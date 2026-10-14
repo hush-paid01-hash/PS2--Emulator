@@ -25,6 +25,25 @@ int main() {
     cpu.reset();
     check(cpu.reg(8) == 0 && cpu.pc() == 0, "reset clears CPU state");
 
+    cpu.set_reg(8, 0xF0F0);
+    cpu.set_reg(9, 0x0FF0);
+    constexpr std::uint32_t and_ins = (8U << 21U) | (9U << 16U) | (10U << 11U) | 0x24U;
+    constexpr std::uint32_t or_ins = (8U << 21U) | (9U << 16U) | (11U << 11U) | 0x25U;
+    constexpr std::uint32_t xor_ins = (8U << 21U) | (9U << 16U) | (12U << 11U) | 0x26U;
+    constexpr std::uint32_t nor_ins = (8U << 21U) | (9U << 16U) | (13U << 11U) | 0x27U;
+    check(cpu.step(and_ins) && cpu.reg(10) == 0x00F0, "AND computes bitwise intersection");
+    check(cpu.step(or_ins) && cpu.reg(11) == 0xFFF0, "OR computes bitwise union");
+    check(cpu.step(xor_ins) && cpu.reg(12) == 0xFF00, "XOR computes differing bits");
+    check(cpu.step(nor_ins) && cpu.reg(13) == ~std::uint64_t{0xFFF0}, "NOR complements OR");
+
+    cpu.set_reg(8, static_cast<std::uint64_t>(-2LL));
+    cpu.set_reg(9, 1);
+    constexpr std::uint32_t slt = (8U << 21U) | (9U << 16U) | (14U << 11U) | 0x2AU;
+    constexpr std::uint32_t sltu = (8U << 21U) | (9U << 16U) | (15U << 11U) | 0x2BU;
+    check(cpu.step(slt) && cpu.reg(14) == 1, "SLT compares signed values");
+    check(cpu.step(sltu) && cpu.reg(15) == 0, "SLTU compares unsigned values");
+
+    cpu.reset();
     cpu.set_reg(11, 16);
     cpu.set_reg(12, 0x12345678);
     constexpr std::uint32_t sw = (0x2BU << 26U) | (11U << 21U) | (12U << 16U);
