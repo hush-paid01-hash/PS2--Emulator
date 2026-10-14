@@ -42,6 +42,8 @@ int main() {
     check(parsed.segments.size() == 1 && parsed.segments[0].bytes[4] == 0
           && parsed.segments[0].bytes[7] == 0, "zero-fills BSS tail");
     check(!retroshelf::media::parse_ps2_elf({}).valid, "rejects truncated ELF");
+    const auto missing_disc = retroshelf::media::load_ps2_boot_elf_from_disc("missing-retroshelf-test.iso");
+    check(!missing_disc.valid && !missing_disc.error.empty(), "reports a missing disc when loading boot ELF");
     image[0] = 0;
     check(!retroshelf::media::parse_ps2_elf(image).valid, "rejects bad ELF magic");
     image = fixture(); put16(image, 18, 3);
