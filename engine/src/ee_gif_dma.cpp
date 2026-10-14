@@ -79,7 +79,10 @@ bool EeGifDma::transfer(std::uint32_t address, std::uint32_t qwc) {
 
     registers.madr = address;
     registers.qwc = qwc;
-    if (size != 0 && payload_handler_) {
+    if (size != 0 && !payload_handler_) {
+        return fail("GIF DMA has no payload handler");
+    }
+    if (size != 0) {
         std::vector<std::uint8_t> payload(ee_ram_.begin() + address,
                                           ee_ram_.begin() + address + size);
         try {

@@ -34,8 +34,11 @@ Using `-j1` keeps memory use lower on small cloud servers.
 
 This is **not yet a complete PlayStation 2 emulator** and cannot boot or play games. The PS2 Emotion Engine requires substantial additional work, including accurate CPU behavior, exceptions, memory/bus handling, COP0/COP1/COP2, vector units, timers, DMA, the Graphics Synthesizer, sound hardware, and BIOS integration. This initial subset is for testing the build workflow and code structure only.
 
-The GIF DMA model accepts EE RAM and a payload callback; it is not yet connected to a
-machine bus, GIF path arbitration, GS packet processing, or an interrupt controller.
+The GIF DMA model reads EE RAM through a `std::vector<std::uint8_t>` reference and submits
+nonempty payloads through its callback; a missing or failing callback reports a DMA error
+rather than silently dropping data. Its interrupt callback reports completion, tag, or
+error events. These are integration seams only: there is no machine bus, GIF path
+arbitration, GS packet processor, or interrupt controller in this engine yet.
 CHCR.DIR must be clear for the supported EE-RAM-to-GIF direction; GIF-to-RAM transfers
 are unsupported.
 It models main-RAM chain tags and the two-entry CALL/RET stack, but not scratchpad

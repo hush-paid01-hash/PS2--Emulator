@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -277,6 +278,41 @@ int main() {
         check(interrupts.size() == 1 &&
                   interrupts[0] == retroshelf::EeGifDma::Interrupt::Completion,
               "normal EE-RAM-to-GIF transfer signals completion");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
+        fill(ram, 16, 0x82);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction;
+        dma.registers.madr = 16;
+        dma.registers.qwc = 1;
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  (dma.registers.chcr & Start) == 0 && dma.registers.qwc == 0 &&
+                  dma.error().find("no payload handler") != std::string::npos,
+              "nonempty transfer fails instead of dropping payload without a handler");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Error,
+              "missing payload handler signals a DMA error");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
+        fill(ram, 16, 0x83);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) { throw std::runtime_error("GS failed"); },
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction;
+        dma.registers.madr = 16;
+        dma.registers.qwc = 1;
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  (dma.registers.chcr & Start) == 0 && dma.registers.qwc == 0,
+              "payload submission failure clears STR and QWC");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Error,
+              "payload submission failure signals a DMA error");
     }
 
     {
