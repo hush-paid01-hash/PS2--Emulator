@@ -5,9 +5,16 @@
 
 namespace retroshelf::ee {
 namespace {
+std::uint32_t bios_physical_address(std::uint32_t address) {
+    // EE KSEG1 BIOS reset-vector alias: 0xBFC00000 -> 0x1FC00000.
+    if (address >= 0xBFC00000U && address < 0xC0000000U)
+        return address - 0xA0000000U;
+    return address;
+}
 bool in_bios_window(std::uint32_t address) {
-    return address >= EeSystemBus::BiosBase &&
-           static_cast<std::uint64_t>(address) <
+    const auto physical = bios_physical_address(address);
+    return physical >= EeSystemBus::BiosBase &&
+           static_cast<std::uint64_t>(physical) <
                static_cast<std::uint64_t>(EeSystemBus::BiosBase) + EeSystemBus::BiosSize;
 }
 }
@@ -31,7 +38,7 @@ bool EeSystemBus::bios_loaded() const { return !bios_.empty(); }
 bool EeSystemBus::read8(std::uint32_t address, std::uint8_t& value) const {
     if (in_bios_window(address)) {
         if (bios_.empty()) return false;
-        const auto offset = static_cast<std::size_t>(address - BiosBase);
+        const auto offset = static_cast<std::size_t>(bios_physical_address(address) - BiosBase);
         if (offset >= bios_.size()) return false;
         value = bios_[offset];
         return true;
