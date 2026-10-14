@@ -29,6 +29,8 @@ int main() {
     check(bus.load_bios(bios, &error) && bus.bios_loaded(), "valid BIOS bytes load into ROM window");
     check(bus.read32(retroshelf::ee::EeSystemBus::BiosBase, value) && value == 0x12345678U,
           "BIOS ROM reads little-endian instruction words");
+    check(bus.read32(0xBFC00000U, value) && value == 0x12345678U,
+          "BIOS ROM is visible through the EE reset-vector alias");
     std::uint8_t byte = 0;
     check(bus.read8(retroshelf::ee::EeSystemBus::BiosBase + 4U, byte) && byte == 0xAA,
           "BIOS ROM supports byte reads inside image");
@@ -36,6 +38,8 @@ int main() {
           "BIOS ROM does not expose bytes beyond loaded image");
     check(!bus.write32(retroshelf::ee::EeSystemBus::BiosBase, 0),
           "CPU writes to BIOS ROM are rejected");
+    check(!bus.write32(0xBFC00000U, 0),
+          "CPU writes through BIOS reset-vector alias are rejected");
     check(bus.read32(retroshelf::ee::EeSystemBus::BiosBase, value) && value == 0x12345678U,
           "rejected ROM write leaves BIOS content unchanged");
     const std::vector<std::uint8_t> invalid_bios;
