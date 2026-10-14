@@ -145,6 +145,29 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         default: supported = false; break;
         }
         break;
+    case 0x01: { // REGIMM: signed branches and conditional link variants
+        const auto subop = rt;
+        const auto signed_a = static_cast<std::int64_t>(a);
+        bool recognized = true;
+        bool take = false;
+        bool link = false;
+        switch (subop) {
+        case 0x00: take = signed_a < 0; break; // BLTZ
+        case 0x01: take = signed_a >= 0; break; // BGEZ
+        case 0x10: take = signed_a < 0; link = true; break; // BLTZAL
+        case 0x11: take = signed_a >= 0; link = true; break; // BGEZAL
+        default: recognized = false; break;
+        }
+        supported = recognized;
+        if (recognized) {
+            if (link && take) set_gpr(31, {current_pc + 8U, 0});
+            branch_pending_ = true;
+            branch_target_ = take
+                ? current_pc + 4U + static_cast<std::uint64_t>(signed_imm * 4)
+                : current_pc + 8U;
+        }
+        break;
+    }
     case 0x02:
     case 0x03: {
         if (opcode == 0x03) set_gpr(31, {current_pc + 8U, 0});
