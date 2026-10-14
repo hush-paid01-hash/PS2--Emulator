@@ -2,6 +2,7 @@
 #include "retroshelf/ee_bus.hpp"
 #include "retroshelf/ee_hardware.hpp"
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace retroshelf::ee {
