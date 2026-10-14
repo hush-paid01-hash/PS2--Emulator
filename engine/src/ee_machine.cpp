@@ -36,6 +36,9 @@ bool EeMachine::load_elf(const retroshelf::media::Ps2ElfImage& image, std::strin
         if (error) *error = "ELF entry point is not addressable in prototype physical RAM";
         return false;
     }
+    // A successful load starts from a clean machine state. Validation above
+    // happens first so rejected images never erase a running machine.
+    reset();
     for (const auto& segment : image.segments) {
         for (std::size_t i = 0; i < segment.bytes.size(); ++i) {
             if (!bus_.write8(segment.virtual_address + static_cast<std::uint32_t>(i), segment.bytes[i])) {
