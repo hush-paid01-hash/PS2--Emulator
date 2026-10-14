@@ -4,6 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <limits>
+#include <initializer_list>
 
 namespace retroshelf::gs {
 namespace {
@@ -49,12 +50,16 @@ bool SoftwareRenderer::draw_triangle(const ScreenVertex& a, const ScreenVertex& 
     const float max_y = std::max({a.y, b.y, c.y});
     if (!std::isfinite(min_x) || !std::isfinite(max_x) ||
         !std::isfinite(min_y) || !std::isfinite(max_y)) return false;
-    const int x0 = std::max(0, static_cast<int>(std::floor(std::max(-1.0F, min_x))));
-    const int y0 = std::max(0, static_cast<int>(std::floor(std::max(-1.0F, min_y))));
-    const int x1 = std::min(static_cast<int>(width_) - 1,
-                            static_cast<int>(std::ceil(std::min(max_x, static_cast<float>(width_)))));
-    const int y1 = std::min(static_cast<int>(height_) - 1,
-                            static_cast<int>(std::ceil(std::min(max_y, static_cast<float>(height_)))));
+    // Clamp in floating point before converting to int, so extreme coordinates
+    // cannot overflow an integer conversion.
+    const float clipped_min_x = std::clamp(min_x, 0.0F, static_cast<float>(width_));
+    const float clipped_min_y = std::clamp(min_y, 0.0F, static_cast<float>(height_));
+    const float clipped_max_x = std::clamp(max_x, 0.0F, static_cast<float>(width_));
+    const float clipped_max_y = std::clamp(max_y, 0.0F, static_cast<float>(height_));
+    const int x0 = static_cast<int>(std::floor(clipped_min_x));
+    const int y0 = static_cast<int>(std::floor(clipped_min_y));
+    const int x1 = std::min(static_cast<int>(width_) - 1, static_cast<int>(std::ceil(clipped_max_x)));
+    const int y1 = std::min(static_cast<int>(height_) - 1, static_cast<int>(std::ceil(clipped_max_y)));
     if (x0 > x1 || y0 > y1) return true;
 
     for (int y = y0; y <= y1; ++y) {
