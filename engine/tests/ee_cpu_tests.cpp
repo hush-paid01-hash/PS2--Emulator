@@ -86,23 +86,23 @@ int main() {
     check(cpu.step(ori) && cpu.gpr(9).lo == 0x10F0, "ORI zero-extends immediate and combines bits");
 
     cpu.reset();
-    cpu.set_gpr(8, {0x100, 0});
+    cpu.set_gpr(8, {0x10, 0});
     cpu.set_gpr(9, {0x12345678, 0});
     constexpr std::uint32_t sw = (0x2BU << 26U) | (8U << 21U) | (9U << 16U);
     check(cpu.step(sw, nullptr, read_word, write_word), "SW stores register to emulated RAM");
     check(ram[0] == 0x12345678, "SW stores expected little-endian word");
     cpu.reset();
-    cpu.set_gpr(8, {0x100, 0});
+    cpu.set_gpr(8, {0x10, 0});
     constexpr std::uint32_t lw = (0x23U << 26U) | (8U << 21U) | (10U << 16U);
     check(cpu.step(lw, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0x12345678, "LW loads word from emulated RAM");
     cpu.reset();
-    cpu.set_gpr(8, {0x100, 0});
+    cpu.set_gpr(8, {0x10, 0});
     cpu.set_gpr(9, {0xAA, 0});
     constexpr std::uint32_t sb = (0x28U << 26U) | (8U << 21U) | (9U << 16U) | 1U;
     check(cpu.step(sb, nullptr, read_word, write_word), "SB stores one byte");
     check(ram[0] == 0x1234AA78, "SB preserves adjacent bytes");
     cpu.reset();
-    cpu.set_gpr(8, {0x100, 0});
+    cpu.set_gpr(8, {0x10, 0});
     constexpr std::uint32_t lb = (0x20U << 26U) | (8U << 21U) | (10U << 16U) | 1U;
     check(cpu.step(lb, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0xFFFFFFFFFFFFFFAAULL, "LB sign-extends byte");
     cpu.reset();
