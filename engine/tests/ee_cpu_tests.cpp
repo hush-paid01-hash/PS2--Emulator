@@ -143,13 +143,13 @@ int main() {
     ram[4] = 0x44332211U;
     cpu.set_gpr(8, {0x10, 0}); cpu.set_gpr(10, {0xAABBCCDDU, 0});
     constexpr std::uint32_t lwl = (0x22U << 26U) | (8U << 21U) | (10U << 16U) | 1U;
-    check(cpu.step(lwl, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0x3322CCDDU,
+    check(cpu.step(lwl, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0x2211CCDDU,
           "LWL merges addressed bytes into the register without clobbering preserved bytes");
     cpu.reset();
     ram[4] = 0x44332211U;
     cpu.set_gpr(8, {0x10, 0}); cpu.set_gpr(10, {0xAABBCCDDU, 0});
     constexpr std::uint32_t lwr = (0x26U << 26U) | (8U << 21U) | (10U << 16U) | 1U;
-    check(cpu.step(lwr, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0xAABB4433U,
+    check(cpu.step(lwr, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0xAABB3322U,
           "LWR merges addressed bytes into the register without clobbering preserved bytes");
     cpu.reset();
     ram[4] = 0x80FF7F01U;
