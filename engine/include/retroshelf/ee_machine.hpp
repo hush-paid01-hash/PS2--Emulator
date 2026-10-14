@@ -44,6 +44,9 @@ public:
     bool process_gif(const std::uint64_t* words, std::size_t qword_count,
                      retroshelf::gs::GifProcessStats* stats = nullptr,
                      std::string* error = nullptr);
+    bool process_gif_from_ram(std::uint32_t address, std::size_t qword_count,
+                              retroshelf::gs::GifProcessStats* stats = nullptr,
+                              std::string* error = nullptr);
     retroshelf::gs::SoftwareRenderer& gs_renderer();
     const retroshelf::gs::SoftwareRenderer& gs_renderer() const;
 private:
