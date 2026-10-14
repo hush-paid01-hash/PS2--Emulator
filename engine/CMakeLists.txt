@@ -89,6 +89,14 @@ target_link_libraries(gs-gif-stream-tests PRIVATE retroshelf-ee-core)
 target_compile_options(gs-gif-stream-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-gif-stream-tests COMMAND gs-gif-stream-tests)
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/gs_command_processor_tests.cpp" AND
+   EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/retroshelf/gs_command_processor.hpp")
+    add_executable(gs-command-processor-tests tests/gs_command_processor_tests.cpp)
+    target_link_libraries(gs-command-processor-tests PRIVATE retroshelf-ee-core)
+    target_compile_options(gs-command-processor-tests PRIVATE -Wall -Wextra -Wpedantic)
+    add_test(NAME gs-command-processor-tests COMMAND gs-command-processor-tests)
+endif()
+
 add_executable(gs-renderer-tests tests/gs_renderer_tests.cpp)
 target_link_libraries(gs-renderer-tests PRIVATE retroshelf-ee-core)
 target_compile_options(gs-renderer-tests PRIVATE -Wall -Wextra -Wpedantic)
