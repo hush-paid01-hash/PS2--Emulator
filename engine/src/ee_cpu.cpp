@@ -13,6 +13,7 @@ void EeCpu::reset() {
     branch_target_ = 0;
     hi_ = 0;
     lo_ = 0;
+    cp0_.fill(0);
 }
 Register128 EeCpu::gpr(std::size_t index) const {
     return index < GprCount ? gpr_[index] : Register128{};
@@ -27,6 +28,9 @@ bool EeCpu::branch_pending() const { return branch_pending_; }
 std::uint64_t EeCpu::branch_target() const { return branch_target_; }
 std::uint64_t EeCpu::hi() const { return hi_; }
 std::uint64_t EeCpu::lo() const { return lo_; }
+std::uint32_t EeCpu::cp0(std::size_t index) const {
+    return index < cp0_.size() ? cp0_[index] : 0;
+}
 
 bool EeCpu::step(std::uint32_t instruction, std::string* error,
                  const ReadWord& read_word, const WriteWord& write_word) {
@@ -146,6 +150,18 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         default: supported = false; break;
         }
         break;
+    case 0x10: { // COP0: limited register transfers; exception/privilege semantics remain unimplemented
+        const auto cop_rs = rs;
+        if (cop_rs == 0x00U) { // MFC0
+            const auto value = cp0_[rd];
+            set_gpr(rt, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))), 0});
+        } else if (cop_rs == 0x04U) { // MTC0
+            cp0_[rd] = static_cast<std::uint32_t>(gpr_[rt].lo);
+        } else {
+            supported = false;
+        }
+        break;
+    }
     case 0x01: { // REGIMM: signed branches and conditional link variants
         const auto subop = rt;
         const auto signed_a = static_cast<std::int64_t>(a);
