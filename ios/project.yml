@@ -25,4 +25,5 @@ targets:
         HEADER_SEARCH_PATHS: "$(SRCROOT)/../engine/include"
         CLANG_CXX_LANGUAGE_STANDARD: "c++17"
         CLANG_CXX_LIBRARY: "libc++"
+        SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/RetroShelfApp/RetroShelfBridge.h"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
