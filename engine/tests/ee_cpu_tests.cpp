@@ -32,6 +32,10 @@ int main() {
     check(cpu.pc() == 12, "EE sequential PC advances by four bytes");
 
     cpu.reset();
+    constexpr std::uint32_t lui = (0x0FU << 26U) | (15U << 16U) | 0x8000U;
+    check(cpu.step(lui) && cpu.gpr(15).lo == 0xFFFFFFFF80000000ULL,
+          "LUI sign-extends its 32-bit result");
+    cpu.reset();
     cpu.set_gpr(8, {0xFFFFFFFFULL, 0});
     constexpr std::uint32_t addu = (8U << 21U) | (8U << 16U) | (11U << 11U) | 0x21U;
     check(cpu.step(addu) && cpu.gpr(11).lo == 0xFFFFFFFFFFFFFFFEULL, "ADDU wraps at 32 bits and sign-extends result");
