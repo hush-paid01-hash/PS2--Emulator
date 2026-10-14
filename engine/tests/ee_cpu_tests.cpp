@@ -298,10 +298,16 @@ int main() {
     cpu.set_gpr(8, {0x80001000U, 0});
     constexpr std::uint32_t mtc0_epc = (0x10U << 26U) | (0x04U << 21U) | (8U << 16U) | (14U << 11U);
     check(cpu.step(mtc0_epc), "MTC0 stores an exception return address in EPC");
-    cpu.set_pc(0x80000184U);
+    cpu.set_gpr(8, {0x80000003U, 0});
+    constexpr std::uint32_t mtc0_status_exl = (0x10U << 26U) | (0x04U << 21U) | (8U << 16U) | (12U << 11U);
+    check(cpu.step(mtc0_status_exl) && cpu.cp0(12) == 0x80000003U,
+          "MTC0 can set Status.EXL before exception return");
+    cpu.set_pc(0x80000188U);
     constexpr std::uint32_t eret = (0x10U << 26U) | (0x10U << 21U) | 0x18U;
     check(cpu.step(eret) && cpu.pc() == 0x80001000U && !cpu.branch_pending(),
           "ERET resumes at EPC and clears pending branch state");
+    check(cpu.cp0(12) == 0x80000001U,
+          "ERET clears Status.EXL while preserving other Status bits");
 
     cpu.reset();
     std::string error;
