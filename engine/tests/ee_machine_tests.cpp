@@ -142,9 +142,9 @@ int main() {
     bool stream_stored = true;
     for (std::size_t i = 0; i < sizeof(gif_test_stream) / sizeof(gif_test_stream[0]); ++i) {
         stream_stored = stream_stored &&
-            machine.load_word(0x1000U + static_cast<std::uint32_t>(i * 4U),
+            machine.load_word(0x1000U + static_cast<std::uint32_t>(i * 8U),
                               static_cast<std::uint32_t>(gif_test_stream[i] & 0xFFFFFFFFULL)) &&
-            machine.load_word(0x1004U + static_cast<std::uint32_t>(i * 4U),
+            machine.load_word(0x1004U + static_cast<std::uint32_t>(i * 8U),
                               static_cast<std::uint32_t>(gif_test_stream[i] >> 32U));
     }
     check(stream_stored, "synthetic GIF packet stored in EE RAM");
