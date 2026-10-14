@@ -74,6 +74,10 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         switch (funct) {
         case 0x00: set_gpr(rd, {b << shamt, 0}); break;
         case 0x02: set_gpr(rd, {b >> shamt, 0}); break;
+        case 0x03: set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(b) >> shamt), 0}); break;
+        case 0x04: set_gpr(rd, {b << (a & 0x3FU), 0}); break;
+        case 0x06: set_gpr(rd, {b >> (a & 0x3FU), 0}); break;
+        case 0x07: set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(b) >> (a & 0x3FU)), 0}); break;
         case 0x08: branch_pending_ = true; branch_target_ = a; break;
         case 0x21:
         case 0x2D: set_gpr(rd, {a + b, 0}); break;
@@ -85,6 +89,9 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         case 0x27: set_gpr(rd, {~(a | b), 0}); break;
         case 0x2A: set_gpr(rd, {static_cast<std::int64_t>(a) < static_cast<std::int64_t>(b) ? 1ULL : 0ULL, 0}); break;
         case 0x2B: set_gpr(rd, {a < b ? 1ULL : 0ULL, 0}); break;
+        case 0x38: set_gpr(rd, {b << (shamt + 32U), 0}); break;
+        case 0x3A: set_gpr(rd, {b >> (shamt + 32U), 0}); break;
+        case 0x3B: set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(b) >> (shamt + 32U)), 0}); break;
         default: supported = false; break;
         }
         break;
@@ -99,6 +106,20 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
     case 0x08:
     case 0x09:
     case 0x19: set_gpr(rt, {a + static_cast<std::uint64_t>(signed_imm), 0}); break;
+    case 0x18: set_gpr(rt, {a + static_cast<std::uint64_t>(signed_imm), 0}); break;
+    case 0x1E: {
+        memory_ok = (memory_address & 0xFU) == 0U && static_cast<bool>(read_word);
+        std::uint32_t words[4]{};
+        for (unsigned i = 0; memory_ok && i < 4; ++i) memory_ok = read_word(memory_address + i * 4U, words[i]);
+        if (memory_ok && rt != 0) set_gpr(rt, {static_cast<std::uint64_t>(words[0]) | (static_cast<std::uint64_t>(words[1]) << 32U), static_cast<std::uint64_t>(words[2]) | (static_cast<std::uint64_t>(words[3]) << 32U)});
+        break;
+    }
+    case 0x1F: {
+        memory_ok = (memory_address & 0xFU) == 0U && static_cast<bool>(write_word);
+        const std::uint32_t words[4] = {static_cast<std::uint32_t>(b), static_cast<std::uint32_t>(b >> 32U), static_cast<std::uint32_t>(gpr_[rt].hi), static_cast<std::uint32_t>(gpr_[rt].hi >> 32U)};
+        for (unsigned i = 0; memory_ok && i < 4; ++i) memory_ok = write_word(memory_address + i * 4U, words[i]);
+        break;
+    }
     case 0x0A: set_gpr(rt, {static_cast<std::int64_t>(a) < signed_imm ? 1ULL : 0ULL, 0}); break;
     case 0x0B: set_gpr(rt, {a < static_cast<std::uint64_t>(signed_imm) ? 1ULL : 0ULL, 0}); break;
     case 0x0C: set_gpr(rt, {a & imm_u, 0}); break;
