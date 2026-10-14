@@ -195,6 +195,15 @@ int main() {
     check(ram[4] == 0xABCD7F01U, "SH preserves adjacent halfword");
 
     cpu.reset();
+    cpu.set_gpr(8, {0x11, 0});
+    cpu.set_gpr(10, {0xDEADBEEF, 0});
+    constexpr std::uint32_t misaligned_lh = (0x21U << 26U) | (8U << 21U) | (10U << 16U);
+    check(!cpu.step(misaligned_lh, nullptr, read_word, write_word),
+          "misaligned LH is rejected instead of silently rounding the address");
+    check(cpu.gpr(10).lo == 0xDEADBEEF,
+          "failed misaligned LH does not modify its destination register");
+
+    cpu.reset();
     std::string memory_error;
     cpu.set_gpr(8, {0x200, 0});
     check(!cpu.step(lw, &memory_error, read_word, write_word), "out-of-range LW is rejected");
