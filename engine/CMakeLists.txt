@@ -9,7 +9,7 @@ add_executable(retroshelf-engine src/main.cpp src/cpu.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
-add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp src/ee_system_bus.cpp src/disc_image.cpp src/ps2_elf.cpp src/gs_vram.cpp)
+add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp src/ee_system_bus.cpp src/disc_image.cpp src/ps2_elf.cpp src/gs_vram.cpp src/gs_gif.cpp)
 target_include_directories(retroshelf-ee-core PUBLIC include)
 target_compile_options(retroshelf-ee-core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -78,3 +78,8 @@ add_executable(gs-vram-tests tests/gs_vram_tests.cpp)
 target_link_libraries(gs-vram-tests PRIVATE retroshelf-ee-core)
 target_compile_options(gs-vram-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-vram-tests COMMAND gs-vram-tests)
+
+add_executable(gs-gif-tests tests/gs_gif_tests.cpp)
+target_link_libraries(gs-gif-tests PRIVATE retroshelf-ee-core)
+target_compile_options(gs-gif-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-gif-tests COMMAND gs-gif-tests)
