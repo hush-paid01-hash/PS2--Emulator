@@ -188,6 +188,25 @@ int main() {
           "MULTU preserves unsigned 32-bit product halves");
 
     cpu.reset();
+    cpu.set_gpr(8, {0x100000000ULL, 0xABCDEFULL});
+    cpu.set_gpr(9, {0, 0});
+    constexpr std::uint32_t movz = (8U << 21U) | (9U << 16U) | (10U << 11U) | 0x0AU;
+    check(cpu.step(movz) && cpu.gpr(10).lo == 0x100000000ULL,
+          "MOVZ copies source when second register is zero");
+    cpu.reset();
+    cpu.set_gpr(8, {11, 0}); cpu.set_gpr(9, {1, 0}); cpu.set_gpr(10, {99, 0});
+    constexpr std::uint32_t movn = (8U << 21U) | (9U << 16U) | (10U << 11U) | 0x0BU;
+    check(cpu.step(movn) && cpu.gpr(10).lo == 11, "MOVN copies source when second register is nonzero");
+    cpu.reset();
+    cpu.set_gpr(8, {0x100000000ULL, 0}); cpu.set_gpr(9, {7, 0});
+    constexpr std::uint32_t dadd = (8U << 21U) | (9U << 16U) | (10U << 11U) | 0x2CU;
+    check(cpu.step(dadd) && cpu.gpr(10).lo == 0x100000007ULL, "DADD adds full 64-bit values");
+    cpu.reset();
+    cpu.set_gpr(8, {0x100000007ULL, 0}); cpu.set_gpr(9, {7, 0});
+    constexpr std::uint32_t dsub = (8U << 21U) | (9U << 16U) | (10U << 11U) | 0x2EU;
+    check(cpu.step(dsub) && cpu.gpr(10).lo == 0x100000000ULL, "DSUB subtracts full 64-bit values");
+
+    cpu.reset();
     std::string error;
     check(!cpu.step(0xF8000000U, &error), "unsupported EE instruction is rejected");
     check(error.find("unsupported") != std::string::npos, "unsupported instruction has diagnostic");
