@@ -3,7 +3,8 @@
 
 #include <iomanip>
 #include <limits>
-#include <sstream>\n#include <vector>
+#include <sstream>
+#include <vector>
 
 namespace retroshelf::ee {
 
