@@ -197,6 +197,23 @@ int main() {
 
     {
         std::vector<std::uint8_t> ram(64);
+        write_tag(ram, 0, 0, 1, 0, true);
+        write_tag(ram, 16, 0, 7);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction | Chain;
+        dma.registers.tadr = 0;
+        check(dma.start() && dma.registers.tadr == 32 &&
+                  dma.state() == retroshelf::EeGifDma::State::Completed,
+              "tag IRQ does not stop the chain when TIE is clear");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Completion,
+              "ignored tag IRQ proceeds to the completion interrupt");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
         std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
         retroshelf::EeGifDma dma(ram, [](const auto&) {},
                                  [&](auto reason) { interrupts.push_back(reason); });
@@ -248,13 +265,18 @@ int main() {
     {
         std::vector<std::uint8_t> ram(64);
         fill(ram, 16, 0x81);
-        retroshelf::EeGifDma dma(ram, [](const auto&) {});
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
         dma.registers.chcr = Start | Direction;
         dma.registers.madr = 16;
         dma.registers.qwc = 1;
         check(dma.start() && dma.registers.madr == 32 && dma.registers.qwc == 0 &&
                   dma.state() == retroshelf::EeGifDma::State::Completed,
               "normal mode remains a direct MADR/QWC transfer");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Completion,
+              "normal EE-RAM-to-GIF transfer signals completion");
     }
 
     {

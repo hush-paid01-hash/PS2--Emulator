@@ -1,3 +1,0 @@
-cpu-tests 1 0.00182226
-ee-gif-dma-tests 1 0.00755659
----
