@@ -9,7 +9,7 @@ add_executable(retroshelf-engine src/main.cpp src/cpu.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
-add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp src/ee_system_bus.cpp src/disc_image.cpp src/ps2_elf.cpp src/gs_vram.cpp src/gs_gif.cpp src/gs_gif_stream.cpp src/gs_renderer.cpp src/gs_gif_processor.cpp)
+add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp src/ee_gif_dma.cpp src/ee_system_bus.cpp src/disc_image.cpp src/ps2_elf.cpp src/gs_vram.cpp src/gs_gif.cpp src/gs_gif_stream.cpp src/gs_renderer.cpp src/gs_gif_processor.cpp)
 target_include_directories(retroshelf-ee-core PUBLIC include)
 target_compile_options(retroshelf-ee-core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -106,3 +106,8 @@ add_executable(gs-gif-processor-tests tests/gs_gif_processor_tests.cpp)
 target_link_libraries(gs-gif-processor-tests PRIVATE retroshelf-ee-core)
 target_compile_options(gs-gif-processor-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-gif-processor-tests COMMAND gs-gif-processor-tests)
+
+add_executable(ee-gif-dma-tests tests/ee_gif_dma_tests.cpp)
+target_link_libraries(ee-gif-dma-tests PRIVATE retroshelf-ee-core)
+target_compile_options(ee-gif-dma-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ee-gif-dma-tests COMMAND ee-gif-dma-tests)
