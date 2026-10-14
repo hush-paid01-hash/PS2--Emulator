@@ -1,5 +1,6 @@
 #include "retroshelf/ee_cpu.hpp"
 
+#include <array>
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -10,6 +11,15 @@ int main() {
     const auto check = [&failures](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << "\n"; ++failures; }
         else { std::cout << "PASS: " << label << "\n"; }
+    };
+    std::array<std::uint32_t, 16> ram{};
+    const auto read_word = [&ram](std::uint32_t address, std::uint32_t& value) {
+        if ((address & 3U) || address >= ram.size() * 4U) return false;
+        value = ram[address / 4U]; return true;
+    };
+    const auto write_word = [&ram](std::uint32_t address, std::uint32_t value) {
+        if ((address & 3U) || address >= ram.size() * 4U) return false;
+        ram[address / 4U] = value; return true;
     };
 
     constexpr std::uint32_t addiu8 = (0x09U << 26U) | (8U << 16U) | 8U;
@@ -74,6 +84,32 @@ int main() {
     constexpr std::uint32_t ori = (0x0DU << 26U) | (8U << 21U) | (9U << 16U) | 0x00F0U;
     cpu.set_gpr(8, {0x1000, 0});
     check(cpu.step(ori) && cpu.gpr(9).lo == 0x10F0, "ORI zero-extends immediate and combines bits");
+
+    cpu.reset();
+    cpu.set_gpr(8, {0x100, 0});
+    cpu.set_gpr(9, {0x12345678, 0});
+    constexpr std::uint32_t sw = (0x2BU << 26U) | (8U << 21U) | (9U << 16U);
+    check(cpu.step(sw, nullptr, read_word, write_word), "SW stores register to emulated RAM");
+    check(ram[0] == 0x12345678, "SW stores expected little-endian word");
+    cpu.reset();
+    cpu.set_gpr(8, {0x100, 0});
+    constexpr std::uint32_t lw = (0x23U << 26U) | (8U << 21U) | (10U << 16U);
+    check(cpu.step(lw, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0x12345678, "LW loads word from emulated RAM");
+    cpu.reset();
+    cpu.set_gpr(8, {0x100, 0});
+    cpu.set_gpr(9, {0xAA, 0});
+    constexpr std::uint32_t sb = (0x28U << 26U) | (8U << 21U) | (9U << 16U) | 1U;
+    check(cpu.step(sb, nullptr, read_word, write_word), "SB stores one byte");
+    check(ram[0] == 0x1234AA78, "SB preserves adjacent bytes");
+    cpu.reset();
+    cpu.set_gpr(8, {0x100, 0});
+    constexpr std::uint32_t lb = (0x20U << 26U) | (8U << 21U) | (10U << 16U) | 1U;
+    check(cpu.step(lb, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0xFFFFFFFFFFFFFFAAULL, "LB sign-extends byte");
+    cpu.reset();
+    std::string memory_error;
+    cpu.set_gpr(8, {0x200, 0});
+    check(!cpu.step(lw, &memory_error, read_word, write_word), "out-of-range LW is rejected");
+    check(memory_error.find("memory access failed") != std::string::npos, "memory fault reports diagnostic");
 
     cpu.reset();
     std::string error;
