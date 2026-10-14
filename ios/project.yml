@@ -15,8 +15,14 @@ targets:
     platform: iOS
     sources:
       - path: RetroShelfApp
+      - path: ../engine/src
+        excludes:
+          - main.cpp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.retroshelf.ps2
         PRODUCT_NAME: RetroShelf
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/../engine/include"
+        CLANG_CXX_LANGUAGE_STANDARD: "c++17"
+        CLANG_CXX_LIBRARY: "libc++"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
