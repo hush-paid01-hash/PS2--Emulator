@@ -149,7 +149,7 @@ int main() {
     }
     check(stream_stored, "synthetic GIF packet stored in EE RAM");
     retroshelf::gs::GifProcessStats gif_stats;
-    check(machine.process_gif_from_ram(0x1000U, 8, &gif_stats, &error),
+    check(machine.process_gif_from_ram(0x1000U, 9, &gif_stats, &error),
           "machine reads GIF packet from EE RAM and sends it to GS renderer");
     check(gif_stats.triangles_drawn == 1, "RAM-backed GIF packet draws one triangle");
     return failures == 0 ? 0 : 1;
