@@ -33,7 +33,7 @@ int main() {
     check(bus.write32(retroshelf::ee::EeGifDma::Qwc, 8U), "QWC register accepts qword count");
     check(bus.read32(retroshelf::ee::EeGifDma::Madr, value) && value == 0x2000U,
           "MADR register is visible through system bus");
-    check(bus.read32(retroshelf::ee::EeGifDma::Qwc, value) && value == 9U,
+    check(bus.read32(retroshelf::ee::EeGifDma::Qwc, value) && value == 8U,
           "QWC register is visible through system bus");
     check(bus.write32(retroshelf::ee::EeGifDma::Chcr, 1U | retroshelf::ee::EeGifDma::Str),
           "writing DIR and STR starts GIF normal-mode DMA");
@@ -41,7 +41,7 @@ int main() {
           "STR clears when synchronous transfer completes");
     check(bus.read32(retroshelf::ee::EeGifDma::Qwc, value) && value == 0,
           "QWC reaches zero after completed transfer");
-    check(bus.read32(retroshelf::ee::EeGifDma::Madr, value) && value == 0x2090U,
+    check(bus.read32(retroshelf::ee::EeGifDma::Madr, value) && value == 0x2080U,
           "MADR advances by transferred qword bytes");
     check(machine.gs_renderer().pixels()[80U * machine.gs_renderer().width() + 100U] != 0x000000FFU, "MMIO DMA packet reaches renderer and draws a triangle");
 
