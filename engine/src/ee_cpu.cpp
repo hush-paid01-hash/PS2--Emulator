@@ -80,11 +80,7 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error) {
         }
         break;
     case 0x08: // ADDI (overflow exceptions not modeled yet)
-    case 0x09: // ADDIU
         set_gpr(rt, {a + static_cast<std::uint64_t>(signed_imm), 0});
-        break;
-    case 0x0D: // ORI is implemented below
-        set_gpr(rt, {a | imm_u, 0});
         break;
     case 0x09: // ADDIU; result is sign-extended to 64 bits in this foundation
     case 0x19: // DADDIU
