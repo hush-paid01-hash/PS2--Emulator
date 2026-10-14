@@ -1,0 +1,6 @@
+/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/CMakeFiles/retroshelf-engine.dir
+/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/CMakeFiles/cpu-tests.dir
+/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/CMakeFiles/ee-gif-dma-tests.dir
+/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/CMakeFiles/test.dir
+/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/CMakeFiles/edit_cache.dir
+/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/CMakeFiles/rebuild_cache.dir
