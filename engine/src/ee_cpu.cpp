@@ -106,10 +106,16 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         branch_target_ = region | (static_cast<std::uint64_t>(instruction & 0x03FFFFFFU) << 2U);
         break;
     }
-    case 0x08:
-    case 0x09:
-    case 0x19: set_gpr(rt, {a + static_cast<std::uint64_t>(signed_imm), 0}); break;
-    case 0x18: set_gpr(rt, {a + static_cast<std::uint64_t>(signed_imm), 0}); break;
+    case 0x08: // ADDI (overflow traps not modeled)
+    case 0x09: { // ADDIU: 32-bit result, sign-extended to 64 bits
+        const auto result = static_cast<std::uint32_t>(a) + static_cast<std::uint32_t>(signed_imm);
+        set_gpr(rt, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))), 0});
+        break;
+    }
+    case 0x18: // DADDI (overflow traps not modeled)
+    case 0x19: // DADDIU
+        set_gpr(rt, {a + static_cast<std::uint64_t>(signed_imm), 0});
+        break;
     case 0x1E: {
         memory_ok = (memory_address & 0xFU) == 0U && static_cast<bool>(read_word);
         std::uint32_t words[4]{};
