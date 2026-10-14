@@ -1,0 +1,37 @@
+name: Engine foundation CI
+
+on:
+  push:
+    branches: [main, engine-foundation]
+    paths:
+      - "engine/**"
+      - ".github/workflows/engine.yml"
+  pull_request:
+    paths:
+      - "engine/**"
+      - ".github/workflows/engine.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install C++ build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+
+      - name: Configure
+        run: cmake -S engine -B engine/build
+
+      - name: Build with low parallelism
+        run: cmake --build engine/build --parallel 1
+
+      - name: Run automated tests
+        run: ctest --test-dir engine/build --output-on-failure
+
+      - name: Run demonstration
+        run: ./engine/build/retroshelf-engine
