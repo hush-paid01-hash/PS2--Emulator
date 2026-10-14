@@ -1,6 +1,9 @@
 #import "RetroShelfBridge.h"
 #include "retroshelf/ee_machine.hpp"
 #include <string>
+#include <fstream>
+#include <iterator>
+#include <vector>
 
 namespace { retroshelf::ee::EeMachine diagnostic_machine; bool diagnostic_loaded = false; }
 
@@ -42,5 +45,28 @@ extern "C" const char *rs_run_ee_diagnostic(unsigned long long instruction_budge
         message.push_back(hex[(pc >> shift) & 0xFU]);
     if (!error.empty()) message += ". Stopped: " + error;
     else message += ". Instruction budget reached. This is a CPU diagnostic, not gameplay.";
+    return message.c_str();
+}
+
+extern "C" const char *rs_load_ps2_bios(const char *bios_path) {
+    static std::string message;
+    if (bios_path == nullptr || *bios_path == 0) {
+        message = "No BIOS path was provided.";
+        return message.c_str();
+    }
+    std::ifstream input(bios_path, std::ios::binary);
+    if (!input) {
+        message = "Could not open the selected BIOS file.";
+        return message.c_str();
+    }
+    std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(input)),
+                                    std::istreambuf_iterator<char>());
+    std::string error;
+    if (!diagnostic_machine.load_bios(std::move(bytes), &error)) {
+        message = "BIOS rejected: " + error;
+        return message.c_str();
+    }
+    diagnostic_loaded = false;
+    message = "BIOS image loaded into the prototype EE system bus and reset vector. Full boot and game execution are still under development.";
     return message.c_str();
 }
