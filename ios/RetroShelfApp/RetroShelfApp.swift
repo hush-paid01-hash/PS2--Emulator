@@ -103,7 +103,18 @@ struct ConsoleHomeView: View {
                 let destinationURL = importDirectory.appendingPathComponent("\(UUID().uuidString)-\(sourceURL.lastPathComponent)")
                 try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
                 assign(destinationURL)
-                message = "Copied \(label) into app storage: \(sourceURL.lastPathComponent). File loading and emulation are not implemented yet."
+                if label == "game image" {
+                    let inspection = destinationURL.path.withCString { path in
+                        rs_inspect_ps2_disc(path)
+                    }
+                    if let inspection {
+                        message = String(cString: inspection)
+                    } else {
+                        message = "The engine returned no disc inspection result."
+                    }
+                } else {
+                    message = "Copied BIOS into app storage: \(sourceURL.lastPathComponent). BIOS interpretation is not implemented yet."
+                }
             } catch {
                 message = "Could not import \(label): \(error.localizedDescription)"
             }
