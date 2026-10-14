@@ -28,11 +28,15 @@ public:
     void set_pc(std::uint64_t value);
     bool branch_pending() const;
     std::uint64_t branch_target() const;
+    std::uint64_t hi() const;
+    std::uint64_t lo() const;
 private:
     std::array<Register128, GprCount> gpr_{};
     std::uint64_t pc_{0};
     bool branch_pending_{false};
     std::uint64_t branch_target_{0};
+    std::uint64_t hi_{0};
+    std::uint64_t lo_{0};
 };
 
 } // namespace retroshelf::ee
