@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/ee-timers-tests.dir/link.d "CMakeFiles/ee-timers-tests.dir/tests/ee_timers_tests.cpp.o" -o ee-timers-tests  libretroshelf-ee-core.a
