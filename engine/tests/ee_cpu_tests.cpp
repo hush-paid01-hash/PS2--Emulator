@@ -22,6 +22,11 @@ int main() {
     check(cpu.pc() == 12, "EE sequential PC advances by four bytes");
 
     cpu.reset();
+    cpu.set_gpr(8, {10, 0});
+    constexpr std::uint32_t addi = (0x08U << 26U) | (8U << 21U) | (13U << 16U) | 5U;
+    check(cpu.step(addi) && cpu.gpr(13).lo == 15, "ADDI adds signed immediate");
+
+    cpu.reset();
     cpu.set_gpr(8, {0xFFFFFFFFFFFFFFFEULL, 0});
     cpu.set_gpr(9, {1, 0});
     constexpr std::uint32_t slt = (8U << 21U) | (9U << 16U) | (11U << 11U) | 0x2AU;
