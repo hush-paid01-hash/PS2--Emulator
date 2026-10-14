@@ -30,6 +30,18 @@ struct ConsoleHomeView: View {
                         fileButton(title: "Choose PS2 BIOS", subtitle: selectedBIOS?.lastPathComponent ?? "Select a BIOS file you legally obtained", icon: "cpu") { choosingBIOS = true }
                         fileButton(title: "Choose game image", subtitle: selectedDisc?.lastPathComponent ?? "ISO, BIN, IMG or CHD", icon: "opticaldisc") { choosingDisc = true }
                     }
+                    Button {
+                        let result = rs_run_ee_diagnostic(1000)
+                        if let result { message = String(cString: result) }
+                    } label: {
+                        Label("Run EE CPU diagnostic (1,000 instructions max)", systemImage: "play.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding(14)
+                            .background(.cyan.opacity(0.16), in: RoundedRectangle(cornerRadius: 14))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(selectedDisc == nil)
+
                     VStack(alignment: .leading, spacing: 12) {
                         Text("CONTROLS PREVIEW").font(.caption.weight(.bold)).tracking(2).foregroundStyle(.secondary)
                         HStack {
