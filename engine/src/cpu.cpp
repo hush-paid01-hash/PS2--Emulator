@@ -20,39 +20,39 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     const auto rd = (instruction >> 11U) & 0x1FU;
     const auto funct = instruction & 0x3FU;
     const auto imm = static_cast<std::int16_t>(instruction & 0xFFFFU);
-    pc_ += 4; // Sequential test harness; branch delay slots are not implemented.
+    pc_ += 4; // Sequential test harness; control flow and delay slots are not implemented.
 
     switch (opcode) {
     case 0x00:
         switch (funct) {
+        case 0x20: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rs)) + static_cast<std::int64_t>(reg(rt)))); return true; // ADD (overflow trap omitted)
         case 0x21: set_reg(rd, reg(rs) + reg(rt)); return true; // ADDU
+        case 0x22: set_reg(rd, reg(rs) - reg(rt)); return true; // SUB (overflow trap omitted)
+        case 0x23: set_reg(rd, reg(rs) - reg(rt)); return true; // SUBU
         case 0x24: set_reg(rd, reg(rs) & reg(rt)); return true; // AND
         case 0x25: set_reg(rd, reg(rs) | reg(rt)); return true; // OR
         case 0x26: set_reg(rd, reg(rs) ^ reg(rt)); return true; // XOR
         case 0x27: set_reg(rd, ~(reg(rs) | reg(rt))); return true; // NOR
-        case 0x2A:
-            set_reg(rd, static_cast<std::int64_t>(reg(rs)) < static_cast<std::int64_t>(reg(rt)) ? 1U : 0U);
-            return true; // SLT
+        case 0x2A: set_reg(rd, static_cast<std::int64_t>(reg(rs)) < static_cast<std::int64_t>(reg(rt)) ? 1U : 0U); return true; // SLT
         case 0x2B: set_reg(rd, reg(rs) < reg(rt) ? 1U : 0U); return true; // SLTU
         case 0x00: set_reg(rd, reg(rt) << ((instruction >> 6U) & 0x1FU)); return true; // SLL/NOP
         default: break;
         }
         break;
+    case 0x08: // ADDI (overflow trap omitted in this prototype)
     case 0x09: // ADDIU
         set_reg(rt, reg(rs) + static_cast<std::uint64_t>(static_cast<std::int64_t>(imm)));
         return true;
-    case 0x0C: // ANDI
-        set_reg(rt, reg(rs) & static_cast<std::uint16_t>(instruction & 0xFFFFU));
+    case 0x0A: // SLTI
+        set_reg(rt, static_cast<std::int64_t>(reg(rs)) < static_cast<std::int64_t>(imm) ? 1U : 0U);
         return true;
-    case 0x0D: // ORI
-        set_reg(rt, reg(rs) | static_cast<std::uint16_t>(instruction & 0xFFFFU));
+    case 0x0B: // SLTIU compares against sign-extended immediate as an unsigned value
+        set_reg(rt, reg(rs) < static_cast<std::uint64_t>(static_cast<std::int64_t>(imm)) ? 1U : 0U);
         return true;
-    case 0x0E: // XORI
-        set_reg(rt, reg(rs) ^ static_cast<std::uint16_t>(instruction & 0xFFFFU));
-        return true;
-    case 0x0F: // LUI
-        set_reg(rt, static_cast<std::uint64_t>(instruction & 0xFFFFU) << 16U);
-        return true;
+    case 0x0C: set_reg(rt, reg(rs) & static_cast<std::uint16_t>(instruction & 0xFFFFU)); return true; // ANDI
+    case 0x0D: set_reg(rt, reg(rs) | static_cast<std::uint16_t>(instruction & 0xFFFFU)); return true; // ORI
+    case 0x0E: set_reg(rt, reg(rs) ^ static_cast<std::uint16_t>(instruction & 0xFFFFU)); return true; // XORI
+    case 0x0F: set_reg(rt, static_cast<std::uint64_t>(instruction & 0xFFFFU) << 16U); return true; // LUI
     case 0x23: case 0x2B: { // LW / SW in small test RAM only
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(static_cast<std::int64_t>(imm));
         if ((address & 3U) != 0U || address > TestMemorySize - sizeof(std::uint32_t)) {
