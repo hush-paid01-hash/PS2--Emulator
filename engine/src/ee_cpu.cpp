@@ -164,6 +164,19 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
     case 0x2B: // SW
         memory_ok = (memory_address & 3U) == 0U && store(memory_address, static_cast<std::uint32_t>(b));
         break;
+    case 0x37: { // LD: load a 64-bit doubleword
+        std::uint32_t low = 0, high = 0;
+        memory_ok = (memory_address & 7U) == 0U
+                 && load(memory_address, low) && load(memory_address + 4U, high);
+        if (memory_ok) set_gpr(rt, {static_cast<std::uint64_t>(low) | (static_cast<std::uint64_t>(high) << 32U), 0});
+        break;
+    }
+    case 0x3F: { // SD: store a 64-bit doubleword
+        memory_ok = (memory_address & 7U) == 0U
+                 && store(memory_address, static_cast<std::uint32_t>(b))
+                 && store(memory_address + 4U, static_cast<std::uint32_t>(b >> 32U));
+        break;
+    }
     default: supported = false; break;
     }
 
