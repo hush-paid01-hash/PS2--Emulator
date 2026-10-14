@@ -9,7 +9,7 @@ add_executable(retroshelf-engine src/main.cpp src/cpu.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
-add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp)
+add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp)
 target_include_directories(retroshelf-ee-core PUBLIC include)
 target_compile_options(retroshelf-ee-core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -28,3 +28,8 @@ add_executable(ee-bus-tests tests/ee_bus_tests.cpp)
 target_link_libraries(ee-bus-tests PRIVATE retroshelf-ee-core)
 target_compile_options(ee-bus-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-bus-tests COMMAND ee-bus-tests)
+
+add_executable(ee-machine-tests tests/ee_machine_tests.cpp)
+target_link_libraries(ee-machine-tests PRIVATE retroshelf-ee-core)
+target_compile_options(ee-machine-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ee-machine-tests COMMAND ee-machine-tests)
