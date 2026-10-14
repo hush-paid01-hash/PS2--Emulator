@@ -224,6 +224,18 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         if (memory_ok) set_gpr(rt, {opcode == 0x23 ? static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))) : value, 0});
         break;
     }
+    case 0x29: { // SH: store halfword while preserving adjacent bytes
+        std::uint32_t word = 0;
+        const auto aligned = memory_address & ~std::uint32_t{3};
+        memory_ok = (memory_address & 1U) == 0U && load(aligned, word);
+        if (memory_ok) {
+            const auto shift = (memory_address & 2U) * 8U;
+            const auto mask = static_cast<std::uint32_t>(0xFFFFU << shift);
+            word = (word & ~mask) | (static_cast<std::uint32_t>(b & 0xFFFFU) << shift);
+            memory_ok = store(aligned, word);
+        }
+        break;
+    }
     case 0x28: // SB
         memory_ok = write_byte(memory_address, static_cast<std::uint8_t>(b & 0xFFU));
         break;
