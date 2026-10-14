@@ -10,7 +10,7 @@ int main() {
         else { std::cout << "PASS: " << label << '\n'; }
     };
     std::uint32_t word = 0;
-    check(bus.ram_size() == 2U * 1024U * 1024U, "2 MiB test RAM is allocated");
+    check(bus.ram_size() == 32U * 1024U * 1024U, "32 MiB EE main RAM is allocated");
     check(bus.write32(0x100, 0x12345678U), "aligned word write succeeds");
     check(bus.read32(0x100, word) && word == 0x12345678U, "word read preserves little-endian value");
     std::uint8_t byte = 0;
