@@ -11,6 +11,8 @@ void EeCpu::reset() {
     pc_ = 0;
     branch_pending_ = false;
     branch_target_ = 0;
+    hi_ = 0;
+    lo_ = 0;
 }
 Register128 EeCpu::gpr(std::size_t index) const {
     return index < GprCount ? gpr_[index] : Register128{};
@@ -23,6 +25,8 @@ std::uint64_t EeCpu::pc() const { return pc_; }
 void EeCpu::set_pc(std::uint64_t value) { pc_ = value; }
 bool EeCpu::branch_pending() const { return branch_pending_; }
 std::uint64_t EeCpu::branch_target() const { return branch_target_; }
+std::uint64_t EeCpu::hi() const { return hi_; }
+std::uint64_t EeCpu::lo() const { return lo_; }
 
 bool EeCpu::step(std::uint32_t instruction, std::string* error,
                  const ReadWord& read_word, const WriteWord& write_word) {
@@ -79,6 +83,44 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         case 0x06: set_gpr(rd, {b >> (a & 0x3FU), 0}); break;
         case 0x07: set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(b) >> (a & 0x3FU)), 0}); break;
         case 0x08: branch_pending_ = true; branch_target_ = a; break;
+        case 0x10: set_gpr(rd, {hi_, 0}); break; // MFHI
+        case 0x12: set_gpr(rd, {lo_, 0}); break; // MFLO
+        case 0x11: hi_ = a; break; // MTHI
+        case 0x13: lo_ = a; break; // MTLO
+        case 0x18: { // MULT signed 32-bit operands
+            const auto product = static_cast<std::int64_t>(static_cast<std::int32_t>(a)) *
+                                 static_cast<std::int64_t>(static_cast<std::int32_t>(b));
+            const auto bits = static_cast<std::uint64_t>(product);
+            lo_ = static_cast<std::uint32_t>(bits);
+            hi_ = static_cast<std::uint32_t>(bits >> 32U);
+            break;
+        }
+        case 0x19: { // MULTU unsigned 32-bit operands
+            const auto product = static_cast<std::uint64_t>(static_cast<std::uint32_t>(a)) *
+                                 static_cast<std::uint64_t>(static_cast<std::uint32_t>(b));
+            lo_ = static_cast<std::uint32_t>(product);
+            hi_ = static_cast<std::uint32_t>(product >> 32U);
+            break;
+        }
+        case 0x1A: { // DIV signed 32-bit operands
+            const auto dividend = static_cast<std::int32_t>(a);
+            const auto divisor = static_cast<std::int32_t>(b);
+            if (divisor != 0) {
+                if (dividend == INT32_MIN && divisor == -1) {
+                    lo_ = static_cast<std::uint32_t>(INT32_MIN); hi_ = 0;
+                } else {
+                    lo_ = static_cast<std::uint32_t>(dividend / divisor);
+                    hi_ = static_cast<std::uint32_t>(dividend % divisor);
+                }
+            }
+            break;
+        }
+        case 0x1B: { // DIVU unsigned 32-bit operands
+            const auto dividend = static_cast<std::uint32_t>(a);
+            const auto divisor = static_cast<std::uint32_t>(b);
+            if (divisor != 0) { lo_ = dividend / divisor; hi_ = dividend % divisor; }
+            break;
+        }
         case 0x21: { const auto result = static_cast<std::uint32_t>(a) + static_cast<std::uint32_t>(b); set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))), 0}); break; }
         case 0x2D: set_gpr(rd, {a + b, 0}); break;
         case 0x23: { const auto result = static_cast<std::uint32_t>(a) - static_cast<std::uint32_t>(b); set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))), 0}); break; }
