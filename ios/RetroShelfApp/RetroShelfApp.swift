@@ -125,7 +125,10 @@ struct ConsoleHomeView: View {
                         message = "The engine returned no disc inspection result."
                     }
                 } else {
-                    message = "Copied BIOS into app storage: \(sourceURL.lastPathComponent). BIOS interpretation is not implemented yet."
+                    let result = destinationURL.path.withCString { path in
+                        rs_load_ps2_bios(path)
+                    }
+                    message = result.map { String(cString: $0) } ?? "The engine returned no BIOS load result."
                 }
             } catch {
                 message = "Could not import \(label): \(error.localizedDescription)"
