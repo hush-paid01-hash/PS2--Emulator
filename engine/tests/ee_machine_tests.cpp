@@ -26,6 +26,7 @@ int main() {
     check(machine.cpu().pc() == 8, "machine advances PC after each instruction");
     check(machine.scheduler().now() == 2, "second step advances scheduler");
     check(machine.hardware().interrupts().has_enabled_pending(), "machine step advances timer and raises interrupt at target");
+    check(machine.load_word(retroshelf::ee::EeHardware::MmioBase, 0), "test can write through RAM loader only where mapped");
     machine.reset();
     std::uint32_t word = 1;
     check(machine.cpu().pc() == 0, "machine reset resets PC");
