@@ -1,38 +1,44 @@
-# Original PS2 iPhone Emulator
+# RetroShelf — Original PS2 Emulator for iPhone
 
-A PS2-only project aiming to build an independently implemented PlayStation 2 emulation core for iPhone.
+This repository is for an original PlayStation 2 emulator core and an iPhone frontend. **PS3 is out of scope. Play!, PCSX2, and other existing emulator cores are not used as this project's core.**
 
-## Core rule
+## Honest status
 
-**No PS3 support. No Play!, no PCSX2, and no other existing emulator core.** This project is building its own CPU and hardware emulation. The project name has not yet been changed, but the intended scope is PS2 only.
+The project is in early development. The C++ engine has a limited EE/R5900 instruction interpreter, test RAM, a fetch/execute harness, and prototype hardware components. GitHub Actions has successfully built the SwiftUI shell for the iOS Simulator. These milestones are not a playable emulator.
 
-## Current engineering status
+The app shell can present BIOS and game-image file pickers and copy selected files into app storage. It does not yet validate a BIOS, mount a PS2 disc, run a complete PS2 CPU, render PS2 graphics, or produce sound. No signed installable iPhone package or verified game boot has been produced.
 
-The C++ project contains:
-- An educational MIPS-like CPU prototype (legacy demonstration)
-- An early R5900/Emotion Engine CPU instruction subset
-- A basic 2 MiB RAM/bus model for isolated tests
-- An EE machine harness that fetches instruction words from that RAM and passes them to the CPU
-- CMake and GitHub Actions test targets
+## Current features in progress
 
-**This is not yet a functional PS2 emulator.** The instruction set and hardware model are incomplete; there is no BIOS boot, full memory map, DMA, interrupts, VU0/VU1, Graphics Synthesizer renderer, SPU2 audio, disc-drive emulation, native iOS app, or playable game support yet.
+- Independent C++ EE/R5900 instruction interpreter and regression tests
+- Test RAM and CPU fetch/execute machine harness
+- Prototype timers, interrupts, scheduler, DMA and system-bus components
+- SwiftUI iPhone shell with Files pickers and touch-control preview
+- GitHub Actions Linux C++ tests and macOS iOS Simulator build
 
-## Planned features
+## Planned work
 
-- Original EE/R5900 CPU, vector units and PS2 device models
-- Native iPhone interface, touch controls and external controllers
-- User-selected BIOS and disc images through Files
-- Save states and memory cards
-- Per-game settings and performance/FPS overlay
-- Portable C++ core, automated tests and ARM64 optimization where supported
+1. Expand and validate CPU instructions, exceptions, COP0, and memory operations.
+2. Implement a documented PS2 memory map, BIOS mapping, and correct boot state.
+3. Implement the PS2 vector units, DMA, GIF, Graphics Synthesizer, sound, and disc I/O.
+4. Connect the native core to the iOS app through a stable bridge.
+5. Implement functional touch/controller input, save states, memory cards, settings, and FPS reporting.
+6. Test a signed build on a physical iPhone using lawful homebrew/test images.
 
-## Development and legality
+## Build
 
-Use GitHub Actions hosted runners for C++ builds; the small AWS VM is not assumed to have enough resources for large builds. Native iOS builds require an Apple-platform build/signing path. JIT execution is restricted on iOS, so interpreter-first development is the realistic initial route.
+C++ engine:
 
-Use only BIOS and game images you are legally entitled to use. Firmware and games will not be bundled.
+```sh
+cmake -S engine -B engine/build
+cmake --build engine/build --parallel 1
+ctest --test-dir engine/build --output-on-failure
+```
 
-## Roadmap
+The hosted GitHub Actions workflow runs the portable C++ build and tests. The iOS workflow generates an Xcode project from `ios/project.yml` and builds for the iOS Simulator. A Simulator build is not an installable device app; physical-device deployment requires appropriate Apple signing and provisioning.
 
-- [Original core roadmap](docs/ORIGINAL_PS2_CORE_ROADMAP.md)
-- [iOS frontend plan](ios/README.md)
+## Legal and platform notes
+
+Provide only BIOS and game images you are legally entitled to use; none are bundled. iOS has restrictions on JIT execution, so an interpreter-first approach is used until performance and platform options are verified on the actual device.
+
+See [the original-core roadmap](docs/REAL_PS2_EMULATOR_PLAN.md) and [the iOS project specification](ios/project.yml).
