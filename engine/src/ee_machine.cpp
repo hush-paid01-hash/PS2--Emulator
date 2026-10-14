@@ -10,6 +10,10 @@ namespace retroshelf::ee {
 
 EeMachine::EeMachine() : system_bus_(bus_, hardware_) { reset(); }
 void EeMachine::reset() { cpu_.reset(); bus_.reset(); hardware_.reset(); scheduler_.reset(); }
+bool EeMachine::load_bios(const std::vector<std::uint8_t>& image, std::string* error) {
+    return system_bus_.load_bios(image, error);
+}
+bool EeMachine::bios_loaded() const { return system_bus_.bios_loaded(); }
 bool EeMachine::load_word(std::uint32_t address, std::uint32_t word) {
     return bus_.write32(address, word);
 }
@@ -111,5 +115,7 @@ EeHardware& EeMachine::hardware() { return hardware_; }
 const EeHardware& EeMachine::hardware() const { return hardware_; }
 EeScheduler& EeMachine::scheduler() { return scheduler_; }
 const EeScheduler& EeMachine::scheduler() const { return scheduler_; }
+EeSystemBus& EeMachine::system_bus() { return system_bus_; }
+const EeSystemBus& EeMachine::system_bus() const { return system_bus_; }
 
 } // namespace retroshelf::ee
