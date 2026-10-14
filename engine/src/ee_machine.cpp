@@ -9,9 +9,18 @@
 namespace retroshelf::ee {
 
 EeMachine::EeMachine() : system_bus_(bus_, hardware_) { reset(); }
-void EeMachine::reset() { cpu_.reset(); bus_.reset(); hardware_.reset(); scheduler_.reset(); }
+void EeMachine::reset() {
+    cpu_.reset();
+    bus_.reset();
+    hardware_.reset();
+    scheduler_.reset();
+    // The EE begins at the BIOS reset vector when a ROM is present.
+    if (system_bus_.bios_loaded()) cpu_.set_pc(0xBFC00000U);
+}
 bool EeMachine::load_bios(const std::vector<std::uint8_t>& image, std::string* error) {
-    return system_bus_.load_bios(image, error);
+    if (!system_bus_.load_bios(image, error)) return false;
+    cpu_.set_pc(0xBFC00000U);
+    return true;
 }
 bool EeMachine::bios_loaded() const { return system_bus_.bios_loaded(); }
 bool EeMachine::load_word(std::uint32_t address, std::uint32_t word) {
