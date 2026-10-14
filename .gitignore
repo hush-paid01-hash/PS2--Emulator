@@ -8,6 +8,7 @@ out-tsc
 /engine/build/
 .expo
 .expo-shared
+/engine/build/
 
 # dependencies
 node_modules
