@@ -89,9 +89,12 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         case 0x27: set_gpr(rd, {~(a | b), 0}); break;
         case 0x2A: set_gpr(rd, {static_cast<std::int64_t>(a) < static_cast<std::int64_t>(b) ? 1ULL : 0ULL, 0}); break;
         case 0x2B: set_gpr(rd, {a < b ? 1ULL : 0ULL, 0}); break;
-        case 0x38: set_gpr(rd, {b << (shamt + 32U), 0}); break;
-        case 0x3A: set_gpr(rd, {b >> (shamt + 32U), 0}); break;
-        case 0x3B: set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(b) >> (shamt + 32U)), 0}); break;
+        case 0x38: set_gpr(rd, {b << shamt, 0}); break;
+        case 0x3A: set_gpr(rd, {b >> shamt, 0}); break;
+        case 0x3B: set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(b) >> shamt), 0}); break;
+        case 0x3C: set_gpr(rd, {b << (shamt + 32U), 0}); break;
+        case 0x3E: set_gpr(rd, {b >> (shamt + 32U), 0}); break;
+        case 0x3F: set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(b) >> (shamt + 32U)), 0}); break;
         default: supported = false; break;
         }
         break;
