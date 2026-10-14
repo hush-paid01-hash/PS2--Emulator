@@ -1,8 +1,8 @@
 #include "retroshelf/ee_gif_dma.hpp"
 
-#include <algorithm>
 #include <exception>
 #include <limits>
+#include <utility>
 
 namespace retroshelf {
 namespace {
@@ -10,6 +10,7 @@ namespace {
 constexpr std::uint32_t StartBit = 1U << 8U;
 constexpr std::uint32_t DirectionBit = 1U;
 constexpr std::uint32_t ModeMask = 3U << 2U;
+constexpr std::uint32_t AspMask = 3U << 4U;
 constexpr std::uint32_t ChainMode = 1U << 2U;
 constexpr std::uint32_t TagInterruptEnable = 1U << 7U;
 
@@ -69,6 +70,9 @@ bool EeGifDma::transfer(std::uint32_t address, std::uint32_t qwc) {
         return fail("GIF DMA payload size overflows");
     }
     const std::size_t size = count * qword_size;
+    if (size > std::numeric_limits<std::uint32_t>::max() - address) {
+        return fail("GIF DMA payload address overflows");
+    }
     if ((address & (QwordSize - 1U)) != 0U || !valid_range(address, size)) {
         return fail("GIF DMA payload is unaligned or outside EE RAM");
     }
@@ -97,9 +101,10 @@ bool EeGifDma::start() {
         return fail("GIF DMA start bit is not set");
     }
     state_ = State::Running;
-    registers.asr0 = 0;
-    registers.asr1 = 0;
-    registers.asp = 0;
+    registers.asp = static_cast<std::uint8_t>((registers.chcr & AspMask) >> 4U);
+    if (registers.asp > 2U) {
+        return fail("GIF DMA address stack pointer is invalid");
+    }
 
     if ((registers.chcr & DirectionBit) == 0U) {
         return fail("GIF DMA direction must be EE RAM to GIF");
@@ -164,6 +169,7 @@ bool EeGifDma::start() {
         switch (id) {
         case TagId::Refe:
             payload_address = tag_address_field;
+            next_tag = tag_address + static_cast<std::uint32_t>(QwordSize);
             terminate = true;
             break;
         case TagId::Cnt:
@@ -186,6 +192,8 @@ bool EeGifDma::start() {
                 registers.asr1 = after_inline;
             }
             ++registers.asp;
+            registers.chcr = (registers.chcr & ~AspMask) |
+                             (static_cast<std::uint32_t>(registers.asp) << 4U);
             next_tag = tag_address_field;
             break;
         case TagId::Ret:
@@ -193,12 +201,12 @@ bool EeGifDma::start() {
                 return fail("GIF DMA return stack underflow");
             }
             --registers.asp;
+            registers.chcr = (registers.chcr & ~AspMask) |
+                             (static_cast<std::uint32_t>(registers.asp) << 4U);
             if (registers.asp == 0U) {
                 next_tag = registers.asr0;
-                registers.asr0 = 0;
             } else {
                 next_tag = registers.asr1;
-                registers.asr1 = 0;
             }
             break;
         case TagId::End:
