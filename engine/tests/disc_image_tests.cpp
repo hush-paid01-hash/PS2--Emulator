@@ -35,6 +35,16 @@ int main() {
     check(valid.valid, "recognizes valid ISO-9660 primary volume descriptor");
     check(valid.volume_sectors == 20 && valid.logical_block_size == 2048, "reports volume geometry");
     check(valid.volume_id == title, "reads volume identifier");
+    std::vector<std::uint8_t> sector_data;
+    std::string sector_error;
+    check(retroshelf::media::read_iso_sector(path, 16, sector_data, &sector_error),
+          "reads an in-range ISO logical sector");
+    check(sector_data.size() == sector && sector_data[0] == 1,
+          "sector reader returns exact 2048-byte descriptor sector");
+    check(!retroshelf::media::read_iso_sector(path, 20, sector_data, &sector_error),
+          "rejects logical sector outside volume");
+    check(sector_error.find("outside") != std::string::npos,
+          "out-of-range sector provides diagnostic");
 
     image[16 * sector + 1] = 'X';
     {
