@@ -52,6 +52,7 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
     const auto b = gpr_[rt].lo;
     bool supported = true;
     bool memory_ok = true;
+    bool pc_override = false;
     std::uint32_t memory_address = static_cast<std::uint32_t>(a + static_cast<std::uint64_t>(signed_imm));
 
     const auto load = [&](std::uint32_t address, std::uint32_t& value) {
@@ -157,6 +158,11 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
             set_gpr(rt, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))), 0});
         } else if (cop_rs == 0x04U) { // MTC0
             cp0_[rd] = static_cast<std::uint32_t>(gpr_[rt].lo);
+        } else if (cop_rs == 0x10U && funct == 0x18U) { // ERET: return from exception via EPC
+            pc_ = cp0_[14];
+            branch_pending_ = false;
+            branch_target_ = 0;
+            pc_override = true;
         } else {
             supported = false;
         }
@@ -322,8 +328,10 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
     default: supported = false; break;
     }
 
-    if (applying_previous_branch) pc_ = previous_target;
-    else pc_ = current_pc + 4U;
+    if (!pc_override) {
+        if (applying_previous_branch) pc_ = previous_target;
+        else pc_ = current_pc + 4U;
+    }
 
     if (!supported || !memory_ok) {
         if (error) {
