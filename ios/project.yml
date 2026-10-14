@@ -1,0 +1,22 @@
+name: RetroShelfApp
+options:
+  bundleIdPrefix: com.retroshelf
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: RetroShelf
+targets:
+  RetroShelfApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: RetroShelfApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.retroshelf.ps2
+        PRODUCT_NAME: RetroShelf
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
