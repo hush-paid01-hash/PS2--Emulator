@@ -17,13 +17,16 @@ int main() {
     std::string error;
     check(machine.step(&error), "machine fetches and executes first instruction");
     check(machine.cpu().gpr(8).lo == 7 && machine.cpu().pc() == 4, "first instruction updates CPU state");
+    check(machine.scheduler().now() == 1, "machine advances placeholder scheduler cycle");
     check(machine.step(&error), "machine fetches and executes second instruction");
     check(machine.cpu().gpr(9).lo == 0xFFFFFFFFFFFFFFFFULL, "immediate is sign-extended in prototype");
     check(machine.cpu().pc() == 8, "machine advances PC after each instruction");
+    check(machine.scheduler().now() == 2, "second step advances scheduler");
     machine.reset();
     std::uint32_t word = 1;
     check(machine.cpu().pc() == 0, "machine reset resets PC");
     check(machine.bus().read32(0, word) && word == 0, "machine reset clears RAM");
+    check(machine.scheduler().now() == 0, "machine reset resets scheduler");
     check(machine.step(&error), "zeroed RAM contains a supported SLL-zero instruction");
     check(machine.cpu().pc() == 4, "machine advances after zero instruction");
     return failures == 0 ? 0 : 1;
