@@ -11,11 +11,11 @@ int main() {
     const auto background = renderer.pixels().front();
     // Three PACKED packets: PRIM, RGBAQ, then three XYZ2 vertices.
     const std::uint64_t words[] = {
-        1ULL | (1ULL << 15U) | (1ULL << 60U), 0ULL, // EOP PRIM packet
+        1ULL | (1ULL << 60U), 0ULL, // PRIM packet
         3ULL, 0ULL,
         1ULL | (1ULL << 60U), 0x1ULL, // RGBAQ packet
         0x00000000FFFFFFFFULL, 0ULL, // opaque white
-        3ULL | (1ULL << 60U), 0x5ULL, // XYZ2 packet with three loops
+        3ULL | (1ULL << 15U) | (1ULL << 60U), 0x5ULL, // EOP XYZ2 packet with three loops
         2ULL | (2ULL << 16U), 0ULL,
         28ULL | (2ULL << 16U), 0ULL,
         12ULL | (28ULL << 16U), 0ULL
