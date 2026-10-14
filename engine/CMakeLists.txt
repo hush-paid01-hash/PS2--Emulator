@@ -9,7 +9,7 @@ add_executable(retroshelf-engine src/main.cpp src/cpu.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
-add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp)
+add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp src/ee_system_bus.cpp)
 target_include_directories(retroshelf-ee-core PUBLIC include)
 target_compile_options(retroshelf-ee-core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -58,3 +58,8 @@ add_executable(ee-dma-tests tests/ee_dma_tests.cpp)
 target_link_libraries(ee-dma-tests PRIVATE retroshelf-ee-core)
 target_compile_options(ee-dma-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-dma-tests COMMAND ee-dma-tests)
+
+add_executable(ee-system-bus-tests tests/ee_system_bus_tests.cpp)
+target_link_libraries(ee-system-bus-tests PRIVATE retroshelf-ee-core)
+target_compile_options(ee-system-bus-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ee-system-bus-tests COMMAND ee-system-bus-tests)
