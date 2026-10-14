@@ -32,11 +32,17 @@ bool EeMachine::load_elf(const retroshelf::media::Ps2ElfImage& image, std::strin
         if (error) *error = "Cannot load an invalid or empty ELF image";
         return false;
     }
-    // Validate every segment first so a bad later segment cannot leave RAM partially modified.
+    // Translate MIPS KSEG0/KSEG1 virtual aliases to physical RAM for loading.
+    const auto physical_address = [](std::uint32_t address) -> std::uint32_t {
+        if (address >= 0x80000000U && address < 0xC0000000U) return address & 0x1FFFFFFFU;
+        return address;
+    };
+    // Validate every segment before changing RAM.
     for (const auto& segment : image.segments) {
-        const std::uint64_t end = static_cast<std::uint64_t>(segment.virtual_address) + segment.memory_size;
+        const auto physical = physical_address(segment.virtual_address);
+        const std::uint64_t end = static_cast<std::uint64_t>(physical) + segment.memory_size;
         if (segment.memory_size != segment.bytes.size() || end > EeBus::RamSize) {
-            if (error) *error = "ELF segment does not fit the prototype physical RAM map";
+            if (error) *error = "ELF segment does not fit prototype RAM after MIPS address translation";
             return false;
         }
     }
@@ -46,7 +52,7 @@ bool EeMachine::load_elf(const retroshelf::media::Ps2ElfImage& image, std::strin
         const auto end = begin + segment.memory_size;
         if (image.entry_point >= begin && image.entry_point < end) entry_mapped = true;
     }
-    if (!entry_mapped || image.entry_point >= EeBus::RamSize) {
+    if (!entry_mapped || physical_address(image.entry_point) >= EeBus::RamSize) {
         if (error) *error = "ELF entry point is not addressable in prototype physical RAM";
         return false;
     }
@@ -55,7 +61,7 @@ bool EeMachine::load_elf(const retroshelf::media::Ps2ElfImage& image, std::strin
     reset();
     for (const auto& segment : image.segments) {
         for (std::size_t i = 0; i < segment.bytes.size(); ++i) {
-            if (!bus_.write8(segment.virtual_address + static_cast<std::uint32_t>(i), segment.bytes[i])) {
+            if (!bus_.write8(physical_address(segment.virtual_address) + static_cast<std::uint32_t>(i), segment.bytes[i])) {
                 if (error) *error = "Unexpected RAM write failure while loading ELF segment";
                 return false;
             }
