@@ -120,5 +120,15 @@ int main() {
     machine.reset();
     check(machine.run(3, &error) == 3, "bounded runner stops at requested instruction count");
     check(machine.cpu().pc() == 12, "bounded runner advances PC by executed instruction count");
+    machine.reset();
+    auto kseg_elf_bytes = elf_fixture();
+    put32(kseg_elf_bytes, 24, 0x80000100U);
+    put32(kseg_elf_bytes, 60, 0x80000100U);
+    const auto kseg_elf = retroshelf::media::parse_ps2_elf(kseg_elf_bytes);
+    check(kseg_elf.valid, "KSEG0 ELF fixture parses");
+    check(machine.load_elf(kseg_elf, &error), "ELF loader translates KSEG0 virtual segment into physical RAM");
+    check(machine.cpu().pc() == 0x80000100U, "KSEG0 entry point remains a virtual address");
+    check(machine.step(&error), "EE fetch reads loaded instruction through KSEG0 alias");
+    check(machine.cpu().gpr(8).lo == 7, "KSEG0-loaded ELF executes its first instruction");
     return failures == 0 ? 0 : 1;
 }
