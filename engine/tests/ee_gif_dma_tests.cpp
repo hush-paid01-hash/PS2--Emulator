@@ -30,7 +30,7 @@ int main() {
     auto& bus = machine.system_bus();
     std::uint32_t value = 0;
     check(bus.write32(retroshelf::ee::EeGifDma::Madr, 0x2000U), "MADR register accepts source address");
-    check(bus.write32(retroshelf::ee::EeGifDma::Qwc, 9U), "QWC register accepts qword count");
+    check(bus.write32(retroshelf::ee::EeGifDma::Qwc, 8U), "QWC register accepts qword count");
     check(bus.read32(retroshelf::ee::EeGifDma::Madr, value) && value == 0x2000U,
           "MADR register is visible through system bus");
     check(bus.read32(retroshelf::ee::EeGifDma::Qwc, value) && value == 9U,
