@@ -137,6 +137,35 @@ bool EeMachine::process_gif(const std::uint64_t* words, std::size_t qword_count,
                             retroshelf::gs::GifProcessStats* stats, std::string* error) {
     return retroshelf::gs::process_gif_stream(words, qword_count, gs_renderer_, stats, error);
 }
+bool EeMachine::process_gif_from_ram(std::uint32_t address, std::size_t qword_count,
+                                      retroshelf::gs::GifProcessStats* stats, std::string* error) {
+    if (qword_count == 0 || qword_count > (1024U * 1024U) / 16U) {
+        if (error) *error = "GIF DMA payload size is zero or exceeds the 1 MiB safety limit";
+        return false;
+    }
+    const std::uint64_t byte_count = static_cast<std::uint64_t>(qword_count) * 16ULL;
+    if (static_cast<std::uint64_t>(address) + byte_count > 0x100000000ULL) {
+        if (error) *error = "GIF DMA payload address overflows the 32-bit EE address space";
+        return false;
+    }
+    std::vector<std::uint64_t> words(qword_count * 2U);
+    for (std::size_t q = 0; q < qword_count; ++q) {
+        std::uint32_t parts[4]{};
+        for (std::size_t part = 0; part < 4; ++part) {
+            const auto current = static_cast<std::uint32_t>(
+                static_cast<std::uint64_t>(address) + q * 16ULL + part * 4ULL);
+            if (!system_bus_.read32(current, parts[part])) {
+                if (error) *error = "GIF DMA payload read failed at EE memory address";
+                return false;
+            }
+        }
+        words[q * 2U] = static_cast<std::uint64_t>(parts[0]) |
+                        (static_cast<std::uint64_t>(parts[1]) << 32U);
+        words[q * 2U + 1U] = static_cast<std::uint64_t>(parts[2]) |
+                             (static_cast<std::uint64_t>(parts[3]) << 32U);
+    }
+    return process_gif(words.data(), qword_count, stats, error);
+}
 retroshelf::gs::SoftwareRenderer& EeMachine::gs_renderer() { return gs_renderer_; }
 const retroshelf::gs::SoftwareRenderer& EeMachine::gs_renderer() const { return gs_renderer_; }
 
