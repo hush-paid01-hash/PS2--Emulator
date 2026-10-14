@@ -79,6 +79,13 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error) {
         default: supported = false; break;
         }
         break;
+    case 0x08: // ADDI (overflow exceptions not modeled yet)
+    case 0x09: // ADDIU
+        set_gpr(rt, {a + static_cast<std::uint64_t>(signed_imm), 0});
+        break;
+    case 0x0D: // ORI is implemented below
+        set_gpr(rt, {a | imm_u, 0});
+        break;
     case 0x09: // ADDIU; result is sign-extended to 64 bits in this foundation
     case 0x19: // DADDIU
         set_gpr(rt, {a + static_cast<std::uint64_t>(signed_imm), 0});
@@ -90,7 +97,6 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error) {
         set_gpr(rt, {a < static_cast<std::uint64_t>(signed_imm) ? 1ULL : 0ULL, 0});
         break;
     case 0x0C: set_gpr(rt, {a & imm_u, 0}); break; // ANDI
-    case 0x0D: set_gpr(rt, {a | imm_u, 0}); break; // ORI
     case 0x0E: set_gpr(rt, {a ^ imm_u, 0}); break; // XORI
     case 0x0F: set_gpr(rt, {static_cast<std::uint64_t>(imm_u) << 16U, 0}); break; // LUI
     case 0x06: // BLEZ, with delay slot
