@@ -58,6 +58,24 @@ int main() {
     check(cpu.pc() == 8, "BGTZ applies branch target after delay slot");
 
     cpu.reset();
+    cpu.set_pc(0x1000);
+    constexpr std::uint32_t jump = (0x02U << 26U) | 0x00000020U;
+    check(cpu.step(jump) && cpu.branch_pending(), "J schedules absolute pseudo-direct target");
+    check(cpu.step(0) && cpu.pc() == 0x80, "J applies target after delay slot");
+
+    cpu.reset();
+    cpu.set_pc(0x1000);
+    constexpr std::uint32_t jal = (0x03U << 26U) | 0x00000030U;
+    check(cpu.step(jal) && cpu.gpr(31).lo == 0x1008, "JAL saves return address after delay slot");
+    check(cpu.step(0) && cpu.pc() == 0xC0, "JAL applies target after delay slot");
+
+    cpu.reset();
+    cpu.set_pc(0x80000000ULL);
+    constexpr std::uint32_t ori = (0x0DU << 26U) | (8U << 21U) | (9U << 16U) | 0x00F0U;
+    cpu.set_gpr(8, {0x1000, 0});
+    check(cpu.step(ori) && cpu.gpr(9).lo == 0x10F0, "ORI zero-extends immediate and combines bits");
+
+    cpu.reset();
     std::string error;
     check(!cpu.step(0xFFFFFFFFU, &error), "unsupported EE instruction is rejected");
     check(error.find("unsupported") != std::string::npos, "unsupported instruction has diagnostic");
