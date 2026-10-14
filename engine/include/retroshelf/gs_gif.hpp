@@ -14,7 +14,7 @@ struct GifTag {
     std::uint8_t nreg = 0;
     std::array<std::uint8_t, 16> registers{};
 
-    static bool decode(std::uint64_t low, std::uint64_t high, GifTag& out);
+    static bool decode(std::uint64_t low, std::uint64_t high, GifTag& out);\n    // Number of 128-bit payload units following this tag, excluding the tag itself.\n    std::uint32_t payload_qwords() const;\n    std::uint32_t packet_qwords() const;
 };
 
 } // namespace retroshelf::gs
