@@ -144,7 +144,7 @@ int main() {
 
     cpu.reset();
     std::string error;
-    check(!cpu.step(0xFFFFFFFFU, &error), "unsupported EE instruction is rejected");
+    check(!cpu.step(0xF8000000U, &error), "unsupported EE instruction is rejected");
     check(error.find("unsupported") != std::string::npos, "unsupported instruction has diagnostic");
     cpu.reset(); cpu.set_gpr(0, {99, 99});
     check(cpu.gpr(0).lo == 0 && cpu.gpr(0).hi == 0, "writes cannot alter EE zero register");
