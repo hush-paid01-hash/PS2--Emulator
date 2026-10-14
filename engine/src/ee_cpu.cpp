@@ -160,6 +160,7 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
             cp0_[rd] = static_cast<std::uint32_t>(gpr_[rt].lo);
         } else if (cop_rs == 0x10U && funct == 0x18U) { // ERET: return from exception via EPC
             pc_ = cp0_[14];
+            cp0_[12] &= ~(1U << 1U); // Clear Status.EXL when leaving exception level.
             branch_pending_ = false;
             branch_target_ = 0;
             pc_override = true;
