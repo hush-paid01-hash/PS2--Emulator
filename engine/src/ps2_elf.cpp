@@ -1,4 +1,5 @@
 #include "retroshelf/ps2_elf.hpp"
+#include "retroshelf/disc_image.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -79,5 +80,15 @@ Ps2ElfImage parse_ps2_elf(const std::vector<std::uint8_t>& image) {
     if (!entry_mapped) return invalid("ELF entry point is outside all loadable segments");
     result.valid = true;
     return result;
+}
+
+Ps2ElfImage load_ps2_boot_elf_from_disc(const std::string& iso_path) {
+    const auto boot = find_ps2_boot_executable(iso_path);
+    if (!boot.found) return invalid(boot.error.c_str());
+    std::vector<std::uint8_t> bytes;
+    std::string error;
+    if (!read_iso_file(iso_path, boot.executable_lba, boot.executable_size, bytes, &error))
+        return invalid(error.c_str());
+    return parse_ps2_elf(bytes);
 }
 } // namespace retroshelf::media
