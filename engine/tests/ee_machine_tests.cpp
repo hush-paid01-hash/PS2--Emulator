@@ -14,7 +14,8 @@ int main() {
     constexpr std::uint32_t addiu_t1_minus1 = (0x09U << 26U) | (9U << 16U) | 0xFFFFU;
     check(machine.load_word(0, addiu_t0_7), "program word loads into RAM");
     check(machine.load_word(4, addiu_t1_minus1), "second program word loads into RAM");
-    machine.hardware().timer0().configure(2, 1, false);
+    machine.hardware().write32(retroshelf::ee::EeHardware::Timer0Target, 2);
+    machine.hardware().write32(retroshelf::ee::EeHardware::Timer0Control, 1);
     machine.hardware().interrupts().set_mask(retroshelf::ee::EeHardware::Timer0Interrupt);
     std::string error;
     check(machine.step(&error), "machine fetches and executes first instruction");
