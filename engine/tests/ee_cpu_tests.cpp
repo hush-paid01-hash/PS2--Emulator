@@ -38,6 +38,21 @@ int main() {
     check(cpu.pc() == 12 && !cpu.branch_pending(), "taken BEQ applies target after delay slot");
 
     cpu.reset();
+    cpu.set_gpr(8, {0, 0});
+    constexpr std::uint32_t blez = (0x06U << 26U) | (8U << 21U) | 2U;
+    check(cpu.step(blez), "BLEZ schedules branch for zero value");
+    check(cpu.branch_pending(), "BLEZ branch is pending before delay slot");
+    check(cpu.step(0), "BLEZ delay-slot instruction executes");
+    check(cpu.pc() == 12, "BLEZ applies branch target after delay slot");
+
+    cpu.reset();
+    cpu.set_gpr(8, {5, 0});
+    constexpr std::uint32_t bgtz = (0x07U << 26U) | (8U << 21U) | 1U;
+    check(cpu.step(bgtz), "BGTZ schedules branch for positive value");
+    check(cpu.step(0), "BGTZ delay-slot instruction executes");
+    check(cpu.pc() == 8, "BGTZ applies branch target after delay slot");
+
+    cpu.reset();
     std::string error;
     check(!cpu.step(0xFFFFFFFFU, &error), "unsupported EE instruction is rejected");
     check(error.find("unsupported") != std::string::npos, "unsupported instruction has diagnostic");
