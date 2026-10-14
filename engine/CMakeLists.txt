@@ -89,7 +89,7 @@ target_link_libraries(gs-gif-stream-tests PRIVATE retroshelf-ee-core)
 target_compile_options(gs-gif-stream-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-gif-stream-tests COMMAND gs-gif-stream-tests)
 
-add_executable(gs-renderer-tests tests/gs_renderer_tests.cpp)
+add_executable(gs-command-processor-tests tests/gs_command_processor_tests.cpp)\ntarget_link_libraries(gs-command-processor-tests PRIVATE retroshelf-ee-core)\ntarget_compile_options(gs-command-processor-tests PRIVATE -Wall -Wextra -Wpedantic)\nadd_test(NAME gs-command-processor-tests COMMAND gs-command-processor-tests)\n\nadd_executable(gs-renderer-tests tests/gs_renderer_tests.cpp)
 target_link_libraries(gs-renderer-tests PRIVATE retroshelf-ee-core)
 target_compile_options(gs-renderer-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-renderer-tests COMMAND gs-renderer-tests)
