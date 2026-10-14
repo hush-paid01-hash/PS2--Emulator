@@ -89,5 +89,15 @@ int main() {
     check(machine.hardware().interrupts().pending() == 0, "machine reset clears hardware interrupt state");
     check(machine.step(&error), "zeroed RAM contains a supported SLL-zero instruction");
     check(machine.cpu().pc() == 4, "machine advances after zero instruction");
+    machine.reset();
+    check(machine.load_word(0, addiu_t0_7), "bounded-run program is loaded");
+    check(machine.load_word(4, addiu_t1_minus1), "bounded-run second instruction is loaded");
+    const auto executed = machine.run(2, &error);
+    check(executed == 2, "bounded runner executes no more than its instruction budget");
+    check(machine.cpu().pc() == 8 && machine.cpu().gpr(8).lo == 7 && machine.cpu().gpr(9).lo == 0xFFFFFFFFFFFFFFFFULL,
+          "bounded runner preserves instruction results and final PC");
+    machine.reset();
+    check(machine.run(3, &error) == 3, "bounded runner stops at requested instruction count");
+    check(machine.cpu().pc() == 12, "bounded runner advances PC by executed instruction count");
     return failures == 0 ? 0 : 1;
 }
