@@ -93,6 +93,17 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error) {
     case 0x0D: set_gpr(rt, {a | imm_u, 0}); break; // ORI
     case 0x0E: set_gpr(rt, {a ^ imm_u, 0}); break; // XORI
     case 0x0F: set_gpr(rt, {static_cast<std::uint64_t>(imm_u) << 16U, 0}); break; // LUI
+    case 0x06: // BLEZ, with delay slot
+    case 0x07: { // BGTZ, with delay slot
+        const bool take = opcode == 0x06
+            ? static_cast<std::int64_t>(a) <= 0
+            : static_cast<std::int64_t>(a) > 0;
+        branch_pending_ = true;
+        branch_target_ = take
+            ? current_pc + 4U + static_cast<std::uint64_t>(signed_imm * 4)
+            : current_pc + 8U;
+        break;
+    }
     case 0x04: // BEQ, with delay slot
     case 0x05: { // BNE, with delay slot
         const bool equal = a == b;
