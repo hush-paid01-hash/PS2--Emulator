@@ -294,6 +294,16 @@ int main() {
     check(cpu.cp0(32) == 0, "out-of-range privileged-register reads are safe");
 
     cpu.reset();
+    cpu.set_pc(0x80000180U);
+    cpu.set_gpr(8, {0x80001000U, 0});
+    constexpr std::uint32_t mtc0_epc = (0x10U << 26U) | (0x04U << 21U) | (8U << 16U) | (14U << 11U);
+    check(cpu.step(mtc0_epc), "MTC0 stores an exception return address in EPC");
+    cpu.set_pc(0x80000184U);
+    constexpr std::uint32_t eret = (0x10U << 26U) | (0x10U << 21U) | 0x18U;
+    check(cpu.step(eret) && cpu.pc() == 0x80001000U && !cpu.branch_pending(),
+          "ERET resumes at EPC and clears pending branch state");
+
+    cpu.reset();
     std::string error;
     check(!cpu.step(0xF8000000U, &error), "unsupported EE instruction is rejected");
     check(error.find("unsupported") != std::string::npos, "unsupported instruction has diagnostic");
