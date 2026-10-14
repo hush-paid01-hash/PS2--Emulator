@@ -134,7 +134,7 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
     case 0x0C: set_gpr(rt, {a & imm_u, 0}); break;
     case 0x0D: set_gpr(rt, {a | imm_u, 0}); break;
     case 0x0E: set_gpr(rt, {a ^ imm_u, 0}); break;
-    case 0x0F: set_gpr(rt, {static_cast<std::uint64_t>(imm_u) << 16U, 0}); break;
+    case 0x0F: { const auto result = static_cast<std::uint32_t>(imm_u) << 16U; set_gpr(rt, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))), 0}); break; }
     case 0x06:
     case 0x07: {
         const bool take = opcode == 0x06 ? static_cast<std::int64_t>(a) <= 0 : static_cast<std::int64_t>(a) > 0;
