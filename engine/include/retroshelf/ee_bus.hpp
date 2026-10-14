@@ -11,7 +11,7 @@ namespace retroshelf::ee {
 class EeBus {
 public:
     static constexpr std::uint32_t RamBase = 0x00000000U;
-    static constexpr std::size_t RamSize = 2U * 1024U * 1024U;
+    static constexpr std::size_t RamSize = 32U * 1024U * 1024U;
 
     EeBus();
     void reset();
