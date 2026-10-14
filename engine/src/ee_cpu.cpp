@@ -121,9 +121,44 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
             if (divisor != 0) { lo_ = dividend / divisor; hi_ = dividend % divisor; }
             break;
         }
+        case 0x0A: if (b == 0) set_gpr(rd, {a, gpr_[rs].hi}); break; // MOVZ
+        case 0x0B: if (b != 0) set_gpr(rd, {a, gpr_[rs].hi}); break; // MOVN
+        case 0x0F: break; // SYNC (ordering is provided by the single-threaded interpreter)
+        case 0x18: { // MULT signed 32-bit
+            const auto product = static_cast<std::int64_t>(static_cast<std::int32_t>(a)) *
+                                 static_cast<std::int64_t>(static_cast<std::int32_t>(b));
+            const auto bits = static_cast<std::uint64_t>(product);
+            lo_ = static_cast<std::uint32_t>(bits);
+            hi_ = static_cast<std::uint32_t>(bits >> 32U);
+            break;
+        }
+        case 0x19: { // MULTU unsigned 32-bit
+            const auto product = static_cast<std::uint64_t>(static_cast<std::uint32_t>(a)) *
+                                 static_cast<std::uint64_t>(static_cast<std::uint32_t>(b));
+            lo_ = static_cast<std::uint32_t>(product);
+            hi_ = static_cast<std::uint32_t>(product >> 32U);
+            break;
+        }
+        case 0x1A: { // DIV signed 32-bit
+            const auto dividend = static_cast<std::int32_t>(a);
+            const auto divisor = static_cast<std::int32_t>(b);
+            if (divisor != 0) {
+                if (dividend == INT32_MIN && divisor == -1) { lo_ = static_cast<std::uint32_t>(INT32_MIN); hi_ = 0; }
+                else { lo_ = static_cast<std::uint32_t>(dividend / divisor); hi_ = static_cast<std::uint32_t>(dividend % divisor); }
+            }
+            break;
+        }
+        case 0x1B: { // DIVU unsigned 32-bit
+            const auto dividend = static_cast<std::uint32_t>(a);
+            const auto divisor = static_cast<std::uint32_t>(b);
+            if (divisor != 0) { lo_ = dividend / divisor; hi_ = dividend % divisor; }
+            break;
+        }
         case 0x21: { const auto result = static_cast<std::uint32_t>(a) + static_cast<std::uint32_t>(b); set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))), 0}); break; }
+        case 0x2C: set_gpr(rd, {a + b, 0}); break; // DADD (overflow exception not modeled)
         case 0x2D: set_gpr(rd, {a + b, 0}); break;
         case 0x23: { const auto result = static_cast<std::uint32_t>(a) - static_cast<std::uint32_t>(b); set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))), 0}); break; }
+        case 0x2E: set_gpr(rd, {a - b, 0}); break; // DSUB (overflow exception not modeled)
         case 0x2F: set_gpr(rd, {a - b, 0}); break;
         case 0x24: set_gpr(rd, {a & b, 0}); break;
         case 0x25: set_gpr(rd, {a | b, 0}); break;
