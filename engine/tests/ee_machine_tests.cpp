@@ -31,6 +31,22 @@ int main() {
     check(machine.scheduler().now() == 3, "third step advances scheduler");
     check(machine.hardware().interrupts().has_enabled_pending(), "machine step raises interrupt when timer reaches target");
     machine.reset();
+    constexpr std::uint32_t set_base = (0x09U << 26U) | (8U << 16U) | 0x0100U;
+    constexpr std::uint32_t set_value = (0x09U << 26U) | (9U << 16U) | 0x1234U;
+    constexpr std::uint32_t store_word = (0x2BU << 26U) | (8U << 21U) | (9U << 16U);
+    constexpr std::uint32_t load_word = (0x23U << 26U) | (8U << 21U) | (10U << 16U);
+    check(machine.load_word(0, set_base), "integrated program loads base-address instruction");
+    check(machine.load_word(4, set_value), "integrated program loads value instruction");
+    check(machine.load_word(8, store_word), "integrated program loads store instruction");
+    check(machine.load_word(12, load_word), "integrated program loads load instruction");
+    check(machine.step(&error) && machine.step(&error) && machine.step(&error) && machine.step(&error),
+          "machine runs four-instruction RAM store/load program");
+    std::uint32_t stored = 0;
+    check(machine.bus().read32(0x100, stored) && stored == 0x1234,
+          "integrated store writes expected RAM value");
+    check(machine.cpu().gpr(10).lo == 0x1234,
+          "integrated load returns stored RAM value into CPU register");
+    machine.reset();
     std::uint32_t word = 1;
     check(machine.cpu().pc() == 0, "machine reset resets PC");
     check(machine.bus().read32(0, word) && word == 0, "machine reset clears RAM");
