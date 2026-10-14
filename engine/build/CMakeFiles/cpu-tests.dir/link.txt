@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/cpu-tests.dir/link.d "CMakeFiles/cpu-tests.dir/tests/cpu_tests.cpp.o" "CMakeFiles/cpu-tests.dir/src/cpu.cpp.o" -o cpu-tests

@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/gs-gif-tests.dir/link.d "CMakeFiles/gs-gif-tests.dir/tests/gs_gif_tests.cpp.o" -o gs-gif-tests  libretroshelf-ee-core.a

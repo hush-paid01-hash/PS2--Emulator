@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/ee-hardware-tests.dir/link.d "CMakeFiles/ee-hardware-tests.dir/tests/ee_hardware_tests.cpp.o" -o ee-hardware-tests  libretroshelf-ee-core.a
