@@ -8,12 +8,19 @@
 
 namespace retroshelf::ee {
 
-EeMachine::EeMachine() : system_bus_(bus_, hardware_) { reset(); }
+EeMachine::EeMachine() : system_bus_(bus_, hardware_) {
+    system_bus_.attach_gif_dma(&gif_dma_);
+    gif_dma_.set_transfer_handler([this](std::uint32_t address, std::uint32_t qwc, std::string* error) {
+        return process_gif_from_ram(address, qwc, nullptr, error);
+    });
+    reset();
+}
 void EeMachine::reset() {
     cpu_.reset();
     bus_.reset();
     hardware_.reset();
     scheduler_.reset();
+    gif_dma_.reset();
     gs_renderer_.clear();
     // The EE begins at the BIOS reset vector when a ROM is present.
     if (system_bus_.bios_loaded()) cpu_.set_pc(0xBFC00000U);
@@ -133,6 +140,8 @@ EeScheduler& EeMachine::scheduler() { return scheduler_; }
 const EeScheduler& EeMachine::scheduler() const { return scheduler_; }
 EeSystemBus& EeMachine::system_bus() { return system_bus_; }
 const EeSystemBus& EeMachine::system_bus() const { return system_bus_; }
+EeGifDma& EeMachine::gif_dma() { return gif_dma_; }
+const EeGifDma& EeMachine::gif_dma() const { return gif_dma_; }
 bool EeMachine::process_gif(const std::uint64_t* words, std::size_t qword_count,
                             retroshelf::gs::GifProcessStats* stats, std::string* error) {
     return retroshelf::gs::process_gif_stream(words, qword_count, gs_renderer_, stats, error);
