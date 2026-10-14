@@ -9,7 +9,7 @@ add_executable(retroshelf-engine src/main.cpp src/cpu.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
-add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp src/ee_system_bus.cpp src/disc_image.cpp src/ps2_elf.cpp src/gs_vram.cpp src/gs_gif.cpp src/gs_gif_stream.cpp src/gs_renderer.cpp src/gs_gif_processor.cpp)
+add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp src/ee_system_bus.cpp src/disc_image.cpp src/ps2_elf.cpp src/gs_vram.cpp src/gs_gif.cpp src/gs_gif_stream.cpp src/gs_renderer.cpp src/gs_gif_processor.cpp src/gs_command_processor.cpp)
 target_include_directories(retroshelf-ee-core PUBLIC include)
 target_compile_options(retroshelf-ee-core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -89,7 +89,12 @@ target_link_libraries(gs-gif-stream-tests PRIVATE retroshelf-ee-core)
 target_compile_options(gs-gif-stream-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-gif-stream-tests COMMAND gs-gif-stream-tests)
 
-add_executable(gs-command-processor-tests tests/gs_command_processor_tests.cpp)\ntarget_link_libraries(gs-command-processor-tests PRIVATE retroshelf-ee-core)\ntarget_compile_options(gs-command-processor-tests PRIVATE -Wall -Wextra -Wpedantic)\nadd_test(NAME gs-command-processor-tests COMMAND gs-command-processor-tests)\n\nadd_executable(gs-renderer-tests tests/gs_renderer_tests.cpp)
+add_executable(gs-command-processor-tests tests/gs_command_processor_tests.cpp)
+target_link_libraries(gs-command-processor-tests PRIVATE retroshelf-ee-core)
+target_compile_options(gs-command-processor-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-command-processor-tests COMMAND gs-command-processor-tests)
+
+add_executable(gs-renderer-tests tests/gs_renderer_tests.cpp)
 target_link_libraries(gs-renderer-tests PRIVATE retroshelf-ee-core)
 target_compile_options(gs-renderer-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-renderer-tests COMMAND gs-renderer-tests)
