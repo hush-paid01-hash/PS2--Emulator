@@ -94,6 +94,15 @@ bool EeMachine::step(std::string* error) {
     hardware_.advance(1);
     return true;
 }
+std::size_t EeMachine::run(std::size_t instruction_budget, std::string* error) {
+    std::size_t executed = 0;
+    if (error) error->clear();
+    while (executed < instruction_budget) {
+        if (!step(error)) break;
+        ++executed;
+    }
+    return executed;
+}
 EeCpu& EeMachine::cpu() { return cpu_; }
 const EeCpu& EeMachine::cpu() const { return cpu_; }
 EeBus& EeMachine::bus() { return bus_; }
