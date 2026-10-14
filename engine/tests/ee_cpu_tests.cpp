@@ -36,6 +36,11 @@ int main() {
     constexpr std::uint32_t addu = (8U << 21U) | (8U << 16U) | (11U << 11U) | 0x21U;
     check(cpu.step(addu) && cpu.gpr(11).lo == 0xFFFFFFFEULL, "ADDU wraps in 32-bit width");
     cpu.reset();
+    cpu.set_gpr(8, {0x7FFFFFFFULL, 0});
+    constexpr std::uint32_t addiu_wrap = (0x09U << 26U) | (8U << 21U) | (14U << 16U) | 1U;
+    check(cpu.step(addiu_wrap) && cpu.gpr(14).lo == 0xFFFFFFFF80000000ULL,
+          "ADDIU wraps to 32 bits then sign-extends the result");
+    cpu.reset();
     cpu.set_gpr(8, {0x100000000ULL, 0});
     cpu.set_gpr(9, {1, 0});
     constexpr std::uint32_t dsubu = (8U << 21U) | (9U << 16U) | (12U << 11U) | 0x2FU;
