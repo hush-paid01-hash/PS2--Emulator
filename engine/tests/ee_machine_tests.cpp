@@ -14,7 +14,7 @@ int main() {
     constexpr std::uint32_t addiu_t1_minus1 = (0x09U << 26U) | (9U << 16U) | 0xFFFFU;
     check(machine.load_word(0, addiu_t0_7), "program word loads into RAM");
     check(machine.load_word(4, addiu_t1_minus1), "second program word loads into RAM");
-    machine.hardware().write32(retroshelf::ee::EeHardware::Timer0Target, 2);
+    machine.hardware().write32(retroshelf::ee::EeHardware::Timer0Target, 3);
     machine.hardware().write32(retroshelf::ee::EeHardware::Timer0Control, 1);
     machine.hardware().interrupts().set_mask(retroshelf::ee::EeHardware::Timer0Interrupt);
     std::string error;
@@ -26,7 +26,10 @@ int main() {
     check(machine.cpu().gpr(9).lo == 0xFFFFFFFFFFFFFFFFULL, "immediate is sign-extended in prototype");
     check(machine.cpu().pc() == 8, "machine advances PC after each instruction");
     check(machine.scheduler().now() == 2, "second step advances scheduler");
-    check(machine.hardware().interrupts().has_enabled_pending(), "machine step advances timer and raises interrupt at target");
+    check(!machine.hardware().interrupts().has_enabled_pending(), "timer interrupt remains clear before third cycle");
+    check(machine.step(&error), "machine executes third instruction");
+    check(machine.scheduler().now() == 3, "third step advances scheduler");
+    check(machine.hardware().interrupts().has_enabled_pending(), "machine step raises interrupt when timer reaches target");
     machine.reset();
     std::uint32_t word = 1;
     check(machine.cpu().pc() == 0, "machine reset resets PC");
