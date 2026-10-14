@@ -264,7 +264,7 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
     case 0x21: // LH: load signed halfword
     case 0x25: { // LHU: load unsigned halfword
         std::uint32_t word = 0;
-        memory_ok = load(memory_address & ~std::uint32_t{3}, word);
+        memory_ok = (memory_address & 1U) == 0U && load(memory_address & ~std::uint32_t{3}, word);
         if (memory_ok) {
             const auto shift = (memory_address & 2U) * 8U;
             const auto half = static_cast<std::uint16_t>((word >> shift) & 0xFFFFU);
