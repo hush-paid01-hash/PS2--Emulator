@@ -133,7 +133,7 @@ int main() {
     cpu.set_gpr(8, {0x10, 0});
     constexpr std::uint32_t lh = (0x21U << 26U) | (8U << 21U) | (10U << 16U) | 2U;
     check(cpu.step(lh, nullptr, read_word, write_word) &&
-          cpu.gpr(10).lo == 0xFFFFFFFFFFFFFFFFULL, "LH sign-extends negative halfword");
+          cpu.gpr(10).lo == 0xFFFFFFFFFFFF80FFULL, "LH sign-extends negative halfword");
     cpu.reset();
     cpu.set_gpr(8, {0x10, 0});
     constexpr std::uint32_t lhu = (0x25U << 26U) | (8U << 21U) | (10U << 16U) | 2U;
