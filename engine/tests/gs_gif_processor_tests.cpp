@@ -16,9 +16,9 @@ int main() {
         1ULL | (1ULL << 60U), 0x1ULL, // RGBAQ packet
         0x00000000FFFFFFFFULL, 0ULL, // opaque white
         3ULL | (1ULL << 15U) | (1ULL << 60U), 0x5ULL, // EOP XYZ2 packet with three loops
-        2ULL | (2ULL << 16U), 0ULL,
-        28ULL | (2ULL << 16U), 0ULL,
-        12ULL | (28ULL << 16U), 0ULL
+        32ULL | (32ULL << 16U), 0ULL,
+        448ULL | (32ULL << 16U), 0ULL,
+        192ULL | (448ULL << 16U), 0ULL
     };
     GifProcessStats stats{};
     std::string error;
