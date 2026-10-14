@@ -166,6 +166,28 @@ int main() {
           "LD reconstructs 64-bit doubleword");
 
     cpu.reset();
+    cpu.set_gpr(8, {7, 0});
+    cpu.set_gpr(9, {6, 0});
+    constexpr std::uint32_t mult = (8U << 21U) | (9U << 16U) | 0x18U;
+    check(cpu.step(mult) && cpu.lo() == 42 && cpu.hi() == 0, "MULT computes signed product into HI/LO");
+    constexpr std::uint32_t mflo = (10U << 11U) | 0x12U;
+    check(cpu.step(mflo) && cpu.gpr(10).lo == 42, "MFLO reads the low product");
+    cpu.reset();
+    cpu.set_gpr(8, {static_cast<std::uint64_t>(static_cast<std::int64_t>(-42)), 0});
+    cpu.set_gpr(9, {5, 0});
+    constexpr std::uint32_t div = (8U << 21U) | (9U << 16U) | 0x1AU;
+    check(cpu.step(div) && static_cast<std::int32_t>(cpu.lo()) == -8 &&
+          static_cast<std::int32_t>(cpu.hi()) == -2, "DIV stores signed quotient and remainder");
+    constexpr std::uint32_t mfhi = (11U << 11U) | 0x10U;
+    check(cpu.step(mfhi) && static_cast<std::int32_t>(cpu.gpr(11).lo) == -2, "MFHI reads signed division remainder");
+    cpu.reset();
+    cpu.set_gpr(8, {0xFFFFFFFFULL, 0});
+    cpu.set_gpr(9, {2, 0});
+    constexpr std::uint32_t multu = (8U << 21U) | (9U << 16U) | 0x19U;
+    check(cpu.step(multu) && cpu.lo() == 0xFFFFFFFEULL && cpu.hi() == 1,
+          "MULTU preserves unsigned 32-bit product halves");
+
+    cpu.reset();
     std::string error;
     check(!cpu.step(0xF8000000U, &error), "unsupported EE instruction is rejected");
     check(error.find("unsupported") != std::string::npos, "unsupported instruction has diagnostic");
