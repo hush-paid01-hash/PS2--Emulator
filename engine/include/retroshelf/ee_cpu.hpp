@@ -30,6 +30,7 @@ public:
     std::uint64_t branch_target() const;
     std::uint64_t hi() const;
     std::uint64_t lo() const;
+    std::uint32_t cp0(std::size_t index) const;
 private:
     std::array<Register128, GprCount> gpr_{};
     std::uint64_t pc_{0};
@@ -37,6 +38,7 @@ private:
     std::uint64_t branch_target_{0};
     std::uint64_t hi_{0};
     std::uint64_t lo_{0};
+    std::array<std::uint32_t, 32> cp0_{};
 };
 
 } // namespace retroshelf::ee
