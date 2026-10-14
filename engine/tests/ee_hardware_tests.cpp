@@ -7,7 +7,8 @@ int main() {
         if (!ok) { std::cerr << "FAIL: " << label << '\n'; ++failures; }
         else { std::cout << "PASS: " << label << '\n'; }
     };
-    hardware.timer0().configure(3, 1, false);
+    hardware.write32(retroshelf::ee::EeHardware::Timer0Target, 3);
+    hardware.write32(retroshelf::ee::EeHardware::Timer0Control, 1);
     hardware.interrupts().set_mask(retroshelf::ee::EeHardware::Timer0Interrupt);
     hardware.advance(2);
     check(!hardware.interrupts().has_enabled_pending(), "timer does not interrupt before target");
