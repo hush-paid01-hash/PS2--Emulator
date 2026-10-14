@@ -9,7 +9,7 @@ add_executable(retroshelf-engine src/main.cpp src/cpu.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
-add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp)
+add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp)
 target_include_directories(retroshelf-ee-core PUBLIC include)
 target_compile_options(retroshelf-ee-core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -43,3 +43,8 @@ add_executable(ee-interrupts-tests tests/ee_interrupts_tests.cpp)
 target_link_libraries(ee-interrupts-tests PRIVATE retroshelf-ee-core)
 target_compile_options(ee-interrupts-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-interrupts-tests COMMAND ee-interrupts-tests)
+
+add_executable(ee-timers-tests tests/ee_timers_tests.cpp)
+target_link_libraries(ee-timers-tests PRIVATE retroshelf-ee-core)
+target_compile_options(ee-timers-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ee-timers-tests COMMAND ee-timers-tests)
