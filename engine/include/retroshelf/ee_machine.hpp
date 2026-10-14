@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace retroshelf::ee {
 
@@ -19,6 +20,8 @@ class EeMachine {
 public:
     EeMachine();
     void reset();
+    bool load_bios(const std::vector<std::uint8_t>& image, std::string* error = nullptr);
+    bool bios_loaded() const;
     bool load_word(std::uint32_t address, std::uint32_t word);
     bool load_elf(const retroshelf::media::Ps2ElfImage& image, std::string* error = nullptr);
     bool load_ps2_disc(const std::string& path, retroshelf::media::Ps2BootInfo* boot = nullptr,
@@ -35,6 +38,8 @@ public:
     const EeHardware& hardware() const;
     EeScheduler& scheduler();
     const EeScheduler& scheduler() const;
+    EeSystemBus& system_bus();
+    const EeSystemBus& system_bus() const;
 private:
     EeCpu cpu_;
     EeBus bus_;
