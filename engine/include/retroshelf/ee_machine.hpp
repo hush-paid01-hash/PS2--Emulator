@@ -2,14 +2,15 @@
 
 #include "retroshelf/ee_bus.hpp"
 #include "retroshelf/ee_cpu.hpp"
+#include "retroshelf/ee_scheduler.hpp"
 
 #include <cstdint>
 #include <string>
 
 namespace retroshelf::ee {
 
-// Small integration harness: fetches instruction words from the project's
-// own RAM bus and passes them to the project's own CPU. It is not BIOS boot.
+// Integration harness for synthetic tests. One instruction currently advances
+// one placeholder cycle; hardware-accurate timing will replace this later.
 class EeMachine {
 public:
     EeMachine();
@@ -20,9 +21,12 @@ public:
     const EeCpu& cpu() const;
     EeBus& bus();
     const EeBus& bus() const;
+    EeScheduler& scheduler();
+    const EeScheduler& scheduler() const;
 private:
     EeCpu cpu_;
     EeBus bus_;
+    EeScheduler scheduler_;
 };
 
 } // namespace retroshelf::ee
