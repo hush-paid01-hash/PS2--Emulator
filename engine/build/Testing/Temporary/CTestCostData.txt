@@ -1,0 +1,18 @@
+ee-machine-tests 2 1.52051
+cpu-tests 1 0.00186661
+ee-cpu-tests 1 0.00144564
+ee-bus-tests 1 0.255619
+ee-scheduler-tests 1 0.00204922
+ee-interrupts-tests 1 0.00164861
+ee-timers-tests 1 0.00150637
+ee-hardware-tests 1 0.00165606
+ee-dma-tests 1 0.00400689
+ee-system-bus-tests 1 0.00371254
+disc-image-tests 1 0.00277566
+ps2-elf-tests 1 0.0014592
+gs-vram-tests 1 0.00718327
+gs-gif-tests 1 0.00154752
+gs-gif-stream-tests 1 0.00151182
+gs-renderer-tests 1 0.00151285
+gs-gif-processor-tests 1 0.00153169
+---

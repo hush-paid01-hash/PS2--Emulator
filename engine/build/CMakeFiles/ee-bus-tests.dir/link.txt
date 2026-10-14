@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/ee-bus-tests.dir/link.d "CMakeFiles/ee-bus-tests.dir/tests/ee_bus_tests.cpp.o" -o ee-bus-tests  libretroshelf-ee-core.a

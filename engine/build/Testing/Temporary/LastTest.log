@@ -1,0 +1,541 @@
+Start testing: Oct 14 17:11 UTC
+----------------------------------------------------------
+1/17 Testing: cpu-tests
+1/17 Test: cpu-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/cpu-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"cpu-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: ADDIU executes
+PASS: ADDIU writes expected value
+PASS: register zero stays zero
+PASS: second ADDIU executes
+PASS: ADDU executes
+PASS: ADDU computes 7 + 5
+PASS: PC advances four bytes per instruction
+PASS: reset clears CPU state
+PASS: AND computes bitwise intersection
+PASS: OR computes bitwise union
+PASS: XOR computes differing bits
+PASS: NOR complements OR
+PASS: SLT compares signed values
+PASS: SLTU compares unsigned values
+PASS: SUBU computes subtraction
+PASS: SLTI compares register with signed immediate
+PASS: ADDI sign-extends a negative immediate
+PASS: SW stores a word in test RAM
+PASS: LW loads a word from test RAM
+PASS: LW returns the stored word
+PASS: misaligned LW is rejected
+PASS: invalid memory access explains why
+PASS: out-of-range SW is rejected
+PASS: reset clears registers and PC
+PASS: unsupported instruction is rejected
+PASS: unsupported instruction explains why
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"cpu-tests" end time: Oct 14 17:11 UTC
+"cpu-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/17 Testing: ee-cpu-tests
+2/17 Test: ee-cpu-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-cpu-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-cpu-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: EE ADDIU executes
+PASS: EE ADDIU writes second register
+PASS: EE DADDU adds 64-bit register values
+PASS: EE register zero is immutable
+PASS: EE sequential PC advances by four bytes
+PASS: LUI sign-extends its 32-bit result
+PASS: ADDU wraps at 32 bits and sign-extends result
+PASS: ADDIU wraps to 32 bits then sign-extends the result
+PASS: DSUBU subtracts full 64-bit values
+PASS: DADDIU adds signed immediate to 64-bit value
+PASS: ADDI adds signed immediate
+PASS: EE SLT compares signed values
+PASS: EE SLTU compares unsigned values
+PASS: SLTI sign-extends immediate and compares signed values
+PASS: SLTIU compares unsigned values against sign-extended immediate
+PASS: BEQ schedules branch
+PASS: branch executes one delay-slot instruction
+PASS: delay-slot instruction executes
+PASS: taken BEQ applies target after delay slot
+PASS: BLTZ schedules branch for negative register
+PASS: BLTZ applies target after delay slot
+PASS: BGEZAL links return address and schedules branch when condition is true
+PASS: BGEZAL applies target after delay slot
+PASS: BGEZ schedules not-taken path
+PASS: BGEZ not-taken path skips branch target
+PASS: BLEZ schedules branch for zero value
+PASS: BLEZ branch is pending before delay slot
+PASS: BLEZ delay-slot instruction executes
+PASS: BLEZ applies branch target after delay slot
+PASS: BGTZ schedules branch for positive value
+PASS: BGTZ delay-slot instruction executes
+PASS: BGTZ applies branch target after delay slot
+PASS: JALR stores return address in selected register and schedules target
+PASS: JALR applies register target after delay slot
+PASS: J schedules absolute pseudo-direct target
+PASS: J applies target after delay slot
+PASS: JAL saves return address after delay slot
+PASS: JAL applies target after delay slot
+PASS: ORI zero-extends immediate and combines bits
+PASS: SW stores register to emulated RAM
+PASS: SW stores expected little-endian word
+PASS: LW loads word from emulated RAM
+PASS: SB stores one byte
+PASS: SB preserves adjacent bytes
+PASS: LB sign-extends byte
+PASS: LWL merges addressed bytes into the register without clobbering preserved bytes
+PASS: LWR merges addressed bytes into the register without clobbering preserved bytes
+PASS: LH sign-extends negative halfword
+PASS: LHU zero-extends halfword
+PASS: SH stores halfword
+PASS: SH preserves adjacent halfword
+PASS: misaligned LH is rejected instead of silently rounding the address
+PASS: failed misaligned LH does not modify its destination register
+PASS: out-of-range LW is rejected
+PASS: memory fault reports diagnostic
+PASS: DSLL32 shifts doubleword by shamt plus 32
+PASS: SQ stores 128-bit register to emulated RAM
+PASS: SQ writes all four 32-bit words in little-endian order
+PASS: LQ loads 128-bit value from emulated RAM
+PASS: LQ reconstructs low and high 64-bit halves
+PASS: SD stores 64-bit doubleword
+PASS: SD writes both words in little-endian order
+PASS: LD reconstructs 64-bit doubleword
+PASS: MULT computes signed product into HI/LO
+PASS: MFLO reads the low product
+PASS: DIV stores signed quotient and remainder
+PASS: MFHI reads signed division remainder
+PASS: MULTU preserves unsigned 32-bit product halves
+PASS: MOVZ copies source when second register is zero
+PASS: MOVN copies source when second register is nonzero
+PASS: DADD adds full 64-bit values
+PASS: DSUB subtracts full 64-bit values
+PASS: MTC0 writes the selected 32-bit privileged register
+PASS: MFC0 sign-extends the selected privileged register into a GPR
+PASS: CPU reset clears privileged registers
+PASS: out-of-range privileged-register reads are safe
+PASS: MTC0 stores an exception return address in EPC
+PASS: MTC0 can set Status.EXL before exception return
+PASS: ERET resumes at EPC and clears pending branch state
+PASS: ERET clears Status.EXL while preserving other Status bits
+PASS: unsupported EE instruction is rejected
+PASS: unsupported instruction has diagnostic
+PASS: writes cannot alter EE zero register
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ee-cpu-tests" end time: Oct 14 17:11 UTC
+"ee-cpu-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/17 Testing: ee-bus-tests
+3/17 Test: ee-bus-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-bus-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-bus-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: 32 MiB EE main RAM is allocated
+PASS: aligned word write succeeds
+PASS: word read preserves little-endian value
+PASS: byte read sees low byte
+PASS: unaligned word read is rejected
+PASS: out-of-range word write is rejected
+PASS: out-of-range byte read is rejected
+PASS: cached KSEG0 RAM alias writes successfully
+PASS: cached alias maps to physical RAM
+PASS: uncached KSEG1 alias reads same RAM
+PASS: address outside mapped 32 MiB RAM is rejected
+PASS: reset clears physical RAM
+PASS: reset clears cached alias RAM
+<end of output>
+Test time =   0.26 sec
+----------------------------------------------------------
+Test Passed.
+"ee-bus-tests" end time: Oct 14 17:11 UTC
+"ee-bus-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/17 Testing: ee-machine-tests
+4/17 Test: ee-machine-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-machine-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-machine-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: program word loads into RAM
+PASS: second program word loads into RAM
+PASS: machine fetches and executes first instruction
+PASS: first instruction updates CPU state
+PASS: machine advances placeholder scheduler cycle
+PASS: timer interrupt stays clear before target
+PASS: machine fetches and executes second instruction
+PASS: immediate is sign-extended in prototype
+PASS: machine advances PC after each instruction
+PASS: second step advances scheduler
+PASS: timer interrupt remains clear before third cycle
+PASS: machine executes third instruction
+PASS: third step advances scheduler
+PASS: machine step raises interrupt when timer reaches target
+PASS: integrated program loads base-address instruction
+PASS: integrated program loads value instruction
+PASS: integrated program loads store instruction
+PASS: integrated program loads load instruction
+PASS: machine runs four-instruction RAM store/load program
+PASS: integrated store writes expected RAM value
+PASS: integrated load returns stored RAM value into CPU register
+PASS: integration fixture parses as ELF
+PASS: machine loads validated ELF into RAM
+PASS: ELF loader sets CPU entry point
+PASS: machine executes first instruction from loaded ELF entry point
+PASS: loaded ELF instruction updates CPU register
+PASS: ELF loader zero-fills BSS in RAM
+PASS: ELF segment extending beyond RAM is rejected
+PASS: rejected ELF leaves existing machine RAM untouched
+PASS: machine accepts a supplied BIOS image
+PASS: machine system bus maps BIOS at configured ROM base
+PASS: machine system bus protects BIOS ROM from writes
+PASS: BIOS test also prepares independent RAM
+PASS: loading BIOS selects the EE reset vector
+PASS: machine fetches and executes its first BIOS instruction through the reset alias
+PASS: BIOS instruction executes and advances reset-vector PC
+PASS: machine reset preserves loaded BIOS ROM
+PASS: machine reset returns to BIOS reset vector
+PASS: BIOS can be explicitly unloaded
+PASS: machine reset returns to prototype PC when no BIOS is loaded
+PASS: machine reset clears RAM
+PASS: machine reset resets scheduler
+PASS: machine reset clears hardware interrupt state
+PASS: zeroed RAM contains a supported SLL-zero instruction
+PASS: machine advances after zero instruction
+PASS: bounded-run program is loaded
+PASS: bounded-run second instruction is loaded
+PASS: bounded runner executes no more than its instruction budget
+PASS: bounded runner preserves instruction results and final PC
+PASS: bounded runner stops at requested instruction count
+PASS: bounded runner advances PC by executed instruction count
+PASS: KSEG0 ELF fixture parses
+PASS: ELF loader translates KSEG0 virtual segment into physical RAM
+PASS: KSEG0 entry point remains a virtual address
+PASS: EE fetch reads loaded instruction through KSEG0 alias
+PASS: KSEG0-loaded ELF executes its first instruction
+PASS: synthetic GIF packet stored in EE RAM
+PASS: machine reads GIF packet from EE RAM and sends it to GS renderer
+PASS: RAM-backed GIF packet draws one triangle
+<end of output>
+Test time =   3.04 sec
+----------------------------------------------------------
+Test Passed.
+"ee-machine-tests" end time: Oct 14 17:11 UTC
+"ee-machine-tests" time elapsed: 00:00:03
+----------------------------------------------------------
+
+5/17 Testing: ee-scheduler-tests
+5/17 Test: ee-scheduler-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-scheduler-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-scheduler-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: scheduler starts at cycle zero
+PASS: earlier event fires at correct cycle
+PASS: cycle counter advances
+PASS: same-cycle events preserve insertion order
+PASS: completed events are removed
+PASS: reset clears clock and events
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ee-scheduler-tests" end time: Oct 14 17:11 UTC
+"ee-scheduler-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/17 Testing: ee-interrupts-tests
+6/17 Test: ee-interrupts-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-interrupts-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-interrupts-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: no enabled interrupt after reset
+PASS: raising source sets pending bit
+PASS: masked pending source does not signal enabled interrupt
+PASS: unmasked pending source is signaled
+PASS: clearing source removes pending bit
+PASS: reset clears pending and mask state
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ee-interrupts-tests" end time: Oct 14 17:11 UTC
+"ee-interrupts-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/17 Testing: ee-timers-tests
+7/17 Test: ee-timers-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-timers-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-timers-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: divisor converts cycles into timer ticks
+PASS: timer reaches target
+PASS: target event is reported once
+PASS: target event clears when consumed
+PASS: repeat timer wraps at target
+PASS: repeat timer reports target event
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ee-timers-tests" end time: Oct 14 17:11 UTC
+"ee-timers-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/17 Testing: ee-hardware-tests
+8/17 Test: ee-hardware-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-hardware-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-hardware-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: timer does not interrupt before target
+PASS: timer target raises enabled interrupt
+PASS: timer interrupt source is pending
+PASS: clearing interrupt acknowledges event
+PASS: hardware reset clears interrupt state
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ee-hardware-tests" end time: Oct 14 17:11 UTC
+"ee-hardware-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/17 Testing: ee-dma-tests
+9/17 Test: ee-dma-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-dma-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-dma-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: prepare source word
+PASS: copy memory through DMA helper
+PASS: destination receives copied word
+PASS: overlapping copy succeeds safely
+PASS: overlapping copy uses original source bytes
+PASS: out-of-range source is rejected
+PASS: out-of-range destination is rejected
+PASS: zero-byte transfer is valid
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ee-dma-tests" end time: Oct 14 17:11 UTC
+"ee-dma-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/17 Testing: ee-system-bus-tests
+10/17 Test: ee-system-bus-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-system-bus-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-system-bus-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: write to RAM routes to memory
+PASS: read from RAM returns stored word
+PASS: write timer target routes to hardware
+PASS: timer register reads from hardware device
+PASS: byte write routes to MMIO
+PASS: MMIO byte write updates addressed lane
+PASS: unmapped MMIO address is rejected
+PASS: BIOS address faults when no ROM is loaded
+PASS: valid BIOS bytes load into ROM window
+PASS: BIOS ROM reads little-endian instruction words
+PASS: BIOS ROM is visible through the EE reset-vector alias
+PASS: BIOS ROM supports byte reads inside image
+PASS: BIOS ROM does not expose bytes beyond loaded image
+PASS: CPU writes to BIOS ROM are rejected
+PASS: CPU writes through BIOS reset-vector alias are rejected
+PASS: rejected ROM write leaves BIOS content unchanged
+PASS: invalid BIOS replacement is rejected without discarding loaded BIOS
+PASS: invalid RAM address is rejected
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ee-system-bus-tests" end time: Oct 14 17:11 UTC
+"ee-system-bus-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/17 Testing: disc-image-tests
+11/17 Test: disc-image-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/disc-image-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"disc-image-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: recognizes valid ISO-9660 primary volume descriptor
+PASS: reports volume geometry
+PASS: reads volume identifier
+PASS: reads in-range ISO sector
+PASS: returns exact 2048-byte sector
+PASS: rejects out-of-range sector
+PASS: out-of-range sector has diagnostic
+PASS: parses ISO root directory
+PASS: filters dot entries from ISO directory
+PASS: normalizes ISO file names by removing version suffix
+PASS: reads file extent
+PASS: file reader returns SYSTEM.CNF contents
+PASS: rejects file extent extending beyond image
+PASS: disc parser discovers boot executable referenced by SYSTEM.CNF
+PASS: preserves boot path from SYSTEM.CNF
+PASS: returns boot executable extent
+PASS: rejects invalid descriptor signature
+PASS: rejects truncated image
+PASS: reports missing image file
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"disc-image-tests" end time: Oct 14 17:11 UTC
+"disc-image-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/17 Testing: ps2-elf-tests
+12/17 Test: ps2-elf-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ps2-elf-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ps2-elf-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: accepts valid ELF32 little-endian MIPS executable
+PASS: reads ELF entry point
+PASS: extracts PT_LOAD segment
+PASS: allocates segment memory size
+PASS: copies segment file bytes
+PASS: zero-fills BSS tail
+PASS: rejects truncated ELF
+PASS: reports a missing disc when loading boot ELF
+PASS: rejects bad ELF magic
+PASS: rejects non-MIPS ELF
+PASS: rejects file size greater than memory size
+PASS: rejects unmapped entry point
+PASS: rejects segment extending beyond file
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ps2-elf-tests" end time: Oct 14 17:11 UTC
+"ps2-elf-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/17 Testing: gs-vram-tests
+13/17 Test: gs-vram-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/gs-vram-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"gs-vram-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: GS allocates 4 MiB VRAM
+PASS: VRAM accepts aligned word writes
+PASS: VRAM word round-trip preserves RGBA bytes
+PASS: VRAM rejects unaligned word reads
+PASS: VRAM rejects out-of-range writes
+PASS: CT32 pixel helper writes valid coordinate
+PASS: CT32 pixel helper reads written coordinate
+PASS: CT32 pixel helper rejects x outside row
+PASS: CT32 pixel helper rejects zero-width surface
+PASS: VRAM reset clears contents
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"gs-vram-tests" end time: Oct 14 17:11 UTC
+"gs-vram-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/17 Testing: gs-gif-tests
+14/17 Test: gs-gif-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/gs-gif-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"gs-gif-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+PASS: decodes a valid packed GIFtag
+PASS: extracts NLOOP, EOP, FLG and NREG
+PASS: extracts packed register descriptor nibbles
+PASS: interprets NREG zero as sixteen registers
+PASS: zero-loop tag has only its header
+PASS: counts REGLIST payload qwords with odd 64-bit value counts
+PASS: counts IMAGE payload qwords
+PASS: rejects reserved GIF format
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"gs-gif-tests" end time: Oct 14 17:11 UTC
+"gs-gif-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/17 Testing: gs-gif-stream-tests
+15/17 Test: gs-gif-stream-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/gs-gif-stream-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"gs-gif-stream-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+GIF stream tests passed
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"gs-gif-stream-tests" end time: Oct 14 17:11 UTC
+"gs-gif-stream-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+16/17 Testing: gs-renderer-tests
+16/17 Test: gs-renderer-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/gs-renderer-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"gs-renderer-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+Software renderer tests passed; pixels drawn: 242
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"gs-renderer-tests" end time: Oct 14 17:11 UTC
+"gs-renderer-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/17 Testing: gs-gif-processor-tests
+17/17 Test: gs-gif-processor-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/gs-gif-processor-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"gs-gif-processor-tests" start time: Oct 14 17:11 UTC
+Output:
+----------------------------------------------------------
+GIF processor tests passed
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"gs-gif-processor-tests" end time: Oct 14 17:11 UTC
+"gs-gif-processor-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 14 17:11 UTC

@@ -132,9 +132,9 @@ int main() {
     check(machine.cpu().gpr(8).lo == 7, "KSEG0-loaded ELF executes its first instruction");
     machine.reset();
     const std::uint64_t gif_test_stream[] = {
-        1ULL | (1ULL << 60U), 0xEULL, 3ULL, 0ULL,
-        1ULL | (1ULL << 60U), 0xEULL, 0xFFFFFFFFULL, 0x01ULL,
-        3ULL | (1ULL << 15U) | (1ULL << 60U), 0xEULL,
+        1ULL | (1ULL << 60U), 0x0ULL, 3ULL, 0ULL,
+        1ULL | (1ULL << 60U), 0x1ULL, 0xFFFFFFFFULL, 0x01ULL,
+        3ULL | (1ULL << 15U) | (1ULL << 60U), 0x5ULL,
         (40ULL * 16ULL) | (20ULL * 16ULL << 16U), 0x05ULL,
         (280ULL * 16ULL) | (150ULL * 16ULL << 16U), 0x05ULL,
         (40ULL * 16ULL) | (150ULL * 16ULL << 16U), 0x05ULL

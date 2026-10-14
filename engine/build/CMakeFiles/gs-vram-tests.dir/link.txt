@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/gs-vram-tests.dir/link.d "CMakeFiles/gs-vram-tests.dir/tests/gs_vram_tests.cpp.o" -o gs-vram-tests  libretroshelf-ee-core.a
