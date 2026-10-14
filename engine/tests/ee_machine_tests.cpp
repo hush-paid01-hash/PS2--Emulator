@@ -75,6 +75,12 @@ int main() {
     check(machine.step(&error), "machine executes first instruction from loaded ELF entry point");
     check(machine.cpu().gpr(8).lo == 7, "loaded ELF instruction updates CPU register");
     check(machine.bus().read32(0x104, word) && word == 0, "ELF loader zero-fills BSS in RAM");
+    machine.load_word(0x200, 0xAABBCCDDU);
+    auto bad_elf = parsed_elf;
+    bad_elf.segments[0].virtual_address = static_cast<std::uint32_t>(retroshelf::ee::EeBus::RamSize - 2);
+    check(!machine.load_elf(bad_elf, &error), "ELF segment extending beyond RAM is rejected");
+    check(machine.bus().read32(0x200, word) && word == 0xAABBCCDDU,
+          "rejected ELF leaves existing machine RAM untouched");
     machine.reset();
     word = 1;
     check(machine.cpu().pc() == 0, "machine reset resets PC");
