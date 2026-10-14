@@ -1,5 +1,5 @@
 #include "retroshelf/ee_machine.hpp"
-#include "retroshelf/ps2_elf.hpp""
+#include "retroshelf/ps2_elf.hpp"
 #include <cstdint>
 #include <iostream>
 #include <vector>
@@ -67,6 +67,7 @@ int main() {
     check(machine.cpu().gpr(10).lo == 0x1234,
           "integrated load returns stored RAM value into CPU register");
     machine.reset();
+    std::uint32_t word = 0;
     const auto parsed_elf = retroshelf::media::parse_ps2_elf(elf_fixture());
     check(parsed_elf.valid, "integration fixture parses as ELF");
     check(machine.load_elf(parsed_elf, &error), "machine loads validated ELF into RAM");
@@ -75,7 +76,7 @@ int main() {
     check(machine.cpu().gpr(8).lo == 7, "loaded ELF instruction updates CPU register");
     check(machine.bus().read32(0x104, word) && word == 0, "ELF loader zero-fills BSS in RAM");
     machine.reset();
-    std::uint32_t word = 1;
+    word = 1;
     check(machine.cpu().pc() == 0, "machine reset resets PC");
     check(machine.bus().read32(0, word) && word == 0, "machine reset clears RAM");
     check(machine.scheduler().now() == 0, "machine reset resets scheduler");
