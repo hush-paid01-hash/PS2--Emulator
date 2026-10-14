@@ -1,38 +1,38 @@
 # Original PS2 iPhone Emulator
 
-An independent PlayStation 2 emulator project for iPhone, built around an original emulation core.
+A PS2-only project aiming to build an independently implemented PlayStation 2 emulation core for iPhone.
 
-## Project direction
+## Core rule
 
-**PS2 only. No PS3 support is planned.**
+**No PS3 support. No Play!, no PCSX2, and no other existing emulator core.** This project is building its own CPU and hardware emulation. The project name has not yet been changed, but the intended scope is PS2 only.
 
-This project is intended to implement its own PS2 hardware emulation. It will not use Play!, PCSX2, or another emulator as its core. The app's identity, frontend, and core are being developed for this project.
+## Current engineering status
 
-## Current status
+The C++ project contains:
+- An educational MIPS-like CPU prototype (legacy demonstration)
+- An early R5900/Emotion Engine CPU instruction subset
+- A basic 2 MiB RAM/bus model for isolated tests
+- An EE machine harness that fetches instruction words from that RAM and passes them to the CPU
+- CMake and GitHub Actions test targets
 
-The current `engine/` code is only an educational MIPS-like CPU prototype. It is not yet a real PS2 emulator and cannot boot or play PS2 games. The project must still implement the PS2 Emotion Engine (R5900), vector units, memory and bus, DMA, timers, interrupts, Graphics Synthesizer, audio, disc I/O, and BIOS boot support.
+**This is not yet a functional PS2 emulator.** The instruction set and hardware model are incomplete; there is no BIOS boot, full memory map, DMA, interrupts, VU0/VU1, Graphics Synthesizer renderer, SPU2 audio, disc-drive emulation, native iOS app, or playable game support yet.
 
 ## Planned features
 
-- Original PS2 emulation core written for this project
-- iPhone-focused interface and touch controls
-- External controller support
-- Import of supported disc images through the iOS Files picker
-- User-selected BIOS/firmware files where required
-- Save states and memory-card management
+- Original EE/R5900 CPU, vector units and PS2 device models
+- Native iPhone interface, touch controls and external controllers
+- User-selected BIOS and disc images through Files
+- Save states and memory cards
 - Per-game settings and performance/FPS overlay
-- ARM64 optimization, subject to iOS platform restrictions and real-device testing
+- Portable C++ core, automated tests and ARM64 optimization where supported
 
-## Development approach
+## Development and legality
 
-Core logic will be portable C++ with automated tests and GitHub Actions builds. The iOS frontend will be kept separate from the emulation engine. Large builds should use hosted CI runners rather than relying on a small cloud VM.
+Use GitHub Actions hosted runners for C++ builds; the small AWS VM is not assumed to have enough resources for large builds. Native iOS builds require an Apple-platform build/signing path. JIT execution is restricted on iOS, so interpreter-first development is the realistic initial route.
 
-Use only BIOS and game images you are legally entitled to use. No copyrighted firmware or game images will be bundled by this project.
+Use only BIOS and game images you are legally entitled to use. Firmware and games will not be bundled.
 
 ## Roadmap
 
-See [the original PS2 core roadmap](docs/ORIGINAL_PS2_CORE_ROADMAP.md) and [the current PS2 engineering plan](docs/REAL_PS2_EMULATOR_PLAN.md).
-
-## License
-
-The project license and third-party notices must be finalized before distribution.
+- [Original core roadmap](docs/ORIGINAL_PS2_CORE_ROADMAP.md)
+- [iOS frontend plan](ios/README.md)
