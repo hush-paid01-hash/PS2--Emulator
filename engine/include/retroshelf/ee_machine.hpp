@@ -1,6 +1,7 @@
 #pragma once
 
 #include "retroshelf/ee_bus.hpp"
+#include "retroshelf/ee_hardware.hpp"
 #include "retroshelf/ee_cpu.hpp"
 #include "retroshelf/ee_scheduler.hpp"
 
@@ -21,11 +22,14 @@ public:
     const EeCpu& cpu() const;
     EeBus& bus();
     const EeBus& bus() const;
+    EeHardware& hardware();
+    const EeHardware& hardware() const;
     EeScheduler& scheduler();
     const EeScheduler& scheduler() const;
 private:
     EeCpu cpu_;
     EeBus bus_;
+    EeHardware hardware_;
     EeScheduler scheduler_;
 };
 
