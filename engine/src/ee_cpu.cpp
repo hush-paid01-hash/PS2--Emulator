@@ -197,6 +197,30 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         branch_target_ = take ? current_pc + 4U + static_cast<std::uint64_t>(signed_imm * 4) : current_pc + 8U;
         break;
     }
+    case 0x22: { // LWL: merge the addressed word's left part into a register (little-endian)
+        std::uint32_t word = 0;
+        const auto lane = memory_address & 3U;
+        memory_ok = load(memory_address & ~std::uint32_t{3}, word);
+        if (memory_ok) {
+            const auto shift = (3U - lane) * 8U;
+            const auto preserve = shift == 0U ? 0U : (0xFFFFFFFFU >> ((4U - lane) * 8U));
+            const auto merged = (static_cast<std::uint32_t>(b) & preserve) | (word << shift);
+            set_gpr(rt, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(merged))), 0});
+        }
+        break;
+    }
+    case 0x26: { // LWR: merge the addressed word's right part into a register (little-endian)
+        std::uint32_t word = 0;
+        const auto lane = memory_address & 3U;
+        memory_ok = load(memory_address & ~std::uint32_t{3}, word);
+        if (memory_ok) {
+            const auto shift = lane * 8U;
+            const auto preserve = lane == 3U ? 0U : (0xFFFFFFFFU << ((lane + 1U) * 8U));
+            const auto merged = (static_cast<std::uint32_t>(b) & preserve) | (word >> shift);
+            set_gpr(rt, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(merged))), 0});
+        }
+        break;
+    }
     case 0x21: // LH: load signed halfword
     case 0x25: { // LHU: load unsigned halfword
         std::uint32_t word = 0;
