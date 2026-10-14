@@ -203,7 +203,7 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         memory_ok = load(memory_address & ~std::uint32_t{3}, word);
         if (memory_ok) {
             const auto shift = (3U - lane) * 8U;
-            const auto preserve = shift == 0U ? 0U : (0xFFFFFFFFU >> ((4U - lane) * 8U));
+            const auto preserve = 0x00FFFFFFU >> (lane * 8U);
             const auto merged = (static_cast<std::uint32_t>(b) & preserve) | (word << shift);
             set_gpr(rt, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(merged))), 0});
         }
@@ -215,7 +215,7 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         memory_ok = load(memory_address & ~std::uint32_t{3}, word);
         if (memory_ok) {
             const auto shift = lane * 8U;
-            const auto preserve = lane == 3U ? 0U : (0xFFFFFFFFU << ((lane + 1U) * 8U));
+            const auto preserve = lane == 0U ? 0U : (0xFFFFFFFFU << ((4U - lane) * 8U));
             const auto merged = (static_cast<std::uint32_t>(b) & preserve) | (word >> shift);
             set_gpr(rt, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(merged))), 0});
         }
