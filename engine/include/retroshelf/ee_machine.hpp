@@ -5,6 +5,7 @@
 #include "retroshelf/ee_cpu.hpp"
 #include "retroshelf/ee_scheduler.hpp"
 #include "retroshelf/ee_system_bus.hpp"
+#include "retroshelf/disc_image.hpp"
 #include "retroshelf/ps2_elf.hpp"
 
 #include <cstdint>
@@ -20,6 +21,8 @@ public:
     void reset();
     bool load_word(std::uint32_t address, std::uint32_t word);
     bool load_elf(const retroshelf::media::Ps2ElfImage& image, std::string* error = nullptr);
+    bool load_ps2_disc(const std::string& path, retroshelf::media::Ps2BootInfo* boot = nullptr,
+                       std::string* error = nullptr);
     bool step(std::string* error = nullptr);
     EeCpu& cpu();
     const EeCpu& cpu() const;
