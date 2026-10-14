@@ -43,7 +43,7 @@ int main() {
           "QWC reaches zero after completed transfer");
     check(bus.read32(retroshelf::ee::EeGifDma::Madr, value) && value == 0x2090U,
           "MADR advances by transferred qword bytes");
-    check(machine.gs_renderer().pixel(100, 80) != 0U, "MMIO DMA packet reaches renderer and draws a triangle");
+    check(machine.gs_renderer().pixels()[80U * machine.gs_renderer().width() + 100U] != 0x000000FFU, "MMIO DMA packet reaches renderer and draws a triangle");
 
     check(!bus.write32(retroshelf::ee::EeGifDma::Chcr, retroshelf::ee::EeGifDma::Str),
           "device-to-memory GIF direction is rejected");
