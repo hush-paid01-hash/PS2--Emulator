@@ -37,16 +37,17 @@ std::uint64_t read_u64(const std::vector<std::uint8_t>& ram, std::size_t address
 
 EeGifDma::EeGifDma(std::vector<std::uint8_t>& ee_ram, PayloadHandler payload_handler,
                    InterruptHandler interrupt_handler)
-    : ee_ram_(ee_ram), payload_handler_(std::move(payload_handler)),
+    : owned_bus_(std::make_unique<SystemBus>(ee_ram)), bus_(*owned_bus_),
+      payload_handler_(std::move(payload_handler)),
+      interrupt_handler_(std::move(interrupt_handler)) {}
+
+EeGifDma::EeGifDma(SystemBus& bus, PayloadHandler payload_handler,
+                   InterruptHandler interrupt_handler)
+    : bus_(bus), payload_handler_(std::move(payload_handler)),
       interrupt_handler_(std::move(interrupt_handler)) {}
 
 EeGifDma::State EeGifDma::state() const { return state_; }
 const std::string& EeGifDma::error() const { return error_; }
-
-bool EeGifDma::valid_range(std::uint32_t address, std::size_t size) const {
-    const auto start = static_cast<std::size_t>(address);
-    return start <= ee_ram_.size() && size <= ee_ram_.size() - start;
-}
 
 void EeGifDma::interrupt(Interrupt reason) {
     if (interrupt_handler_) {
@@ -73,18 +74,21 @@ bool EeGifDma::transfer(std::uint32_t address, std::uint32_t qwc) {
     if (size > std::numeric_limits<std::uint32_t>::max() - address) {
         return fail("GIF DMA payload address overflows");
     }
-    if ((address & (QwordSize - 1U)) != 0U || !valid_range(address, size)) {
-        return fail("GIF DMA payload is unaligned or outside EE RAM");
+    if ((address & (QwordSize - 1U)) != 0U) {
+        return fail("GIF DMA payload address is unaligned");
     }
 
     registers.madr = address;
     registers.qwc = qwc;
+    std::vector<std::uint8_t> payload;
+    std::string bus_error;
+    if (!bus_.read(address, size, payload, &bus_error)) {
+        return fail("GIF DMA payload read failed: " + bus_error);
+    }
     if (size != 0 && !payload_handler_) {
         return fail("GIF DMA has no payload handler");
     }
     if (size != 0) {
-        std::vector<std::uint8_t> payload(ee_ram_.begin() + address,
-                                          ee_ram_.begin() + address + size);
         try {
             payload_handler_(payload);
         } catch (const std::exception&) {
@@ -134,13 +138,17 @@ bool EeGifDma::start() {
             return fail("GIF DMA chain exceeded the tag limit");
         }
         const std::uint32_t tag_address = registers.tadr;
-        if ((tag_address & (QwordSize - 1U)) != 0U ||
-            !valid_range(tag_address, QwordSize)) {
-            return fail("GIF DMA tag is unaligned or outside EE RAM");
+        if ((tag_address & (QwordSize - 1U)) != 0U) {
+            return fail("GIF DMA tag address is unaligned");
+        }
+        std::vector<std::uint8_t> tag;
+        std::string bus_error;
+        if (!bus_.read(tag_address, QwordSize, tag, &bus_error)) {
+            return fail("GIF DMA tag read failed: " + bus_error);
         }
 
-        const std::uint64_t tag_low = read_u64(ee_ram_, tag_address);
-        const std::uint64_t tag_high = read_u64(ee_ram_, tag_address + 8U);
+        const std::uint64_t tag_low = read_u64(tag, 0);
+        const std::uint64_t tag_high = read_u64(tag, 8);
         const auto qwc = static_cast<std::uint32_t>(tag_low & 0xFFFFU);
         const auto id = static_cast<TagId>((tag_low >> 28U) & 7U);
         const bool tag_irq = ((tag_low >> 31U) & 1U) != 0U;
