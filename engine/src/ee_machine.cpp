@@ -1,8 +1,9 @@
 #include "retroshelf/ee_machine.hpp"
+#include "retroshelf/ps2_elf.hpp"
 
 #include <iomanip>
 #include <limits>
-#include <sstream>
+#include <sstream>\n#include <vector>
 
 namespace retroshelf::ee {
 
@@ -45,6 +46,22 @@ bool EeMachine::load_elf(const retroshelf::media::Ps2ElfImage& image, std::strin
     cpu_.set_pc(image.entry_point);
     if (error) error->clear();
     return true;
+}
+bool EeMachine::load_ps2_disc(const std::string& path, retroshelf::media::Ps2BootInfo* boot, std::string* error) {
+    const auto found = retroshelf::media::find_ps2_boot_executable(path);
+    if (boot) *boot = found;
+    if (!found.found) {
+        if (error) *error = found.error.empty() ? "No PS2 boot executable found in disc image" : found.error;
+        return false;
+    }
+    std::vector<std::uint8_t> bytes;
+    if (!retroshelf::media::read_iso_file(path, found.executable_lba, found.executable_size, bytes, error)) return false;
+    const auto parsed = retroshelf::media::parse_ps2_elf(bytes);
+    if (!parsed.valid) {
+        if (error) *error = "PS2 boot executable is not a supported ELF: " + parsed.error;
+        return false;
+    }
+    return load_elf(parsed, error);
 }
 bool EeMachine::step(std::string* error) {
     const auto pc = cpu_.pc();
