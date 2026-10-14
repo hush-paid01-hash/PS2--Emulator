@@ -23,7 +23,7 @@ int main() {
     GifProcessStats stats{};
     std::string error;
     if (!process_gif_stream(words, 8, renderer, &stats, &error)) {
-        std::cerr << error << '\\n'; return 1;
+        std::cerr << error << '\n'; return 1;
     }
     if (stats.packets != 3 || stats.register_writes != 5 || stats.triangles_drawn != 1) return 2;
     if (std::count_if(renderer.pixels().begin(), renderer.pixels().end(),
@@ -35,6 +35,6 @@ int main() {
     };
     if (process_gif_stream(unsupported, 2, renderer, nullptr, &error)) return 4;
     if (error.empty()) return 5;
-    std::cout << "GIF processor tests passed\\n";
+    std::cout << "GIF processor tests passed\n";
     return 0;
 }
