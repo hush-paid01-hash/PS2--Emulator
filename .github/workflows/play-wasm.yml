@@ -1,0 +1,71 @@
+name: Play! WebAssembly evaluation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [engine-foundation]
+    paths:
+      - ".github/workflows/play-wasm.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-wasm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-webassembly:
+    # GitHub-hosted runner; this does not consume RAM or disk on the user's AWS VM.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out this project
+        uses: actions/checkout@v4
+
+      - name: Check out upstream Play! source and submodules
+        uses: actions/checkout@v4
+        with:
+          repository: jpd002/Play-
+          ref: master
+          path: upstream/Play
+          submodules: recursive
+
+      - name: Install Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      - name: Configure experimental browser build
+        working-directory: upstream/Play
+        run: |
+          emcmake cmake -S . -B build-wasm \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_PLAY=ON \
+            -DBUILD_PSFPLAYER=ON \
+            -DUSE_QT=OFF
+
+      - name: Compile WebAssembly target
+        working-directory: upstream/Play
+        run: cmake --build build-wasm --parallel 2
+
+      - name: Locate browser build outputs
+        id: outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          find upstream/Play -type f \( -name 'Play.js' -o -name 'Play.wasm' \) -print
+          test -n "$(find upstream/Play -type f -name 'Play.js' -print -quit)"
+          test -n "$(find upstream/Play -type f -name 'Play.wasm' -print -quit)"
+
+      - name: Upload experimental build for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-webassembly-experimental
+          path: |
+            upstream/Play/**/Play.js
+            upstream/Play/**/Play.wasm
+          if-no-files-found: error
+          retention-days: 7
