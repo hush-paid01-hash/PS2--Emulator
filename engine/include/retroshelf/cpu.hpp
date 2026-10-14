@@ -1,16 +1,18 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 
 namespace retroshelf {
 
-// Educational first milestone only: this is not yet a complete PS2 Emotion Engine.
-// It implements a small, testable subset of MIPS-style instructions.
+// Educational milestone only: this is not yet a complete PS2 Emotion Engine.
+// The memory here is a small test RAM, not the PS2's real memory map.
 class Cpu {
 public:
     static constexpr std::size_t RegisterCount = 32;
+    static constexpr std::size_t TestMemorySize = 64 * 1024;
 
     Cpu();
     void reset();
@@ -23,6 +25,7 @@ public:
 
 private:
     std::array<std::uint64_t, RegisterCount> gpr_{};
+    std::array<std::uint8_t, TestMemorySize> memory_{};
     std::uint64_t pc_{0};
 };
 
