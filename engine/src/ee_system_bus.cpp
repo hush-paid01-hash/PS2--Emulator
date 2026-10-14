@@ -11,6 +11,12 @@ std::uint32_t bios_physical_address(std::uint32_t address) {
         return address - 0xA0000000U;
     return address;
 }
+std::uint32_t ram_physical_address(std::uint32_t address) {
+    // EE cached/uncached direct-mapped RAM aliases (KSEG0/KSEG1).
+    if (address >= 0x80000000U && address < 0xC0000000U)
+        return address & 0x1FFFFFFFU;
+    return address;
+}
 bool in_bios_window(std::uint32_t address) {
     const auto physical = bios_physical_address(address);
     return physical >= EeSystemBus::BiosBase &&
@@ -50,7 +56,7 @@ bool EeSystemBus::read8(std::uint32_t address, std::uint8_t& value) const {
         value = static_cast<std::uint8_t>((word >> ((address & 3U) * 8U)) & 0xFFU);
         return true;
     }
-    return ram_.read8(address, value);
+    return ram_.read8(ram_physical_address(address), value);
 }
 
 bool EeSystemBus::read32(std::uint32_t address, std::uint32_t& value) const {
@@ -67,7 +73,7 @@ bool EeSystemBus::read32(std::uint32_t address, std::uint32_t& value) const {
     }
     if (address >= EeHardware::MmioBase && address <= EeHardware::MmioBase + 0x14U)
         return hardware_.read32(address, value);
-    return ram_.read32(address, value);
+    return ram_.read32(ram_physical_address(address), value);
 }
 
 bool EeSystemBus::write8(std::uint32_t address, std::uint8_t value) {
@@ -80,13 +86,13 @@ bool EeSystemBus::write8(std::uint32_t address, std::uint8_t value) {
         const auto updated = (old & ~(0xFFU << shift)) | (static_cast<std::uint32_t>(value) << shift);
         return hardware_.write32(aligned, updated);
     }
-    return ram_.write8(address, value);
+    return ram_.write8(ram_physical_address(address), value);
 }
 
 bool EeSystemBus::write32(std::uint32_t address, std::uint32_t value) {
     if (in_bios_window(address)) return false;
     if (address >= EeHardware::MmioBase && address <= EeHardware::MmioBase + 0x14U)
         return hardware_.write32(address, value);
-    return ram_.write32(address, value);
+    return ram_.write32(ram_physical_address(address), value);
 }
 } // namespace retroshelf::ee
