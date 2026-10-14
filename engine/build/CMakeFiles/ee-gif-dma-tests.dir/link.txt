@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/ee-gif-dma-tests.dir/link.d "CMakeFiles/ee-gif-dma-tests.dir/tests/ee_gif_dma_tests.cpp.o" "CMakeFiles/ee-gif-dma-tests.dir/src/ee_gif_dma.cpp.o" -o ee-gif-dma-tests

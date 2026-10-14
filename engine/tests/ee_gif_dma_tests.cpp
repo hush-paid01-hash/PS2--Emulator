@@ -8,7 +8,8 @@
 namespace {
 
 constexpr std::uint32_t Start = 1U << 8U;
-constexpr std::uint32_t Direction = 1U;
+constexpr std::uint32_t Direction = 0U;
+constexpr std::uint32_t ReverseDirection = 1U;
 constexpr std::uint32_t Chain = 1U << 2U;
 constexpr std::uint32_t Tie = 1U << 7U;
 
@@ -254,6 +255,15 @@ int main() {
         check(dma.start() && dma.registers.madr == 32 && dma.registers.qwc == 0 &&
                   dma.state() == retroshelf::EeGifDma::State::Completed,
               "normal mode remains a direct MADR/QWC transfer");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
+        retroshelf::EeGifDma dma(ram, [](const auto&) {});
+        dma.registers.chcr = Start | ReverseDirection;
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  dma.error().find("direction") != std::string::npos,
+              "reverse GIF DMA direction is rejected");
     }
 
     return failures == 0 ? 0 : 1;
