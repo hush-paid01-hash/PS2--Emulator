@@ -57,7 +57,7 @@ bool EeSystemBus::read32(std::uint32_t address, std::uint32_t& value) const {
     if ((address & 3U) != 0U) return false;
     if (in_bios_window(address)) {
         if (bios_.empty()) return false;
-        const auto offset = static_cast<std::size_t>(address - BiosBase);
+        const auto offset = static_cast<std::size_t>(bios_physical_address(address) - BiosBase);
         if (offset + 4U > bios_.size()) return false;
         value = static_cast<std::uint32_t>(bios_[offset]) |
                 (static_cast<std::uint32_t>(bios_[offset + 1]) << 8U) |
