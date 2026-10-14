@@ -83,6 +83,7 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         case 0x06: set_gpr(rd, {b >> (a & 0x3FU), 0}); break;
         case 0x07: set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(b) >> (a & 0x3FU)), 0}); break;
         case 0x08: branch_pending_ = true; branch_target_ = a; break;
+        case 0x09: set_gpr(rd, {current_pc + 8U, 0}); branch_pending_ = true; branch_target_ = a; break; // JALR
         case 0x10: set_gpr(rd, {hi_, 0}); break; // MFHI
         case 0x12: set_gpr(rd, {lo_, 0}); break; // MFLO
         case 0x11: hi_ = a; break; // MTHI
