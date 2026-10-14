@@ -32,6 +32,20 @@ int main() {
     check(cpu.pc() == 12, "EE sequential PC advances by four bytes");
 
     cpu.reset();
+    cpu.set_gpr(8, {0xFFFFFFFFULL, 0});
+    constexpr std::uint32_t addu = (8U << 21U) | (8U << 16U) | (11U << 11U) | 0x21U;
+    check(cpu.step(addu) && cpu.gpr(11).lo == 0xFFFFFFFEULL, "ADDU wraps in 32-bit width");
+    cpu.reset();
+    cpu.set_gpr(8, {0x100000000ULL, 0});
+    cpu.set_gpr(9, {1, 0});
+    constexpr std::uint32_t dsubu = (8U << 21U) | (9U << 16U) | (12U << 11U) | 0x2FU;
+    check(cpu.step(dsubu) && cpu.gpr(12).lo == 0xFFFFFFFFULL, "DSUBU subtracts full 64-bit values");
+    cpu.reset();
+    cpu.set_gpr(8, {10, 0});
+    constexpr std::uint32_t daddiu = (0x19U << 26U) | (8U << 21U) | (13U << 16U) | 5U;
+    check(cpu.step(daddiu) && cpu.gpr(13).lo == 15, "DADDIU adds signed immediate to 64-bit value");
+
+    cpu.reset();
     cpu.set_gpr(8, {10, 0});
     constexpr std::uint32_t addi = (0x08U << 26U) | (8U << 21U) | (13U << 16U) | 5U;
     check(cpu.step(addi) && cpu.gpr(13).lo == 15, "ADDI adds signed immediate");
