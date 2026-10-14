@@ -68,6 +68,17 @@ int main() {
     check(cpu.step(sltu) && cpu.gpr(12).lo == 0, "EE SLTU compares unsigned values");
 
     cpu.reset();
+    cpu.set_gpr(8, {0xFFFFFFFFFFFFFFFEULL, 0});
+    constexpr std::uint32_t slti_negative = (0x0AU << 26U) | (8U << 21U) | (11U << 16U) | 0xFFFFU;
+    check(cpu.step(slti_negative) && cpu.gpr(11).lo == 1,
+          "SLTI sign-extends immediate and compares signed values");
+    cpu.reset();
+    cpu.set_gpr(8, {0xFFFFFFFFFFFFFFFEULL, 0});
+    constexpr std::uint32_t sltiu_negative = (0x0BU << 26U) | (8U << 21U) | (12U << 16U) | 0xFFFFU;
+    check(cpu.step(sltiu_negative) && cpu.gpr(12).lo == 1,
+          "SLTIU compares unsigned values against sign-extended immediate");
+
+    cpu.reset();
     constexpr std::uint32_t beq = (0x04U << 26U) | (8U << 21U) | (9U << 16U) | 2U;
     cpu.set_gpr(8, {4, 0}); cpu.set_gpr(9, {4, 0});
     check(cpu.step(beq), "BEQ schedules branch");
