@@ -18,4 +18,23 @@ bool GifTag::decode(std::uint64_t low, std::uint64_t high, GifTag& out) {
     return true;
 }
 
+std::uint32_t GifTag::payload_qwords() const {
+    switch (format) {
+        case 0: // PACKED: one qword per register per loop
+            return static_cast<std::uint32_t>(nloop) * nreg;
+        case 1: { // REGLIST: two 64-bit register values per qword
+            const auto values = static_cast<std::uint32_t>(nloop) * nreg;
+            return (values + 1U) / 2U;
+        }
+        case 2: // IMAGE: raw image data, one qword per loop
+            return nloop;
+        default:
+            return 0;
+    }
+}
+
+std::uint32_t GifTag::packet_qwords() const {
+    return 1U + payload_qwords();
+}
+
 } // namespace retroshelf::gs
