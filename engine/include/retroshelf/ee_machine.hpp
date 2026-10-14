@@ -24,6 +24,9 @@ public:
     bool load_ps2_disc(const std::string& path, retroshelf::media::Ps2BootInfo* boot = nullptr,
                        std::string* error = nullptr);
     bool step(std::string* error = nullptr);
+    // Runs at most instruction_budget instructions; stops at the first fault.
+    // Returns the number of instructions successfully executed.
+    std::size_t run(std::size_t instruction_budget, std::string* error = nullptr);
     EeCpu& cpu();
     const EeCpu& cpu() const;
     EeBus& bus();
