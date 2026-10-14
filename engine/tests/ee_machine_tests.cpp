@@ -1,8 +1,28 @@
 #include "retroshelf/ee_machine.hpp"
+#include "retroshelf/ps2_elf.hpp""
 #include <cstdint>
 #include <iostream>
+#include <vector>
 #include <string>
 
+namespace {
+void put16(std::vector<std::uint8_t>& b, std::size_t o, std::uint16_t v) {
+    b[o] = static_cast<std::uint8_t>(v); b[o + 1] = static_cast<std::uint8_t>(v >> 8U);
+}
+void put32(std::vector<std::uint8_t>& b, std::size_t o, std::uint32_t v) {
+    for (unsigned i = 0; i < 4; ++i) b[o + i] = static_cast<std::uint8_t>(v >> (i * 8U));
+}
+std::vector<std::uint8_t> elf_fixture() {
+    std::vector<std::uint8_t> b(0x104, 0);
+    b[0] = 0x7f; b[1] = 'E'; b[2] = 'L'; b[3] = 'F'; b[4] = 1; b[5] = 1; b[6] = 1;
+    put16(b, 16, 2); put16(b, 18, 8); put32(b, 20, 1);
+    put32(b, 24, 0x100); put32(b, 28, 52); put16(b, 40, 52); put16(b, 42, 32); put16(b, 44, 1);
+    put32(b, 52, 1); put32(b, 56, 0x100); put32(b, 60, 0x100);
+    put32(b, 68, 4); put32(b, 72, 8); put32(b, 76, 5);
+    b[0x100] = 0x07; b[0x101] = 0x00; b[0x102] = 0x08; b[0x103] = 0x25; // addiu t0, zero, 7
+    return b;
+}
+}
 int main() {
     retroshelf::ee::EeMachine machine;
     int failures = 0;
@@ -46,6 +66,14 @@ int main() {
           "integrated store writes expected RAM value");
     check(machine.cpu().gpr(10).lo == 0x1234,
           "integrated load returns stored RAM value into CPU register");
+    machine.reset();
+    const auto parsed_elf = retroshelf::media::parse_ps2_elf(elf_fixture());
+    check(parsed_elf.valid, "integration fixture parses as ELF");
+    check(machine.load_elf(parsed_elf, &error), "machine loads validated ELF into RAM");
+    check(machine.cpu().pc() == 0x100, "ELF loader sets CPU entry point");
+    check(machine.step(&error), "machine executes first instruction from loaded ELF entry point");
+    check(machine.cpu().gpr(8).lo == 7, "loaded ELF instruction updates CPU register");
+    check(machine.bus().read32(0x104, word) && word == 0, "ELF loader zero-fills BSS in RAM");
     machine.reset();
     std::uint32_t word = 1;
     check(machine.cpu().pc() == 0, "machine reset resets PC");
