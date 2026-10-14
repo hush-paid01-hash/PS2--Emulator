@@ -23,18 +23,29 @@ bool GsPacketProcessor::fail(const std::string& message) {
     return false;
 }
 
-void GsPacketProcessor::complete_packet() {
+bool GsPacketProcessor::complete_packet() {
+    if (current_packet_.size() > MaxQueuedPacketBytes - queued_packet_bytes_) {
+        return fail("GIF packet queue exceeds the size limit");
+    }
+    queued_packet_bytes_ += current_packet_.size();
     completed_packets_.push_back({std::move(current_packet_), current_packet_tags_});
     current_packet_.clear();
     current_packet_tags_ = 0;
+    return true;
 }
 
 bool GsPacketProcessor::submit(const std::vector<std::uint8_t>& data) {
     if (failed_) {
         return false;
     }
+    if (finished_) {
+        return fail("GIF stream has already ended");
+    }
     if (data.size() % QwordSize != 0U) {
         return fail("GIF input is not qword-aligned");
+    }
+    if (data.size() > MaxPacketBytes) {
+        return fail("GIF input chunk exceeds the size limit");
     }
 
     input_.insert(input_.end(), data.begin(), data.end());
@@ -59,7 +70,9 @@ bool GsPacketProcessor::submit(const std::vector<std::uint8_t>& data) {
                 break;
             }
             if (packet_ends_at_body_) {
-                complete_packet();
+                if (!complete_packet()) {
+                    return false;
+                }
             }
             continue;
         }
@@ -72,7 +85,6 @@ bool GsPacketProcessor::submit(const std::vector<std::uint8_t>& data) {
         }
 
         const std::uint64_t low = read_u64(input_, consumed);
-        const std::uint64_t high = read_u64(input_, consumed + 8U);
         const auto loops = static_cast<std::size_t>(low & 0x7FFFU);
         const bool eop = ((low >> 15U) & 1U) != 0U;
         const auto format = static_cast<std::uint8_t>((low >> 58U) & 3U);
@@ -91,10 +103,9 @@ bool GsPacketProcessor::submit(const std::vector<std::uint8_t>& data) {
             break;
         }
         case 2:
+        case 3:
             body_qwords = loops;
             break;
-        default:
-            return fail("GIF tag uses the reserved transfer format");
         }
 
         if (body_qwords > (MaxPacketBytes - current_packet_.size() - QwordSize) /
@@ -109,9 +120,10 @@ bool GsPacketProcessor::submit(const std::vector<std::uint8_t>& data) {
         body_qwords_remaining_ = body_qwords;
         packet_ends_at_body_ = eop;
         if (body_qwords_remaining_ == 0U && packet_ends_at_body_) {
-            complete_packet();
+            if (!complete_packet()) {
+                return false;
+            }
         }
-        (void)high;
     }
 
     if (consumed != 0U) {
@@ -124,15 +136,20 @@ bool GsPacketProcessor::finish_stream() {
     if (failed_) {
         return false;
     }
+    if (finished_) {
+        return true;
+    }
     if (!input_.empty() || body_qwords_remaining_ != 0U || !current_packet_.empty()) {
         return fail("GIF stream ended with an incomplete packet");
     }
+    finished_ = true;
     return true;
 }
 
 std::vector<GifPacket> GsPacketProcessor::take_packets() {
     auto packets = std::move(completed_packets_);
     completed_packets_.clear();
+    queued_packet_bytes_ = 0;
     return packets;
 }
 

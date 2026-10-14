@@ -71,6 +71,9 @@ bool EeGifDma::transfer(std::uint32_t address, std::uint32_t qwc) {
         return fail("GIF DMA payload size overflows");
     }
     const std::size_t size = count * qword_size;
+    if (size > MaxTransferBytes) {
+        return fail("GIF DMA payload exceeds the transfer limit");
+    }
     if (size > std::numeric_limits<std::uint32_t>::max() - address) {
         return fail("GIF DMA payload address overflows");
     }
@@ -91,8 +94,8 @@ bool EeGifDma::transfer(std::uint32_t address, std::uint32_t qwc) {
     if (size != 0) {
         try {
             payload_handler_(payload);
-        } catch (const std::exception&) {
-            return fail("GIF DMA payload handler failed");
+        } catch (const std::exception& exception) {
+            return fail("GIF DMA payload handler failed: " + std::string(exception.what()));
         } catch (...) {
             return fail("GIF DMA payload handler failed");
         }
