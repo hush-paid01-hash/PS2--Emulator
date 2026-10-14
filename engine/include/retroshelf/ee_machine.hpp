@@ -4,6 +4,7 @@
 #include "retroshelf/ee_hardware.hpp"
 #include "retroshelf/ee_cpu.hpp"
 #include "retroshelf/ee_scheduler.hpp"
+#include "retroshelf/ee_system_bus.hpp"
 
 #include <cstdint>
 #include <string>
@@ -30,6 +31,7 @@ private:
     EeCpu cpu_;
     EeBus bus_;
     EeHardware hardware_;
+    EeSystemBus system_bus_;
     EeScheduler scheduler_;
 };
 
