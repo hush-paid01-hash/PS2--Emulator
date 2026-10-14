@@ -154,7 +154,7 @@ Ps2BootInfo find_ps2_boot_executable(const std::string& path) {
     std::vector<IsoDirectoryEntry> root;
     if (!read_iso_directory(path, root, &result.error)) return result;
     for (const auto& entry : root) {
-        if (entry.directory && entry.name == "SYSTEM.CNF") {
+        if (!entry.directory && entry.name == "SYSTEM.CNF") {
             result.system_config_path = entry.name;
             std::vector<std::uint8_t> bytes;
             if (!read_iso_file(path, entry.lba, entry.byte_size, bytes, &result.error)) return result;
