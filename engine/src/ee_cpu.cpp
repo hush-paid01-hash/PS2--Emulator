@@ -79,9 +79,9 @@ bool EeCpu::step(std::uint32_t instruction, std::string* error,
         case 0x06: set_gpr(rd, {b >> (a & 0x3FU), 0}); break;
         case 0x07: set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(b) >> (a & 0x3FU)), 0}); break;
         case 0x08: branch_pending_ = true; branch_target_ = a; break;
-        case 0x21: set_gpr(rd, {static_cast<std::uint32_t>(a) + static_cast<std::uint32_t>(b), 0}); break;
+        case 0x21: { const auto result = static_cast<std::uint32_t>(a) + static_cast<std::uint32_t>(b); set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))), 0}); break; }
         case 0x2D: set_gpr(rd, {a + b, 0}); break;
-        case 0x23: set_gpr(rd, {static_cast<std::uint32_t>(a) - static_cast<std::uint32_t>(b), 0}); break;
+        case 0x23: { const auto result = static_cast<std::uint32_t>(a) - static_cast<std::uint32_t>(b); set_gpr(rd, {static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))), 0}); break; }
         case 0x2F: set_gpr(rd, {a - b, 0}); break;
         case 0x24: set_gpr(rd, {a & b, 0}); break;
         case 0x25: set_gpr(rd, {a | b, 0}); break;
