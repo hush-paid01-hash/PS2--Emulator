@@ -273,6 +273,18 @@ int main() {
     check(cpu.step(dsub) && cpu.gpr(10).lo == 0x100000000ULL, "DSUB subtracts full 64-bit values");
 
     cpu.reset();
+    cpu.set_gpr(8, {0xFFFFFFFF80000001ULL, 0});
+    constexpr std::uint32_t mtc0_status = (0x10U << 26U) | (0x04U << 21U) | (8U << 16U) | (12U << 11U);
+    check(cpu.step(mtc0_status) && cpu.cp0(12) == 0x80000001U,
+          "MTC0 writes the selected 32-bit privileged register");
+    constexpr std::uint32_t mfc0_status = (0x10U << 26U) | (9U << 16U) | (12U << 11U);
+    check(cpu.step(mfc0_status) && cpu.gpr(9).lo == 0xFFFFFFFF80000001ULL,
+          "MFC0 sign-extends the selected privileged register into a GPR");
+    cpu.reset();
+    check(cpu.cp0(12) == 0, "CPU reset clears privileged registers");
+    check(cpu.cp0(32) == 0, "out-of-range privileged-register reads are safe");
+
+    cpu.reset();
     std::string error;
     check(!cpu.step(0xF8000000U, &error), "unsupported EE instruction is rejected");
     check(error.find("unsupported") != std::string::npos, "unsupported instruction has diagnostic");
