@@ -82,6 +82,22 @@ int main() {
     check(machine.bus().read32(0x200, word) && word == 0xAABBCCDDU,
           "rejected ELF leaves existing machine RAM untouched");
     machine.reset();
+    const std::vector<std::uint8_t> bios{
+        0x07, 0x00, 0x08, 0x25, // addiu t0, zero, 7
+        0x09, 0x00, 0x09, 0x25  // addiu t1, zero, 9
+    };
+    check(machine.load_bios(bios, &error) && machine.bios_loaded(),
+          "machine accepts a supplied BIOS image");
+    check(machine.system_bus().read32(retroshelf::ee::EeSystemBus::BiosBase, word) &&
+          word == 0x25080007U, "machine system bus maps BIOS at configured ROM base");
+    check(!machine.system_bus().write32(retroshelf::ee::EeSystemBus::BiosBase, 0),
+          "machine system bus protects BIOS ROM from writes");
+    check(machine.load_word(0, addiu_t0_7), "BIOS test also prepares independent RAM");
+    check(machine.cpu().pc() == 0, "loading BIOS does not pretend to complete a console boot");
+    machine.reset();
+    check(machine.bios_loaded(), "machine reset preserves loaded BIOS ROM");
+    machine.system_bus().clear_bios();
+    check(!machine.bios_loaded(), "BIOS can be explicitly unloaded");
     word = 1;
     check(machine.cpu().pc() == 0, "machine reset resets PC");
     check(machine.bus().read32(0, word) && word == 0, "machine reset clears RAM");
