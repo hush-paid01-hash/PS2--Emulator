@@ -1,5 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
+import CoreGraphics
 
 @main
 struct RetroShelfApp: App {
@@ -14,6 +16,7 @@ struct ConsoleHomeView: View {
     @State private var choosingDisc = false
     @State private var choosingBIOS = false
     @State private var message = "Engine foundation only — game execution is not implemented yet."
+    @State private var graphicsPreview: UIImage?
 
     var body: some View {
         NavigationStack {
@@ -26,6 +29,7 @@ struct ConsoleHomeView: View {
                             .foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                     statusCard
+                    graphicsPreviewCard
                     VStack(spacing: 12) {
                         fileButton(title: "Choose PS2 BIOS", subtitle: selectedBIOS?.lastPathComponent ?? "Select a BIOS file you legally obtained", icon: "cpu") { choosingBIOS = true }
                         fileButton(title: "Choose game image", subtitle: selectedDisc?.lastPathComponent ?? "ISO, BIN, IMG or CHD", icon: "opticaldisc") { choosingDisc = true }
@@ -67,6 +71,50 @@ struct ConsoleHomeView: View {
                 handle(result, assign: { selectedDisc = $0 }, label: "game image")
             }
         }.preferredColorScheme(.dark)
+    }
+
+    private var graphicsPreviewCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("GRAPHICS PIPELINE TEST").font(.caption.weight(.bold)).tracking(2).foregroundStyle(.secondary)
+            Group {
+                if let graphicsPreview {
+                    Image(uiImage: graphicsPreview).resizable().interpolation(.none).aspectRatio(contentMode: .fit)
+                } else {
+                    RoundedRectangle(cornerRadius: 10).fill(.black.opacity(0.3))
+                        .overlay(Text("No preview rendered yet").foregroundStyle(.secondary))
+                }
+            }.frame(maxWidth: .infinity).frame(height: 220).clipShape(RoundedRectangle(cornerRadius: 12))
+            Button(action: renderGraphicsPreview) {
+                Label("Render GIF pipeline test frame", systemImage: "play.rectangle")
+                    .frame(maxWidth: .infinity).padding(12)
+                    .background(.cyan.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain)
+            Text("Synthetic triangle test only — not output from a running PS2 game.")
+                .font(.footnote).foregroundStyle(.orange)
+        }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+         .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func renderGraphicsPreview() {
+        let width = 320
+        let height = 180
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let success = bytes.withUnsafeMutableBufferPointer { buffer in
+            rs_render_gif_pipeline_preview(buffer.baseAddress, UInt64(buffer.count), UInt32(width), UInt32(height))
+        }
+        guard success == 1,
+              let provider = CGDataProvider(data: Data(bytes) as CFData),
+              let cgImage = CGImage(width: width, height: height, bitsPerComponent: 8,
+                                    bitsPerPixel: 32, bytesPerRow: width * 4,
+                                    space: CGColorSpaceCreateDeviceRGB(),
+                                    bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+                                    provider: provider, decode: nil, shouldInterpolate: false,
+                                    intent: .defaultIntent) else {
+            message = "GIF pipeline preview failed. Check the engine build."
+            return
+        }
+        graphicsPreview = UIImage(cgImage: cgImage)
+        message = "GIF test stream rendered through the software rasterizer; not game output."
     }
 
     private var statusCard: some View {
