@@ -130,5 +130,27 @@ int main() {
     check(machine.cpu().pc() == 0x80000100U, "KSEG0 entry point remains a virtual address");
     check(machine.step(&error), "EE fetch reads loaded instruction through KSEG0 alias");
     check(machine.cpu().gpr(8).lo == 7, "KSEG0-loaded ELF executes its first instruction");
+    machine.reset();
+    const std::uint64_t gif_test_stream[] = {
+        1ULL | (1ULL << 60U), 0xEULL, 3ULL, 0ULL,
+        1ULL | (1ULL << 60U), 0xEULL, 0xFFFFFFFFULL, 0x01ULL,
+        3ULL | (1ULL << 15U) | (1ULL << 60U), 0xEULL,
+        (40ULL * 16ULL) | (20ULL * 16ULL << 16U), 0x05ULL,
+        (280ULL * 16ULL) | (150ULL * 16ULL << 16U), 0x05ULL,
+        (40ULL * 16ULL) | (150ULL * 16ULL << 16U), 0x05ULL
+    };
+    bool stream_stored = true;
+    for (std::size_t i = 0; i < sizeof(gif_test_stream) / sizeof(gif_test_stream[0]); ++i) {
+        stream_stored = stream_stored &&
+            machine.load_word(0x1000U + static_cast<std::uint32_t>(i * 4U),
+                              static_cast<std::uint32_t>(gif_test_stream[i] & 0xFFFFFFFFULL)) &&
+            machine.load_word(0x1004U + static_cast<std::uint32_t>(i * 4U),
+                              static_cast<std::uint32_t>(gif_test_stream[i] >> 32U));
+    }
+    check(stream_stored, "synthetic GIF packet stored in EE RAM");
+    retroshelf::gs::GifProcessStats gif_stats;
+    check(machine.process_gif_from_ram(0x1000U, 8, &gif_stats, &error),
+          "machine reads GIF packet from EE RAM and sends it to GS renderer");
+    check(gif_stats.triangles_drawn == 1, "RAM-backed GIF packet draws one triangle");
     return failures == 0 ? 0 : 1;
 }
