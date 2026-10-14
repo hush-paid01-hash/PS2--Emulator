@@ -87,6 +87,23 @@ int main() {
     check(cpu.pc() == 12 && !cpu.branch_pending(), "taken BEQ applies target after delay slot");
 
     cpu.reset();
+    cpu.set_gpr(8, {static_cast<std::uint64_t>(-1LL), 0});
+    constexpr std::uint32_t bltz = (0x01U << 26U) | (8U << 21U) | (0U << 16U) | 2U;
+    check(cpu.step(bltz) && cpu.branch_pending(), "BLTZ schedules branch for negative register");
+    check(cpu.step(0) && cpu.pc() == 12, "BLTZ applies target after delay slot");
+    cpu.reset();
+    cpu.set_gpr(8, {0, 0});
+    constexpr std::uint32_t bgezal = (0x01U << 26U) | (8U << 21U) | (0x11U << 16U) | 1U;
+    check(cpu.step(bgezal) && cpu.gpr(31).lo == 8 && cpu.branch_pending(),
+          "BGEZAL links return address and schedules branch when condition is true");
+    check(cpu.step(0) && cpu.pc() == 8, "BGEZAL applies target after delay slot");
+    cpu.reset();
+    cpu.set_gpr(8, {static_cast<std::uint64_t>(-1LL), 0});
+    constexpr std::uint32_t bgez = (0x01U << 26U) | (8U << 21U) | (1U << 16U) | 1U;
+    check(cpu.step(bgez) && cpu.branch_pending(), "BGEZ schedules not-taken path");
+    check(cpu.step(0) && cpu.pc() == 8, "BGEZ not-taken path skips branch target");
+
+    cpu.reset();
     cpu.set_gpr(8, {0, 0});
     constexpr std::uint32_t blez = (0x06U << 26U) | (8U << 21U) | 2U;
     check(cpu.step(blez), "BLEZ schedules branch for zero value");
