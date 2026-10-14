@@ -131,6 +131,18 @@ int main() {
           "LQ reconstructs low and high 64-bit halves");
 
     cpu.reset();
+    cpu.set_gpr(8, {0x10, 0});
+    cpu.set_gpr(9, {0x0123456789ABCDEFULL, 0});
+    constexpr std::uint32_t sd = (0x3FU << 26U) | (8U << 21U) | (9U << 16U);
+    check(cpu.step(sd, nullptr, read_word, write_word), "SD stores 64-bit doubleword");
+    check(ram[4] == 0x89ABCDEFU && ram[5] == 0x01234567U, "SD writes both words in little-endian order");
+    cpu.reset();
+    cpu.set_gpr(8, {0x10, 0});
+    constexpr std::uint32_t ld = (0x37U << 26U) | (8U << 21U) | (10U << 16U);
+    check(cpu.step(ld, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0x0123456789ABCDEFULL,
+          "LD reconstructs 64-bit doubleword");
+
+    cpu.reset();
     std::string error;
     check(!cpu.step(0xFFFFFFFFU, &error), "unsupported EE instruction is rejected");
     check(error.find("unsupported") != std::string::npos, "unsupported instruction has diagnostic");
