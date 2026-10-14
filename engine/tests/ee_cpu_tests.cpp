@@ -120,6 +120,14 @@ int main() {
 
     cpu.reset();
     cpu.set_pc(0x1000);
+    cpu.set_gpr(8, {0x3450, 0});
+    constexpr std::uint32_t jalr = (8U << 21U) | (9U << 11U) | 0x09U;
+    check(cpu.step(jalr) && cpu.gpr(9).lo == 0x1008 && cpu.branch_pending(),
+          "JALR stores return address in selected register and schedules target");
+    check(cpu.step(0) && cpu.pc() == 0x3450, "JALR applies register target after delay slot");
+
+    cpu.reset();
+    cpu.set_pc(0x1000);
     constexpr std::uint32_t jump = (0x02U << 26U) | 0x00000020U;
     check(cpu.step(jump) && cpu.branch_pending(), "J schedules absolute pseudo-direct target");
     check(cpu.step(0) && cpu.pc() == 0x80, "J applies target after delay slot");
