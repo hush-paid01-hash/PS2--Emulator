@@ -14,6 +14,7 @@ void EeMachine::reset() {
     bus_.reset();
     hardware_.reset();
     scheduler_.reset();
+    gs_renderer_.clear();
     // The EE begins at the BIOS reset vector when a ROM is present.
     if (system_bus_.bios_loaded()) cpu_.set_pc(0xBFC00000U);
 }
@@ -126,5 +127,11 @@ EeScheduler& EeMachine::scheduler() { return scheduler_; }
 const EeScheduler& EeMachine::scheduler() const { return scheduler_; }
 EeSystemBus& EeMachine::system_bus() { return system_bus_; }
 const EeSystemBus& EeMachine::system_bus() const { return system_bus_; }
+bool EeMachine::process_gif(const std::uint64_t* words, std::size_t qword_count,
+                            retroshelf::gs::GifProcessStats* stats, std::string* error) {
+    return retroshelf::gs::process_gif_stream(words, qword_count, gs_renderer_, stats, error);
+}
+retroshelf::gs::SoftwareRenderer& EeMachine::gs_renderer() { return gs_renderer_; }
+const retroshelf::gs::SoftwareRenderer& EeMachine::gs_renderer() const { return gs_renderer_; }
 
 } // namespace retroshelf::ee
