@@ -129,6 +129,24 @@ int main() {
     constexpr std::uint32_t lb = (0x20U << 26U) | (8U << 21U) | (10U << 16U) | 1U;
     check(cpu.step(lb, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0xFFFFFFFFFFFFFFAAULL, "LB sign-extends byte");
     cpu.reset();
+    ram[4] = 0x80FF7F01U;
+    cpu.set_gpr(8, {0x10, 0});
+    constexpr std::uint32_t lh = (0x21U << 26U) | (8U << 21U) | (10U << 16U) | 2U;
+    check(cpu.step(lh, nullptr, read_word, write_word) &&
+          cpu.gpr(10).lo == 0xFFFFFFFFFFFFFFFFULL, "LH sign-extends negative halfword");
+    cpu.reset();
+    cpu.set_gpr(8, {0x10, 0});
+    constexpr std::uint32_t lhu = (0x25U << 26U) | (8U << 21U) | (10U << 16U) | 2U;
+    check(cpu.step(lhu, nullptr, read_word, write_word) && cpu.gpr(10).lo == 0x80FFU,
+          "LHU zero-extends halfword");
+    cpu.reset();
+    cpu.set_gpr(8, {0x10, 0});
+    cpu.set_gpr(9, {0xABCD, 0});
+    constexpr std::uint32_t sh = (0x29U << 26U) | (8U << 21U) | (9U << 16U) | 2U;
+    check(cpu.step(sh, nullptr, read_word, write_word), "SH stores halfword");
+    check(ram[4] == 0xABCD7F01U, "SH preserves adjacent halfword");
+
+    cpu.reset();
     std::string memory_error;
     cpu.set_gpr(8, {0x200, 0});
     check(!cpu.step(lw, &memory_error, read_word, write_word), "out-of-range LW is rejected");
