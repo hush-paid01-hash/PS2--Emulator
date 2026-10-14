@@ -7,6 +7,7 @@
 #include "retroshelf/ee_system_bus.hpp"
 #include "retroshelf/disc_image.hpp"
 #include "retroshelf/ps2_elf.hpp"
+#include "retroshelf/gs_gif_processor.hpp"
 
 #include <cstdint>
 #include <string>
@@ -40,12 +41,18 @@ public:
     const EeScheduler& scheduler() const;
     EeSystemBus& system_bus();
     const EeSystemBus& system_bus() const;
+    bool process_gif(const std::uint64_t* words, std::size_t qword_count,
+                     retroshelf::gs::GifProcessStats* stats = nullptr,
+                     std::string* error = nullptr);
+    retroshelf::gs::SoftwareRenderer& gs_renderer();
+    const retroshelf::gs::SoftwareRenderer& gs_renderer() const;
 private:
     EeCpu cpu_;
     EeBus bus_;
     EeHardware hardware_;
     EeSystemBus system_bus_;
     EeScheduler scheduler_;
+    retroshelf::gs::SoftwareRenderer gs_renderer_{640, 448};
 };
 
 } // namespace retroshelf::ee
