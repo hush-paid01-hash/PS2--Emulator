@@ -113,18 +113,18 @@ int main() {
 
     cpu.reset();
     cpu.set_gpr(8, {0x123456789ABCDEF0ULL, 0});
-    constexpr std::uint32_t dsll32 = (8U << 21U) | (13U << 11U) | (1U << 6U) | 0x3CU;
+    constexpr std::uint32_t dsll32 = (8U << 16U) | (13U << 11U) | (1U << 6U) | 0x3CU;
     check(cpu.step(dsll32) && cpu.gpr(13).lo == 0x3579BDE000000000ULL, "DSLL32 shifts doubleword by shamt plus 32");
 
     cpu.reset();
-    cpu.set_gpr(8, {0x100, 0});
+    cpu.set_gpr(8, {0x10, 0});
     cpu.set_gpr(9, {0x1122334455667788ULL, 0x99AABBCCDDEEFF00ULL});
     constexpr std::uint32_t sq = (0x1FU << 26U) | (8U << 21U) | (9U << 16U);
     check(cpu.step(sq, nullptr, read_word, write_word), "SQ stores 128-bit register to emulated RAM");
     check(ram[4] == 0x55667788 && ram[5] == 0x11223344 && ram[6] == 0xDDEEFF00 && ram[7] == 0x99AABBCC,
           "SQ writes all four 32-bit words in little-endian order");
     cpu.reset();
-    cpu.set_gpr(8, {0x100, 0});
+    cpu.set_gpr(8, {0x10, 0});
     constexpr std::uint32_t lq = (0x1EU << 26U) | (8U << 21U) | (10U << 16U);
     check(cpu.step(lq, nullptr, read_word, write_word), "LQ loads 128-bit value from emulated RAM");
     check(cpu.gpr(10).lo == 0x1122334455667788ULL && cpu.gpr(10).hi == 0x99AABBCCDDEEFF00ULL,
