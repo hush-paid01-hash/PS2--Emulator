@@ -7,8 +7,8 @@ int main() {
     retroshelf::ee::EeMachine machine;
     int failures = 0;
     const auto check = [&failures](bool ok, const char* label) {
-        if (!ok) { std::cerr << "FAIL: " << label << '\\n'; ++failures; }
-        else { std::cout << "PASS: " << label << '\\n'; }
+        if (!ok) { std::cerr << "FAIL: " << label << '\n'; ++failures; }
+        else { std::cout << "PASS: " << label << '\n'; }
     };
     constexpr std::uint32_t addiu_t0_7 = (0x09U << 26U) | (8U << 16U) | 7U;
     constexpr std::uint32_t addiu_t1_minus1 = (0x09U << 26U) | (9U << 16U) | 0xFFFFU;
@@ -24,6 +24,7 @@ int main() {
     std::uint32_t word = 1;
     check(machine.cpu().pc() == 0, "machine reset resets PC");
     check(machine.bus().read32(0, word) && word == 0, "machine reset clears RAM");
-    check(!machine.step(&error), "fetch from zeroed RAM rejects unsupported instruction");
+    check(machine.step(&error), "zeroed RAM contains a supported SLL-zero instruction");
+    check(machine.cpu().pc() == 4, "machine advances after zero instruction");
     return failures == 0 ? 0 : 1;
 }
