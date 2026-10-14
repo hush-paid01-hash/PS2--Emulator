@@ -9,7 +9,7 @@ add_executable(retroshelf-engine src/main.cpp src/cpu.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
-add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp src/ee_system_bus.cpp src/disc_image.cpp)
+add_library(retroshelf-ee-core src/ee_cpu.cpp src/ee_bus.cpp src/ee_machine.cpp src/ee_scheduler.cpp src/ee_interrupts.cpp src/ee_timers.cpp src/ee_hardware.cpp src/ee_dma.cpp src/ee_system_bus.cpp src/disc_image.cpp src/ps2_elf.cpp)
 target_include_directories(retroshelf-ee-core PUBLIC include)
 target_compile_options(retroshelf-ee-core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -68,3 +68,8 @@ add_executable(disc-image-tests tests/disc_image_tests.cpp)
 target_link_libraries(disc-image-tests PRIVATE retroshelf-ee-core)
 target_compile_options(disc-image-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME disc-image-tests COMMAND disc-image-tests)
+
+add_executable(ps2-elf-tests tests/ps2_elf_tests.cpp)
+target_link_libraries(ps2-elf-tests PRIVATE retroshelf-ee-core)
+target_compile_options(ps2-elf-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ps2-elf-tests COMMAND ps2-elf-tests)
