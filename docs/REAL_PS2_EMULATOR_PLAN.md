@@ -1,37 +1,37 @@
-# Path to a Real Playable PS2 Emulator on iPhone
+# Roadmap to a Playable Original PS2 Emulator on iPhone
 
-## Current status
+## Non-negotiable project scope
 
-The `engine/` folder in this repository is an educational CPU prototype. It is **not** a PlayStation 2 emulator and cannot boot commercial PS2 games. Do not describe it as playable.
+This project aims to implement its own PlayStation 2 emulation core. Do not substitute Play!, PCSX2, or another emulator core. PS3 support is out of scope. This is a substantial hardware-emulation project; passing prototype tests does not mean it can boot a PS2 game.
 
-## Recommended technical direction
+## Current verified foundation
 
-Integrate a maintained, real PS2 emulator core instead of attempting to recreate the PS2 hardware from the current small CPU prototype. The first candidate to evaluate is the upstream **Play!** project:
+- A SwiftUI iPhone front-end shell with BIOS and disc file pickers.
+- GitHub Actions can generate an Xcode project and build the app for the iOS Simulator.
+- A portable C++ core with an early EE/R5900 instruction subset, 2 MiB test RAM, a machine fetch/execute harness, and prototype timer/interrupt/DMA structures.
+- Automated tests run on GitHub-hosted Linux/macOS runners.
 
-- Upstream source: https://github.com/jpd002/Play-
-- Upstream project describes support for iOS and other platforms.
-- Play! has a built-in high-level BIOS approach; review its current license and upstream instructions before redistributing or modifying it.
-- Its iOS documentation warns that JIT is not enabled by default and game launch can fail without JIT. Current iOS/iPhone compatibility and permitted JIT-enablement paths must be tested on the actual target device and iOS version.
+The file picker currently copies selected files into app storage, but the engine does not yet parse a BIOS, mount a disc image, or boot a game. The current CPU and hardware models are incomplete and are not cycle-accurate PS2 hardware.
 
-PCSX2 is another well-known real PS2 emulator, but its official project targets Windows, Linux, and macOS; it is not a drop-in iOS core. Do not assume desktop PCSX2 can simply be compiled into an iPhone app.
+## Implementation order
 
-## Integration milestones
+1. **Stabilize the EE interpreter.** Define instruction semantics and exception behavior; expand arithmetic, branch/delay-slot, load/store, COP0, and privileged instruction support; add instruction-by-instruction regression tests.
+2. **Implement a memory subsystem.** Add verified address translation, RAM/ROM regions, alignment and bus faults, BIOS mapping, and memory-mapped device dispatch. Replace placeholder addresses with documented PS2 hardware addresses.
+3. **Boot firmware.** Add a BIOS image loader that validates size and mapping, initializes the correct reset state, and traces execution with useful diagnostics. Only support firmware supplied by the user and legally obtained.
+4. **Implement PS2 hardware in dependency order.** Interrupt controller and timers, DMA channels and arbitration, scratchpad and cache behavior, VU0/VU1 and micro-instructions, GIF path, GS rendering, and SPU2 audio. Keep every device independently testable.
+5. **Implement disc support.** Parse supported ISO formats and the PS2 disc filesystem; load data through the emulated I/O path. Do not treat file selection as disc emulation.
+6. **Connect the iOS front end to the native C++ core.** Use a C-compatible bridge, copy imported files into sandboxed app storage, validate them, and surface errors. Add touch/controller input, save states, memory cards, per-game settings, and performance overlays only as their backend features become real.
+7. **Optimize after correctness.** Keep a portable interpreter as the baseline. Consider ARM64 optimizations only after conformance tests pass. Do not promise a native ARM64 JIT or full speed until it is implemented and tested on the target iOS version.
+8. **Release gate.** Produce a signed iPhone build through a legitimate Apple signing route; test on the actual iPhone; boot lawful homebrew/test software; verify graphics, sound, input, and persistence. Do not call the app playable before this gate passes.
 
-1. **Preserve the prototype:** keep `engine/` as a learning/test harness. Do not label it as a functioning PS2 core.
-2. **Review the core and license:** inspect upstream Play! source, its license, iOS installer/build files, dependency list, and current activity. Keep required copyright and license notices. Do not copy a large third-party core without preserving its license.
-3. **Create an iOS application target:** use an Apple build/signing environment (normally macOS with Xcode) to produce and sign an iPhone app. A GitHub repository or Ubuntu server alone cannot produce a signed, installed iOS app.
-4. **Connect the frontend:** add a game library, iOS Files import for user-owned disc images, touch controls, controller support, per-game settings, save-state UI, memory-card management where supported by the core, and an FPS/performance overlay.
-5. **Handle JIT honestly:** test what is permitted and works on the exact iOS version and device. Do not promise full-speed performance or bypass platform protections. Provide a documented non-JIT fallback only if the selected core supports it.
-6. **Test with lawful material:** use homebrew/test images and game dumps the user is authorized to use. Do not bundle copyrighted game images or console firmware.
-7. **Release gate:** do not call it playable until a signed build launches, imports a test image, boots it, renders frames, accepts input, saves/loads state if supported, and passes a documented compatibility test.
+## Build environment and constraints
 
-## Current blockers
+Use GitHub-hosted Actions runners for builds; a small cloud VM is not a substitute for Xcode and is not expected to handle the full project. A successful iOS Simulator build is not a signed iPhone install. Native device distribution requires an appropriate signing/provisioning path. JIT availability and app-distribution rules must be checked against current Apple policy and the actual device.
 
-- No iOS/Xcode build and signing run has been demonstrated for this repository.
-- No upstream emulator core has yet been integrated into this repository.
-- No real PS2 game has been booted or tested by this project.
-- iOS JIT availability and distribution route must be verified on the actual target device.
+## Legal materials
 
-## Definition of done
+The app must not bundle copyrighted BIOS firmware or commercial game images. Users should provide only firmware and game dumps they are legally entitled to use.
 
-A real playable release means a working signed iPhone build and verified game boot—not just compiling a CPU library or passing unit tests.
+## Honest definition of done
+
+The project is playable only when a signed iPhone build can load a user-provided compatible BIOS and disc image, boot a PS2 program, render frames, accept input, and pass documented compatibility tests. A green C++ test run or an iOS Simulator build alone does not satisfy this definition.
