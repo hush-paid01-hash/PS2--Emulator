@@ -1,0 +1,41 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/retroshelf-ee-core.dir/src/disc_image.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/disc_image.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_bus.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_bus.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_cpu.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_cpu.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_dma.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_dma.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_hardware.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_hardware.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_interrupts.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_interrupts.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_machine.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_machine.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_scheduler.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_scheduler.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_system_bus.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_system_bus.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_timers.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ee_timers.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_gif.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_gif.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_gif_processor.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_gif_processor.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_gif_stream.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_gif_stream.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_renderer.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_renderer.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_vram.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/gs_vram.cpp.o.d"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ps2_elf.cpp.o"
+  "CMakeFiles/retroshelf-ee-core.dir/src/ps2_elf.cpp.o.d"
+  "libretroshelf-ee-core.a"
+  "libretroshelf-ee-core.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/retroshelf-ee-core.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

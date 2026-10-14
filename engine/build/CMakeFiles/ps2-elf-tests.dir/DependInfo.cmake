@@ -1,0 +1,24 @@
+
+# Consider dependencies only in project.
+set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)
+
+# The set of languages for which implicit dependencies are needed:
+set(CMAKE_DEPENDS_LANGUAGES
+  )
+
+# The set of dependency files which are needed:
+set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/tests/ps2_elf_tests.cpp" "CMakeFiles/ps2-elf-tests.dir/tests/ps2_elf_tests.cpp.o" "gcc" "CMakeFiles/ps2-elf-tests.dir/tests/ps2_elf_tests.cpp.o.d"
+  "" "ps2-elf-tests" "gcc" "CMakeFiles/ps2-elf-tests.dir/link.d"
+  )
+
+# Targets to which this target links which contain Fortran sources.
+set(CMAKE_Fortran_TARGET_LINKED_INFO_FILES
+  )
+
+# Targets to which this target links which contain Fortran sources.
+set(CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES
+  )
+
+# Fortran module output directory.
+set(CMAKE_Fortran_TARGET_MODULE_DIR "")

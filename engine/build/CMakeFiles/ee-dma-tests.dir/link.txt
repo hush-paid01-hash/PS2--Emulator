@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/ee-dma-tests.dir/link.d "CMakeFiles/ee-dma-tests.dir/tests/ee_dma_tests.cpp.o" -o ee-dma-tests  libretroshelf-ee-core.a

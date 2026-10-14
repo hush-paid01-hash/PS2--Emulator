@@ -1,0 +1,77 @@
+Start testing: Oct 14 17:10 UTC
+----------------------------------------------------------
+4/17 Testing: ee-machine-tests
+4/17 Test: ee-machine-tests
+Command: "/home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build/ee-machine-tests"
+Directory: /home/runner/work/PS2-and-PS3-iPhone-Emulator/PS2-and-PS3-iPhone-Emulator/engine/build
+"ee-machine-tests" start time: Oct 14 17:10 UTC
+Output:
+----------------------------------------------------------
+PASS: program word loads into RAM
+PASS: second program word loads into RAM
+PASS: machine fetches and executes first instruction
+PASS: first instruction updates CPU state
+PASS: machine advances placeholder scheduler cycle
+PASS: timer interrupt stays clear before target
+PASS: machine fetches and executes second instruction
+PASS: immediate is sign-extended in prototype
+PASS: machine advances PC after each instruction
+PASS: second step advances scheduler
+PASS: timer interrupt remains clear before third cycle
+PASS: machine executes third instruction
+PASS: third step advances scheduler
+PASS: machine step raises interrupt when timer reaches target
+PASS: integrated program loads base-address instruction
+PASS: integrated program loads value instruction
+PASS: integrated program loads store instruction
+PASS: integrated program loads load instruction
+PASS: machine runs four-instruction RAM store/load program
+PASS: integrated store writes expected RAM value
+PASS: integrated load returns stored RAM value into CPU register
+PASS: integration fixture parses as ELF
+PASS: machine loads validated ELF into RAM
+PASS: ELF loader sets CPU entry point
+PASS: machine executes first instruction from loaded ELF entry point
+PASS: loaded ELF instruction updates CPU register
+PASS: ELF loader zero-fills BSS in RAM
+PASS: ELF segment extending beyond RAM is rejected
+PASS: rejected ELF leaves existing machine RAM untouched
+PASS: machine accepts a supplied BIOS image
+PASS: machine system bus maps BIOS at configured ROM base
+PASS: machine system bus protects BIOS ROM from writes
+PASS: BIOS test also prepares independent RAM
+PASS: loading BIOS selects the EE reset vector
+PASS: machine fetches and executes its first BIOS instruction through the reset alias
+PASS: BIOS instruction executes and advances reset-vector PC
+PASS: machine reset preserves loaded BIOS ROM
+PASS: machine reset returns to BIOS reset vector
+PASS: BIOS can be explicitly unloaded
+PASS: machine reset returns to prototype PC when no BIOS is loaded
+PASS: machine reset clears RAM
+PASS: machine reset resets scheduler
+PASS: machine reset clears hardware interrupt state
+PASS: zeroed RAM contains a supported SLL-zero instruction
+PASS: machine advances after zero instruction
+PASS: bounded-run program is loaded
+PASS: bounded-run second instruction is loaded
+PASS: bounded runner executes no more than its instruction budget
+PASS: bounded runner preserves instruction results and final PC
+PASS: bounded runner stops at requested instruction count
+PASS: bounded runner advances PC by executed instruction count
+PASS: KSEG0 ELF fixture parses
+PASS: ELF loader translates KSEG0 virtual segment into physical RAM
+PASS: KSEG0 entry point remains a virtual address
+PASS: EE fetch reads loaded instruction through KSEG0 alias
+PASS: KSEG0-loaded ELF executes its first instruction
+PASS: synthetic GIF packet stored in EE RAM
+PASS: machine reads GIF packet from EE RAM and sends it to GS renderer
+PASS: RAM-backed GIF packet draws one triangle
+<end of output>
+Test time =   3.05 sec
+----------------------------------------------------------
+Test Passed.
+"ee-machine-tests" end time: Oct 14 17:10 UTC
+"ee-machine-tests" time elapsed: 00:00:03
+----------------------------------------------------------
+
+End testing: Oct 14 17:10 UTC
