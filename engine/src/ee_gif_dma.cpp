@@ -1,5 +1,6 @@
 #include "retroshelf/ee_gif_dma.hpp"
 #include <limits>
+#include <utility>
 
 namespace retroshelf::ee {
 void EeGifDma::reset() { chcr_ = madr_ = qwc_ = tadr_ = 0; last_error_.clear(); }
