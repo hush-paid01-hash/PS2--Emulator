@@ -18,7 +18,13 @@ int main() {
     check(!bus.read32(0x101, word), "unaligned word read is rejected");
     check(!bus.write32(static_cast<std::uint32_t>(bus.ram_size() - 2), 0), "out-of-range word write is rejected");
     check(!bus.read8(static_cast<std::uint32_t>(bus.ram_size()), byte), "out-of-range byte read is rejected");
+    check(bus.write32(0x80000100U, 0xA1B2C3D4U), "cached KSEG0 RAM alias writes successfully");
+    check(bus.read32(0x00000100U, word) && word == 0xA1B2C3D4U, "cached alias maps to physical RAM");
+    check(bus.read32(0xA0000100U, word) && word == 0xA1B2C3D4U, "uncached KSEG1 alias reads same RAM");
+    std::uint8_t alias_byte = 0;
+    check(!bus.read8(0x82000000U, alias_byte), "address outside mapped 32 MiB RAM is rejected");
     bus.reset();
-    check(bus.read32(0x100, word) && word == 0, "reset clears RAM");
+    check(bus.read32(0x100, word) && word == 0, "reset clears physical RAM");
+    check(bus.read32(0x80000100U, word) && word == 0, "reset clears cached alias RAM");
     return failures == 0 ? 0 : 1;
 }
