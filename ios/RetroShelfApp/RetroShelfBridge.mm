@@ -1,5 +1,5 @@
 #import "RetroShelfBridge.h"
-#include "retroshelf/ps2_elf.hpp"
+#include "retroshelf/ee_machine.hpp"
 #include <string>
 
 extern "C" const char *rs_inspect_ps2_disc(const char *iso_path) {
@@ -8,15 +8,18 @@ extern "C" const char *rs_inspect_ps2_disc(const char *iso_path) {
         message = "No disc path was provided.";
         return message.c_str();
     }
-    const auto image = retroshelf::media::load_ps2_boot_elf_from_disc(iso_path);
-    if (!image.valid) {
-        message = "Disc/boot executable check failed: " + image.error;
+    retroshelf::ee::EeMachine machine;
+    retroshelf::media::Ps2BootInfo boot;
+    std::string error;
+    if (!machine.load_ps2_disc(iso_path, &boot, &error)) {
+        message = "Disc/ELF load failed: " + error;
         return message.c_str();
     }
-    message = "PS2 boot ELF recognized. Entry point: 0x";
+    message = "ELF segments loaded into prototype EE RAM. Entry point: 0x";
     constexpr char hex[] = "0123456789ABCDEF";
+    const auto entry = static_cast<std::uint32_t>(machine.cpu().pc());
     for (int shift = 28; shift >= 0; shift -= 4)
-        message.push_back(hex[(image.entry_point >> shift) & 0xFU]);
-    message += ". Executable parsed; CPU boot and graphics are not implemented.";
+        message.push_back(hex[(entry >> shift) & 0xFU]);
+    message += ". Full PS2 boot, BIOS execution, accurate hardware, and graphics are not implemented.";
     return message.c_str();
 }
