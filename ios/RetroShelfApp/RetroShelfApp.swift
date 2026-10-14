@@ -86,9 +86,27 @@ struct ConsoleHomeView: View {
     private func handle(_ result: Result<[URL], Error>, assign: (URL) -> Void, label: String) {
         switch result {
         case .success(let urls):
-            guard let url = urls.first else { return }
-            assign(url)
-            message = "Selected \(label): \(url.lastPathComponent). Selection works; emulation and file validation are not implemented yet."
+            guard let sourceURL = urls.first else { return }
+            let hasScopedAccess = sourceURL.startAccessingSecurityScopedResource()
+            defer {
+                if hasScopedAccess { sourceURL.stopAccessingSecurityScopedResource() }
+            }
+            do {
+                let supportURL = try FileManager.default.url(
+                    for: .applicationSupportDirectory,
+                    in: .userDomainMask,
+                    appropriateFor: nil,
+                    create: true
+                )
+                let importDirectory = supportURL.appendingPathComponent("ImportedFiles", isDirectory: true)
+                try FileManager.default.createDirectory(at: importDirectory, withIntermediateDirectories: true)
+                let destinationURL = importDirectory.appendingPathComponent("\(UUID().uuidString)-\(sourceURL.lastPathComponent)")
+                try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+                assign(destinationURL)
+                message = "Copied \(label) into app storage: \(sourceURL.lastPathComponent). File loading and emulation are not implemented yet."
+            } catch {
+                message = "Could not import \(label): \(error.localizedDescription)"
+            }
         case .failure(let error):
             message = "Could not select \(label): \(error.localizedDescription)"
         }
