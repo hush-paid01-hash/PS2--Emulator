@@ -36,6 +36,8 @@ This is **not yet a complete PlayStation 2 emulator** and cannot boot or play ga
 
 The GIF DMA model accepts EE RAM and a payload callback; it is not yet connected to a
 machine bus, GIF path arbitration, GS packet processing, or an interrupt controller.
+CHCR.DIR must be clear for the supported EE-RAM-to-GIF direction; GIF-to-RAM transfers
+are unsupported.
 It models main-RAM chain tags and the two-entry CALL/RET stack, but not scratchpad
 transfers, tag transfer-enable (TTE), REFS cache-snooping behavior, cycle timing,
 or hardware arbitration. Chain processing is bounded to 65,536 tags and 64 MiB

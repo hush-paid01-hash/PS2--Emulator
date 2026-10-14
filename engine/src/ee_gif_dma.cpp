@@ -106,7 +106,7 @@ bool EeGifDma::start() {
         return fail("GIF DMA address stack pointer is invalid");
     }
 
-    if ((registers.chcr & DirectionBit) == 0U) {
+    if ((registers.chcr & DirectionBit) != 0U) {
         return fail("GIF DMA direction must be EE RAM to GIF");
     }
 
