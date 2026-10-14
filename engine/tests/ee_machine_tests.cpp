@@ -93,13 +93,18 @@ int main() {
     check(!machine.system_bus().write32(retroshelf::ee::EeSystemBus::BiosBase, 0),
           "machine system bus protects BIOS ROM from writes");
     check(machine.load_word(0, addiu_t0_7), "BIOS test also prepares independent RAM");
-    check(machine.cpu().pc() == 0, "loading BIOS does not pretend to complete a console boot");
+    check(machine.cpu().pc() == 0xBFC00000U, "loading BIOS selects the EE reset vector");
+    check(machine.step(&error), "machine fetches and executes its first BIOS instruction through the reset alias");
+    check(machine.cpu().gpr(8).lo == 7 && machine.cpu().pc() == 0xBFC00004U,
+          "BIOS instruction executes and advances reset-vector PC");
     machine.reset();
     check(machine.bios_loaded(), "machine reset preserves loaded BIOS ROM");
+    check(machine.cpu().pc() == 0xBFC00000U, "machine reset returns to BIOS reset vector");
     machine.system_bus().clear_bios();
     check(!machine.bios_loaded(), "BIOS can be explicitly unloaded");
+    machine.reset();
     word = 1;
-    check(machine.cpu().pc() == 0, "machine reset resets PC");
+    check(machine.cpu().pc() == 0, "machine reset returns to prototype PC when no BIOS is loaded");
     check(machine.bus().read32(0, word) && word == 0, "machine reset clears RAM");
     check(machine.scheduler().now() == 0, "machine reset resets scheduler");
     check(machine.hardware().interrupts().pending() == 0, "machine reset clears hardware interrupt state");
