@@ -24,6 +24,7 @@ int main() {
     assert(memory.read(0x00100000U, 4, value, &error) && value == 0x24080007U);
     assert(memory.read(0xA0100000U, 4, value, &error) && value == 0x24080007U);
 
+    assert(memory.write(0x00100008U, 4, 0xDEADBEEFU, &error));
     image.load_segments[0].memory_size = 12;
     assert(retroshelf::load_elf32_into_ee_memory(image, memory, entry, &error));
     assert(memory.read(0x00100008U, 4, value, &error) && value == 0);
