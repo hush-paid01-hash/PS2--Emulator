@@ -1,6 +1,7 @@
 #include "retroshelf/ps2_boot_image.hpp"
 #include "retroshelf/elf_ram_loader.hpp"
 #include "retroshelf/cpu.hpp"
+#include "retroshelf/ps2_ee_memory_map.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -118,6 +119,29 @@ int main() {
     assert(cpu.step_from_ram(ram, 0, &error));
     assert(cpu.reg(9) == 5);
     assert(cpu.pc() == entry + 8);
+
+    // Exercise the complete synthetic disc -> ELF -> mapped EE RAM -> CPU path.
+    auto mapped_image = image;
+    mapped_image.entry_point = 0x80100000U;
+    mapped_image.load_segments[0].virtual_address = 0x80100000U;
+    retroshelf::Ps2EeMemoryMap ee_memory(2U * 1024U * 1024U);
+    std::uint32_t mapped_entry = 0;
+    assert(retroshelf::load_elf32_into_ee_memory(mapped_image, ee_memory,
+                                                 mapped_entry, &error));
+    assert(mapped_entry == 0x80100000U);
+    std::uint64_t mapped_word = 0;
+    assert(ee_memory.read(0x00100000U, 4, mapped_word, &error));
+    assert(mapped_word == 0x24080007U);
+    assert(ee_memory.read(0xA0100000U, 4, mapped_word, &error));
+    assert(mapped_word == 0x24080007U);
+    retroshelf::Cpu mapped_cpu;
+    mapped_cpu.set_pc(mapped_entry);
+    assert(mapped_cpu.step_from_ram(ee_memory.main_ram(), 0x80000000U, &error));
+    assert(mapped_cpu.reg(8) == 7);
+    assert(mapped_cpu.pc() == mapped_entry + 4);
+    assert(mapped_cpu.step_from_ram(ee_memory.main_ram(), 0x80000000U, &error));
+    assert(mapped_cpu.reg(9) == 5);
+    assert(mapped_cpu.pc() == mapped_entry + 8);
     std::filesystem::remove(disc_path);
 
     retroshelf::Iso9660Disc unopened;
