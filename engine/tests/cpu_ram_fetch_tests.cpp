@@ -43,5 +43,17 @@ int main() {
     cpu.set_pc(0);
     assert(!cpu.step_from_ram(ram, 4, &error));
     assert(cpu.pc() == 0);
+
+    cpu.set_pc(2);
+    assert(!cpu.step_from_ram(ram, 0, &error));
+    assert(cpu.pc() == 2);
+    assert(!error.empty());
+
+    cpu.set_pc(0);
+    const std::vector<std::uint8_t> short_ram(3, 0);
+    assert(!cpu.step_from_ram(short_ram, 0, &error));
+    assert(cpu.pc() == 0);
+    assert(!error.empty());
+
     std::cout << "CPU RAM fetch tests passed\n";
 }
