@@ -155,6 +155,10 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return false;
         };
         if (active_ee_memory_ != nullptr) {
+            // The current EE memory-map API accepts 32-bit guest addresses. Never
+            // truncate a wider effective address into a different mapped location.
+            if (address > 0xFFFFFFFFULL)
+                return fault("EE RAM effective address exceeds 32-bit address space");
             std::uint64_t value = 0;
             if (store) {
                 if (!active_ee_memory_->write(static_cast<std::uint32_t>(address), width, reg(rt), nullptr))
@@ -238,6 +242,12 @@ bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
 bool Cpu::step_from_ee_memory(Ps2EeMemoryMap& memory, std::string* error) {
     if ((pc_ & 3U) != 0U) {
         if (error) *error = "Unaligned instruction fetch";
+        return false;
+    }
+    // The EE map translates 32-bit virtual addresses. Reject high bits rather
+    // than silently fetching from the address produced by truncation.
+    if (pc_ > 0xFFFFFFFFULL) {
+        if (error) *error = "Instruction fetch exceeds 32-bit EE address space";
         return false;
     }
     std::uint64_t fetched = 0;
