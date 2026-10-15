@@ -2,7 +2,8 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <limits>\n#include <utility>
+#include <limits>
+#include <utility>
 
 namespace retroshelf {
 namespace {
