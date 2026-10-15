@@ -237,5 +237,25 @@ int main() {
     check(cpu.step(itype(0x25, 11, 13, 0)) && cpu.reg(13) == 0x1234,
           "LHU reads halfword stored by SH");
 
+    // 32-bit unsigned word and full 64-bit doubleword memory operations.
+    cpu.reset(); cpu.set_reg(11, 64); cpu.set_reg(12, 0xFFFFFFFF80000001ULL);
+    check(cpu.step(itype(0x2B, 11, 12, 0)), "SW stores low 32 bits of a 64-bit register");
+    check(cpu.step(itype(0x27, 11, 13, 0)) && cpu.reg(13) == 0x80000001ULL,
+          "LWU zero-extends a word");
+    check(cpu.step(itype(0x23, 11, 14, 0)) && cpu.reg(14) == 0xFFFFFFFF80000001ULL,
+          "LW sign-extends the same word");
+
+    cpu.reset(); cpu.set_reg(11, 72); cpu.set_reg(12, 0xFEDCBA9876543210ULL);
+    check(cpu.step(itype(0x3F, 11, 12, 0)), "SD stores a full 64-bit doubleword");
+    check(cpu.step(itype(0x37, 11, 13, 0)) && cpu.reg(13) == 0xFEDCBA9876543210ULL,
+          "LD restores all 64 bits");
+    cpu.set_reg(11, 76); error.clear();
+    check(!cpu.step(itype(0x37, 11, 14, 0), &error) && !error.empty(),
+          "misaligned LD faults");
+    cpu.reset(); cpu.set_reg(11, Cpu::TestMemorySize - 4); cpu.set_reg(12, 0x1122334455667788ULL);
+    error.clear();
+    check(!cpu.step(itype(0x3F, 11, 12, 0), &error) && !error.empty(),
+          "out-of-range SD faults without writing past test RAM");
+
     return failures == 0 ? 0 : 1;
 }

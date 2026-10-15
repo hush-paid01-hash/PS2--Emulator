@@ -139,11 +139,12 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x0F: // LUI
         set_reg(rt, static_cast<std::uint64_t>(instruction & 0xFFFFU) << 16U);
         return true;
-    case 0x20: case 0x21: case 0x23: case 0x24: case 0x25:
-    case 0x28: case 0x29: case 0x2B: { // LB/LH/LW/LBU/LHU/SB/SH/SW
-        const bool store = opcode == 0x28 || opcode == 0x29 || opcode == 0x2B;
+    case 0x20: case 0x21: case 0x23: case 0x24: case 0x25: case 0x27:
+    case 0x28: case 0x29: case 0x2B: case 0x37: case 0x3F: { // LB/LH/LW/LBU/LHU/LWU/SB/SH/SW/LD/SD
+        const bool store = opcode == 0x28 || opcode == 0x29 || opcode == 0x2B || opcode == 0x3F;
         const std::size_t width = (opcode == 0x20 || opcode == 0x24 || opcode == 0x28) ? 1U :
-                                  (opcode == 0x21 || opcode == 0x25 || opcode == 0x29) ? 2U : 4U;
+                                  (opcode == 0x21 || opcode == 0x25 || opcode == 0x29) ? 2U :
+                                  (opcode == 0x37 || opcode == 0x3F) ? 8U : 4U;
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
         std::uint8_t* bytes = nullptr;
         std::size_t offset = 0;
@@ -168,17 +169,17 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
 
         if (store) {
-            const std::uint32_t value = static_cast<std::uint32_t>(reg(rt));
+            const std::uint64_t value = reg(rt);
             for (std::size_t i = 0; i < width; ++i)
                 bytes[offset + i] = static_cast<std::uint8_t>((value >> (8U * i)) & 0xFFU);
         } else {
-            std::uint32_t value = 0;
+            std::uint64_t value = 0;
             for (std::size_t i = 0; i < width; ++i)
-                value |= static_cast<std::uint32_t>(bytes[offset + i]) << (8U * i);
+                value |= static_cast<std::uint64_t>(bytes[offset + i]) << (8U * i);
             if (opcode == 0x20) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int8_t>(value))));
             else if (opcode == 0x21) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int16_t>(value))));
-            else if (opcode == 0x23) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int32_t>(value)));
-            else set_reg(rt, value); // unsigned byte/halfword loads zero-extend
+            else if (opcode == 0x23) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
+            else set_reg(rt, value); // LBU/LHU/LWU zero-extend; LD preserves all 64 bits
         }
         return true;
     }
