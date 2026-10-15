@@ -57,3 +57,10 @@ add_executable(gs-framebuffer-tests tests/gs_framebuffer_tests.cpp src/gs_frameb
 target_include_directories(gs-framebuffer-tests PRIVATE include)
 target_compile_options(gs-framebuffer-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-framebuffer-tests COMMAND gs-framebuffer-tests)
+
+add_executable(gif-to-gs-pipeline-tests tests/gif_to_gs_pipeline_tests.cpp
+    src/gif_to_gs_pipeline.cpp src/gs_packet_processor.cpp src/gs_command_processor.cpp
+    src/gs_register_decoder.cpp src/gs_register_state.cpp src/gs_framebuffer.cpp)
+target_include_directories(gif-to-gs-pipeline-tests PRIVATE include)
+target_compile_options(gif-to-gs-pipeline-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gif-to-gs-pipeline-tests COMMAND gif-to-gs-pipeline-tests)
