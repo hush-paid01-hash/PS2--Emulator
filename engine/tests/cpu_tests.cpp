@@ -47,5 +47,112 @@ int main() {
     error.clear();
     check(!cpu.step(0xFFFFFFFFU, &error), "unsupported instruction is rejected");
     check(!error.empty(), "unsupported instruction explains why");
+
+    using retroshelf::Cpu;
+    const auto itype = [](std::uint32_t op, std::uint32_t rs, std::uint32_t rt, std::int16_t imm) {
+        return (op << 26U) | (rs << 21U) | (rt << 16U) | static_cast<std::uint16_t>(imm);
+    };
+    const std::uint32_t nop = 0;
+    const std::uint32_t set1 = itype(0x09, 0, 20, 1); // ADDIU r20,r0,1 (delay-slot marker)
+    const std::uint32_t bad_lw = itype(0x23, 0, 21, 3); // misaligned LW -> AdEL
+
+    // BEQ taken: delay slot runs, then target.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
+    check(cpu.step(itype(0x04, 1, 2, 3)), "BEQ taken executes");
+    check(cpu.in_delay_slot() && cpu.pc() == 0x104, "BEQ leaves PC at delay slot");
+    check(cpu.step(set1) && cpu.reg(20) == 1, "delay slot instruction executes");
+    check(cpu.pc() == 0x104 + 12 && !cpu.in_delay_slot(), "BEQ taken goes to PC+4+offset*4");
+
+    // BEQ not taken: delay slot still runs, falls through.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 6);
+    cpu.step(itype(0x04, 1, 2, 3)); cpu.step(set1);
+    check(cpu.reg(20) == 1 && cpu.pc() == 0x108, "BEQ not taken falls through after delay slot");
+
+    // BNE taken backward.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 1);
+    cpu.step(itype(0x05, 1, 0, -2)); cpu.step(nop);
+    check(cpu.pc() == 0x104 - 8, "BNE taken with negative offset");
+
+    // BNE untaken.
+    cpu.reset(); cpu.set_pc(0x100);
+    cpu.step(itype(0x05, 0, 0, 5)); cpu.step(nop);
+    check(cpu.pc() == 0x108, "BNE not taken falls through");
+
+    // BLEZ / BGTZ / BLTZ / BGEZ
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 0);
+    cpu.step(itype(0x06, 1, 0, 4)); cpu.step(nop);
+    check(cpu.pc() == 0x104 + 16, "BLEZ taken on zero");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 0);
+    cpu.step(itype(0x07, 1, 0, 4)); cpu.step(nop);
+    check(cpu.pc() == 0x108, "BGTZ not taken on zero");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, static_cast<std::uint64_t>(-1));
+    cpu.step(itype(0x01, 1, 0, 4)); cpu.step(nop);
+    check(cpu.pc() == 0x104 + 16, "BLTZ taken on negative");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, static_cast<std::uint64_t>(-1));
+    cpu.step(itype(0x01, 1, 1, 4)); cpu.step(nop);
+    check(cpu.pc() == 0x108, "BGEZ not taken on negative");
+
+    // BGEZAL links even when untaken; BLTZAL taken links to PC+8.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, static_cast<std::uint64_t>(-1));
+    cpu.step(itype(0x01, 1, 0x11, 4)); cpu.step(nop);
+    check(cpu.reg(31) == 0x108 && cpu.pc() == 0x108, "BGEZAL untaken still writes link");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, static_cast<std::uint64_t>(-1));
+    cpu.step(itype(0x01, 1, 0x10, 4)); cpu.step(nop);
+    check(cpu.reg(31) == 0x108 && cpu.pc() == 0x104 + 16, "BLTZAL taken links and branches");
+
+    // J / JAL
+    cpu.reset(); cpu.set_pc(0x100);
+    cpu.step((0x02U << 26U) | (0x40U)); cpu.step(set1);
+    check(cpu.reg(20) == 1 && cpu.pc() == 0x100, "J jumps to 26-bit target << 2 after delay slot");
+    cpu.reset(); cpu.set_pc(0x200);
+    cpu.step((0x03U << 26U) | 0x10U); cpu.step(nop);
+    check(cpu.reg(31) == 0x208 && cpu.pc() == 0x40, "JAL links PC+8 and jumps");
+
+    // JR / JALR
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(5, 0x300);
+    cpu.step((5U << 21U) | 0x08U); cpu.step(set1);
+    check(cpu.reg(20) == 1 && cpu.pc() == 0x300, "JR jumps to register after delay slot");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(5, 0x300);
+    cpu.step((5U << 21U) | (6U << 11U) | 0x09U); cpu.step(nop);
+    check(cpu.reg(6) == 0x108 && cpu.pc() == 0x300, "JALR links PC+8 and jumps");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(5, 0x300);
+    cpu.step((5U << 21U) | (5U << 11U) | 0x09U); cpu.step(nop);
+    check(cpu.pc() == 0x300 && cpu.reg(5) == 0x108, "JALR with rd==rs uses old target");
+
+    // Branch inside a delay slot is rejected, not silently mis-executed.
+    cpu.reset(); cpu.set_pc(0x100);
+    cpu.step(itype(0x04, 0, 0, 3));
+    error.clear();
+    check(!cpu.step(itype(0x04, 0, 0, 3), &error) && !error.empty(), "branch in delay slot is rejected");
+
+    // Exceptions: normal instruction sets BD=0, EPC=instruction.
+    cpu.reset(); cpu.set_pc(0x100);
+    check(!cpu.step(bad_lw, &error), "faulting LW reports failure");
+    check(cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) == 0, "non-delay-slot fault: EPC=PC, BD=0");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad, "AdEL exception code");
+    check(cpu.pc() == Cpu::GeneralExceptionVector && (cpu.cop0_status() & Cpu::StatusExl) != 0, "exception vectors and sets EXL");
+
+    // Fault in a taken-branch delay slot: EPC = branch address, BD=1, branch cancelled.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
+    cpu.step(itype(0x04, 1, 2, 3));
+    check(!cpu.step(bad_lw, &error), "fault in delay slot reports failure");
+    check(cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0, "delay-slot fault: EPC=branch, BD=1");
+    check(cpu.pc() == Cpu::GeneralExceptionVector && !cpu.in_delay_slot(), "delay-slot fault discards pending branch");
+
+    // Fault in an untaken-branch delay slot, and in a JR delay slot (store, AdES).
+    cpu.reset(); cpu.set_pc(0x200); cpu.set_reg(1, 1);
+    cpu.step(itype(0x04, 1, 0, 3));
+    cpu.step(0xFFFFFFFFU, &error);
+    check(cpu.cop0_epc() == 0x200 && (cpu.cop0_cause() & Cpu::CauseBd) != 0 &&
+          ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcReservedInstruction, "RI in untaken-branch delay slot sets BD");
+    cpu.reset(); cpu.set_pc(0x300); cpu.set_reg(5, 0x400); cpu.set_reg(6, 3);
+    cpu.step((5U << 21U) | 0x08U);
+    cpu.step(itype(0x2B, 6, 0, 0));
+    check(cpu.cop0_epc() == 0x300 && (cpu.cop0_cause() & Cpu::CauseBd) != 0 &&
+          ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorStore, "AdES in JR delay slot sets BD, EPC=JR");
+
+    // Delay-slot fault followed by an ordinary instruction: handler instruction runs normally.
+    cpu.reset(); cpu.set_pc(0x100); cpu.step(bad_lw);
+    check(cpu.step(set1) && cpu.reg(20) == 1 && cpu.pc() == Cpu::GeneralExceptionVector + 4, "execution continues at exception vector");
     return failures == 0 ? 0 : 1;
 }
