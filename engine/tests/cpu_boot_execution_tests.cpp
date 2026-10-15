@@ -293,5 +293,35 @@ int main() {
     assert(cop0_cpu.pc() == 0xFFFFFFFF8000C000ULL);
     assert((cop0_cpu.cop0_status() & retroshelf::Cpu::StatusExl) == 0U);
 
+    // LWL/LWR/SWL/SWR merge each byte lane in little-endian order.
+    const std::uint32_t merge_base = 0x00000100U;
+    const std::uint32_t merge_pc = 0x8000C100U;
+    const std::uint32_t lwl_expected[] = {0x11BBCCDDU, 0x2211CCDDU, 0x332211DDU, 0x44332211U};
+    const std::uint32_t lwr_expected[] = {0x44332211U, 0xAA443322U, 0xAABB4433U, 0xAABBCC44U};
+    const std::uint32_t swl_expected[] = {0x443322AAU, 0x4433BBAAU, 0x44CCBBAAU, 0xAABBCCDDU};
+    const std::uint32_t swr_expected[] = {0xAABBCCDDU, 0xBBCCDD11U, 0xBBCC2211U, 0xDD332211U};
+    const std::uint32_t merge_opcodes[] = {0x22U, 0x26U, 0x2AU, 0x2EU};
+    const std::uint32_t* merge_expected[] = {lwl_expected, lwr_expected, swl_expected, swr_expected};
+    for (unsigned op = 0; op < 4; ++op) {
+        for (unsigned lane = 0; lane < 4; ++lane) {
+            const std::uint32_t test_pc = merge_pc + op * 0x40U + lane * 4U;
+            assert(ee.write(merge_base, 4, 0x44332211U, &error));
+            assert(ee.write(test_pc, 4, (merge_opcodes[op] << 26U) | (16U << 21U) | (8U << 16U) | lane, &error));
+            retroshelf::Cpu merge_cpu;
+            merge_cpu.set_pc(test_pc);
+            merge_cpu.set_reg(16, merge_base);
+            merge_cpu.set_reg(8, 0xAABBCCDDU);
+            assert(merge_cpu.step_from_ee_memory(ee, &error));
+            std::uint64_t merged = 0;
+            assert(ee.read(merge_base, 4, merged, &error));
+            if (op < 2) {
+                assert(static_cast<std::uint32_t>(merge_cpu.reg(8)) == merge_expected[op][lane]);
+                assert(merged == 0x44332211U); // loads never modify memory
+            } else {
+                assert(merged == merge_expected[op][lane]);
+            }
+        }
+    }
+
     std::cout << "CPU boot execution tests passed\\n";
 }
