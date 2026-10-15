@@ -323,5 +323,46 @@ int main() {
         }
     }
 
+
+    // Signed ADD, SUB, and ADDI trap on 32-bit overflow; unsigned variants do not.
+    retroshelf::Cpu add_overflow_cpu;
+    add_overflow_cpu.set_pc(0x8000E000U);
+    add_overflow_cpu.set_reg(8, 0x7FFFFFFFU);
+    add_overflow_cpu.set_reg(9, 1U);
+    assert(!add_overflow_cpu.step((8U << 21U) | (9U << 16U) | (10U << 11U) | 0x20U, &error)); // ADD t2,t0,t1
+    assert((add_overflow_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcOverflow << 2U));
+    assert(add_overflow_cpu.cop0_epc() == 0x8000E000U);
+    assert((add_overflow_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+    assert(add_overflow_cpu.reg(10) == 0U); // destination is unchanged on overflow
+
+    retroshelf::Cpu sub_overflow_cpu;
+    sub_overflow_cpu.set_pc(0x8000E100U);
+    sub_overflow_cpu.set_reg(8, 0x80000000U);
+    sub_overflow_cpu.set_reg(9, 1U);
+    assert(!sub_overflow_cpu.step((8U << 21U) | (9U << 16U) | (10U << 11U) | 0x22U, &error)); // SUB t2,t0,t1
+    assert((sub_overflow_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcOverflow << 2U));
+    assert(sub_overflow_cpu.cop0_epc() == 0x8000E100U);
+    assert(sub_overflow_cpu.reg(10) == 0U);
+
+    retroshelf::Cpu addi_overflow_cpu;
+    addi_overflow_cpu.set_pc(0x8000E200U);
+    addi_overflow_cpu.set_reg(8, 0x7FFFFFFFU);
+    assert(!addi_overflow_cpu.step((0x08U << 26U) | (8U << 21U) | (9U << 16U) | 1U, &error)); // ADDI t1,t0,1
+    assert((addi_overflow_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcOverflow << 2U));
+    assert(addi_overflow_cpu.cop0_epc() == 0x8000E200U);
+    assert(addi_overflow_cpu.reg(9) == 0U);
+
+    retroshelf::Cpu nonoverflow_cpu;
+    nonoverflow_cpu.set_pc(0x8000E300U);
+    nonoverflow_cpu.set_reg(8, 0x7FFFFFFFU);
+    nonoverflow_cpu.set_reg(9, 1U);
+    assert(nonoverflow_cpu.step((8U << 21U) | (9U << 16U) | (10U << 11U) | 0x21U, &error)); // ADDU wraps
+    assert(nonoverflow_cpu.reg(10) == 0xFFFFFFFF80000000ULL);
+    assert(nonoverflow_cpu.step((0x09U << 26U) | (8U << 21U) | (11U << 16U) | 1U, &error)); // ADDIU wraps
+    assert(nonoverflow_cpu.reg(11) == 0x80000000ULL);
+
     std::cout << "CPU boot execution tests passed\\n";
 }
