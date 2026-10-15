@@ -18,7 +18,7 @@ public:
     Cpu();
     void reset();
     bool step(std::uint32_t instruction, std::string* error = nullptr);
-    bool step_from_ram(const std::vector<std::uint8_t>& ram,
+    bool step_from_ram(std::vector<std::uint8_t>& ram,
                        std::uint32_t ram_base,
                        std::string* error = nullptr);
 
@@ -46,6 +46,8 @@ private:
     std::array<std::uint64_t, RegisterCount> gpr_{};
     std::array<std::uint8_t, TestMemorySize> memory_{};
     void raise_exception(std::uint32_t code, std::uint64_t fault_pc, bool in_delay_slot);
+    std::vector<std::uint8_t>* active_ram_{nullptr};
+    std::uint32_t active_ram_base_{0};
 
     std::uint64_t pc_{0};
     std::uint64_t next_pc_{4};
