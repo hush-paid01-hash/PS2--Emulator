@@ -9,7 +9,7 @@ add_executable(retroshelf-engine src/main.cpp src/cpu.cpp src/system_bus.cpp
     src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_register_decoder.cpp
     src/gs_register_state.cpp src/iso9660_disc.cpp src/ps2_boot_config.cpp
     src/ps2_disc_boot_loader.cpp src/elf32_mips.cpp src/ps2_boot_image.cpp
-    src/elf_memory_staging.cpp)
+    src/elf_memory_staging.cpp src/elf_ram_loader.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -81,3 +81,9 @@ add_executable(elf-memory-staging-tests tests/elf_memory_staging_tests.cpp
 target_include_directories(elf-memory-staging-tests PRIVATE include)
 target_compile_options(elf-memory-staging-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME elf-memory-staging-tests COMMAND elf-memory-staging-tests)
+
+add_executable(elf-ram-loader-tests tests/elf_ram_loader_tests.cpp
+    src/elf_memory_staging.cpp src/elf_ram_loader.cpp)
+target_include_directories(elf-ram-loader-tests PRIVATE include)
+target_compile_options(elf-ram-loader-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME elf-ram-loader-tests COMMAND elf-ram-loader-tests)
