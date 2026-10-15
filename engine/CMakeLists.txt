@@ -9,7 +9,7 @@ add_executable(retroshelf-engine src/main.cpp src/cpu.cpp src/system_bus.cpp
     src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_register_decoder.cpp
     src/gs_register_state.cpp src/iso9660_disc.cpp src/ps2_boot_config.cpp
     src/ps2_disc_boot_loader.cpp src/elf32_mips.cpp src/ps2_boot_image.cpp
-    src/elf_memory_staging.cpp src/elf_ram_loader.cpp)
+    src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -99,3 +99,8 @@ add_executable(cpu-boot-execution-tests tests/cpu_boot_execution_tests.cpp
 target_include_directories(cpu-boot-execution-tests PRIVATE include)
 target_compile_options(cpu-boot-execution-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-boot-execution-tests COMMAND cpu-boot-execution-tests)
+
+add_executable(ps2-ee-memory-map-tests tests/ps2_ee_memory_map_tests.cpp src/ps2_ee_memory_map.cpp)
+target_include_directories(ps2-ee-memory-map-tests PRIVATE include)
+target_compile_options(ps2-ee-memory-map-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ps2-ee-memory-map-tests COMMAND ps2-ee-memory-map-tests)
