@@ -72,4 +72,32 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     }
     return false;
 }
+
+bool Cpu::step_from_ram(const std::vector<std::uint8_t>& ram,
+                        std::uint32_t ram_base,
+                        std::string* error) {
+    if ((pc_ & 3U) != 0U) {
+        if (error) *error = "Unaligned instruction fetch";
+        return false;
+    }
+    if (pc_ < ram_base) {
+        if (error) *error = "Instruction fetch is outside RAM";
+        return false;
+    }
+
+    const auto offset = pc_ - ram_base;
+    if (offset > ram.size() || ram.size() - static_cast<std::size_t>(offset) < sizeof(std::uint32_t)) {
+        if (error) *error = "Instruction fetch is outside RAM";
+        return false;
+    }
+
+    const auto index = static_cast<std::size_t>(offset);
+    const std::uint32_t instruction =
+        static_cast<std::uint32_t>(ram[index]) |
+        (static_cast<std::uint32_t>(ram[index + 1]) << 8U) |
+        (static_cast<std::uint32_t>(ram[index + 2]) << 16U) |
+        (static_cast<std::uint32_t>(ram[index + 3]) << 24U);
+    if (error) error->clear();
+    return step(instruction, error);
+}
 } // namespace retroshelf
