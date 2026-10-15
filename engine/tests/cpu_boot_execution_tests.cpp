@@ -261,5 +261,23 @@ int main() {
     assert(div_zero_cpu.lo() == 0xFFFFFFFFFFFFFFFFULL);
     assert(div_zero_cpu.hi() == 7U);
 
-    std::cout << "CPU boot execution tests passed\n";
+    // MTHI/MTLO move general registers into the special HI/LO registers.
+    retroshelf::Cpu move_hilo_cpu;
+    move_hilo_cpu.set_pc(0x8000B500U);
+    move_hilo_cpu.set_reg(8, 0x12345678ABCDEF01ULL);
+    move_hilo_cpu.set_reg(9, 0xFEDCBA9876543210ULL);
+    assert(ee.write(0x8000B500U, 4, (8U << 21U) | 0x11U, &error)); // MTHI t0
+    assert(ee.write(0x8000B504U, 4, (9U << 21U) | 0x13U, &error)); // MTLO t1
+    assert(ee.write(0x8000B508U, 4, (10U << 11U) | 0x10U, &error)); // MFHI t2
+    assert(ee.write(0x8000B50CU, 4, (11U << 11U) | 0x12U, &error)); // MFLO t3
+    assert(move_hilo_cpu.step_from_ee_memory(ee, &error));
+    assert(move_hilo_cpu.hi() == 0x12345678ABCDEF01ULL);
+    assert(move_hilo_cpu.step_from_ee_memory(ee, &error));
+    assert(move_hilo_cpu.lo() == 0xFEDCBA9876543210ULL);
+    assert(move_hilo_cpu.step_from_ee_memory(ee, &error));
+    assert(move_hilo_cpu.reg(10) == 0x12345678ABCDEF01ULL);
+    assert(move_hilo_cpu.step_from_ee_memory(ee, &error));
+    assert(move_hilo_cpu.reg(11) == 0xFEDCBA9876543210ULL);
+
+    std::cout << "CPU boot execution tests passed\\n";
 }

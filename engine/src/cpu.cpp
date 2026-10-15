@@ -85,7 +85,9 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x00:
         switch (funct) {
         case 0x10: set_reg(rd, hi_); return true; // MFHI
+        case 0x11: hi_ = reg(rs); return true; // MTHI
         case 0x12: set_reg(rd, lo_); return true; // MFLO
+        case 0x13: lo_ = reg(rs); return true; // MTLO
         case 0x18: { // MULT: signed 32-bit product into HI:LO
             const auto product = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs))) *
                                  static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)));
