@@ -61,5 +61,23 @@ int main() {
     assert(stored == 7);
     assert(mapped_cpu.step_from_ee_memory(ee, &error));
     assert(mapped_cpu.reg(9) == 7);
+
+    // Reject addresses that would otherwise be truncated to a valid 32-bit
+    // EE address by the current memory-map interface.
+    retroshelf::Cpu high_pc_cpu;
+    high_pc_cpu.set_pc(0x180001000ULL);
+    assert(!high_pc_cpu.step_from_ee_memory(ee, &error));
+    assert(error.find("32-bit EE address space") != std::string::npos);
+
+    retroshelf::Cpu high_data_cpu;
+    high_data_cpu.set_pc(0x80001000U);
+    high_data_cpu.set_reg(16, 0x100000000ULL);
+    assert(ee.write(0x80001000U, 4,
+                    (0x2BU << 26U) | (16U << 21U) | (8U << 16U), &error)); // SW t0,0(s0)
+    assert(!high_data_cpu.step_from_ee_memory(ee, &error));
+    assert(error.find("32-bit address space") != std::string::npos);
+    assert(ee.read(0x00000000U, 4, stored, &error));
+    assert(stored == 0U); // rejected store must not corrupt physical address zero
+
     std::cout << "CPU boot execution tests passed\n";
 }
