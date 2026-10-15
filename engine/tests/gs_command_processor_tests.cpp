@@ -14,18 +14,20 @@ std::uint64_t packed_tag(std::uint16_t loops, bool eop, std::uint8_t nreg) {
            (static_cast<std::uint64_t>(eop) << 15U) |
            (static_cast<std::uint64_t>(nreg) << 60U);
 }
+std::uint64_t xyz(std::uint16_t x, std::uint16_t y) {
+    return static_cast<std::uint64_t>(x) | (static_cast<std::uint64_t>(y) << 16U);
+}
 }
 
 int main() {
     int failures = 0;
     const auto check = [&failures](bool ok, const char* name) {
-        if (!ok) { std::cerr << "FAIL: " << name << '\n'; ++failures; }
-        else std::cout << "PASS: " << name << '\n';
+        if (!ok) { std::cerr << "FAIL: " << name << '\\n'; ++failures; }
+        else std::cout << "PASS: " << name << '\\n';
     };
 
-    retroshelf::GsCommandProcessor gs;
+    retroshelf::GsCommandProcessor gs(8, 8);
     std::vector<std::uint8_t> packet;
-    // PACKED tag: one loop, two register descriptors: address 1 then address 2.
     append_qword(packet, packed_tag(1, true, 2), 0x21ULL);
     append_qword(packet, 0x1122334455667788ULL);
     append_qword(packet, 0x8877665544332211ULL);
@@ -46,8 +48,27 @@ int main() {
           "invalid packet does not partially apply writes");
     check(gs.packets_processed() == 1 && gs.writes_processed() == 2,
           "failed packet does not increment successful counters");
+
+    // First tag writes PRIM, RGBAQ, and the first XYZ2 vertex. A second
+    // tag streams the remaining two XYZ2 vertices to complete the triangle.
+    std::vector<std::uint8_t> triangle;
+    append_qword(triangle, packed_tag(1, false, 3), 0x510U);
+    append_qword(triangle, 3U);              // PRIM: triangle list
+    append_qword(triangle, 0xFF0000FFU);     // RGBAQ: opaque red
+    append_qword(triangle, xyz(16, 16));     // (1,1)
+    append_qword(triangle, packed_tag(2, true, 1), 0x5U);
+    append_qword(triangle, xyz(96, 16));     // (6,1)
+    append_qword(triangle, xyz(16, 96));     // (1,6)
+    check(gs.submit_packed_packet(triangle), "packed GS primitive commands are accepted");
+    retroshelf::GsFramebuffer::Pixel pixel{};
+    check(gs.framebuffer().get_pixel(2, 2, pixel) &&
+          pixel == retroshelf::GsFramebuffer::Pixel{255, 0, 0, 255},
+          "GS PRIM/RGBAQ/XYZ2 commands draw a colored triangle");
+    check(gs.triangles_rendered() == 1, "rendered triangle counter increments");
+
     gs.reset();
     check(gs.state().read(1, value) && value == 0 && gs.packets_processed() == 0,
           "reset clears GS state and counters");
+    check(gs.triangles_rendered() == 0, "reset clears rendered triangle counter");
     return failures == 0 ? 0 : 1;
 }
