@@ -323,5 +323,43 @@ int main() {
         }
     }
 
+
+    // Branch delay slot and jump-link behavior: the delay instruction executes
+    // before the redirected PC becomes active.
+    retroshelf::Cpu branch_cpu;
+    const std::uint32_t branch_pc = 0x8000D000U;
+    branch_cpu.set_pc(branch_pc);
+    branch_cpu.set_reg(8, 5U);
+    branch_cpu.set_reg(9, 5U);
+    assert(ee.write(branch_pc, 4, (0x04U << 26U) | (8U << 21U) | (9U << 16U) | 2U, &error)); // BEQ t0,t1,+2
+    assert(ee.write(branch_pc + 4U, 4, (0x09U << 26U) | (10U << 16U) | 7U, &error)); // delay: ADDIU t2,zero,7
+    assert(ee.write(branch_pc + 12U, 4, (0x09U << 26U) | (11U << 16U) | 9U, &error)); // target: ADDIU t3,zero,9
+    assert(branch_cpu.step_from_ee_memory(ee, &error));
+    assert(branch_cpu.in_delay_slot());
+    assert(branch_cpu.pc() == branch_pc + 4U);
+    assert(branch_cpu.next_pc() == branch_pc + 12U);
+    assert(branch_cpu.step_from_ee_memory(ee, &error));
+    assert(branch_cpu.reg(10) == 7U); // delay slot ran
+    assert(branch_cpu.pc() == branch_pc + 12U);
+    assert(!branch_cpu.in_delay_slot());
+    assert(branch_cpu.step_from_ee_memory(ee, &error));
+    assert(branch_cpu.reg(11) == 9U);
+
+    // JAL writes the return address (PC+8), then executes its delay slot.
+    retroshelf::Cpu jal_cpu;
+    const std::uint32_t jal_pc = 0x8000D100U;
+    jal_cpu.set_pc(jal_pc);
+    assert(ee.write(jal_pc, 4, (0x03U << 26U) | ((0x0000D140U >> 2U) & 0x03FFFFFFU), &error));
+    assert(ee.write(jal_pc + 4U, 4, (0x09U << 26U) | (12U << 16U) | 3U, &error));
+    assert(ee.write(0x8000D140U, 4, (0x09U << 26U) | (13U << 16U) | 4U, &error));
+    assert(jal_cpu.step_from_ee_memory(ee, &error));
+    assert(jal_cpu.reg(31) == jal_pc + 8U);
+    assert(jal_cpu.in_delay_slot());
+    assert(jal_cpu.step_from_ee_memory(ee, &error));
+    assert(jal_cpu.reg(12) == 3U);
+    assert(jal_cpu.pc() == 0x8000D140U);
+    assert(jal_cpu.step_from_ee_memory(ee, &error));
+    assert(jal_cpu.reg(13) == 4U);
+
     std::cout << "CPU boot execution tests passed\\n";
 }
