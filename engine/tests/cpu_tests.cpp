@@ -2,9 +2,14 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <vector>
+
+#include "retroshelf/system_bus.hpp"
 
 int main() {
-    retroshelf::Cpu cpu;
+    std::vector<std::uint8_t> ram(64 * 1024, 0);
+    retroshelf::SystemBus bus(ram);
+    retroshelf::Cpu cpu(bus);
     int failures = 0;
     const auto check = [&failures](bool ok, const char* label) {
         if (!ok) { std::cerr << "FAIL: " << label << "\n"; ++failures; }
@@ -29,8 +34,8 @@ int main() {
     cpu.set_reg(12, 0x12345678);
     constexpr std::uint32_t sw = (0x2BU << 26U) | (11U << 21U) | (12U << 16U);
     constexpr std::uint32_t lw = (0x23U << 26U) | (11U << 21U) | (13U << 16U);
-    check(cpu.step(sw), "SW stores a word in test RAM");
-    check(cpu.step(lw), "LW loads a word from test RAM");
+    check(cpu.step(sw), "SW stores a word through the shared bus");
+    check(cpu.step(lw), "LW loads a word through the shared bus");
     check(cpu.reg(13) == 0x12345678, "LW returns the stored word");
 
     cpu.set_reg(11, 3);
@@ -38,12 +43,29 @@ int main() {
     check(!cpu.step(lw, &error), "misaligned LW is rejected");
     check(!error.empty(), "invalid memory access explains why");
 
-    cpu.set_reg(11, retroshelf::Cpu::TestMemorySize);
+    cpu.set_reg(11, ram.size());
     error.clear();
     check(!cpu.step(sw, &error), "out-of-range SW is rejected");
 
+    check(ram[16] == 0x78 && ram[19] == 0x12, "SW wrote little-endian bytes into shared RAM");
+    cpu.set_reg(11, ram.size() - 4);
+    check(cpu.step(sw), "SW at last aligned word succeeds");
+    cpu.set_reg(11, 0x100000000ULL);
+    error.clear();
+    check(!cpu.step(lw, &error) && !error.empty(), "address beyond 32 bits is rejected");
+    cpu.set_reg(11, ram.size() + 4);
+    check(!cpu.step(lw, &error), "out-of-range LW is rejected");
+
+    ram[32] = 0xEF; ram[33] = 0xBE; ram[34] = 0xAD; ram[35] = 0xDE;
+    cpu.set_reg(11, 32);
+    check(cpu.step(lw), "LW reads bytes written via the bus");
+    check(cpu.reg(13) == 0xFFFFFFFFDEADBEEFULL, "LW observes shared-bus write and sign-extends");
+    std::vector<std::uint8_t> bytes;
+    check(bus.read(16, 4, bytes) && bytes[0] == 0x78, "bus observes CPU write");
+
     cpu.reset();
     check(cpu.reg(11) == 0 && cpu.pc() == 0, "reset clears registers and PC");
+    check(ram[16] == 0x78, "reset does not clear shared RAM");
     error.clear();
     check(!cpu.step(0xFFFFFFFFU, &error), "unsupported instruction is rejected");
     check(!error.empty(), "unsupported instruction explains why");

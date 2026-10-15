@@ -2,9 +2,14 @@
 
 #include <cstdint>
 #include <iostream>
+#include <vector>
+
+#include "retroshelf/system_bus.hpp"
 
 int main() {
-    retroshelf::Cpu cpu;
+    std::vector<std::uint8_t> ee_ram(64 * 1024, 0);
+    retroshelf::SystemBus bus(ee_ram);
+    retroshelf::Cpu cpu(bus);
 
     // addiu $t0, $zero, 7
     constexpr std::uint32_t load_seven = (0x09U << 26U) | (8U << 16U) | 7U;
