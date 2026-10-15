@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "retroshelf/ps2_ee_memory_map.hpp"
+
 namespace retroshelf {
 
 // Educational milestone only: this is not yet a complete PS2 Emotion Engine.
@@ -21,6 +23,9 @@ public:
     bool step_from_ram(std::vector<std::uint8_t>& ram,
                        std::uint32_t ram_base,
                        std::string* error = nullptr);
+    // Execute one instruction using the EE main-RAM map, including KSEG aliases.
+    bool step_from_ee_memory(Ps2EeMemoryMap& memory,
+                             std::string* error = nullptr);
 
     std::uint64_t reg(std::size_t index) const;
     void set_reg(std::size_t index, std::uint64_t value);
@@ -48,6 +53,7 @@ private:
     void raise_exception(std::uint32_t code, std::uint64_t fault_pc, bool in_delay_slot);
     std::vector<std::uint8_t>* active_ram_{nullptr};
     std::uint32_t active_ram_base_{0};
+    Ps2EeMemoryMap* active_ee_memory_{nullptr};
 
     std::uint64_t pc_{0};
     std::uint64_t next_pc_{4};

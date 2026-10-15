@@ -104,3 +104,9 @@ add_executable(ps2-ee-memory-map-tests tests/ps2_ee_memory_map_tests.cpp src/ps2
 target_include_directories(ps2-ee-memory-map-tests PRIVATE include)
 target_compile_options(ps2-ee-memory-map-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ps2-ee-memory-map-tests COMMAND ps2-ee-memory-map-tests)
+
+add_executable(cpu-ee-memory-map-tests tests/cpu_ee_memory_map_tests.cpp
+    src/cpu.cpp src/ps2_ee_memory_map.cpp)
+target_include_directories(cpu-ee-memory-map-tests PRIVATE include)
+target_compile_options(cpu-ee-memory-map-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME cpu-ee-memory-map-tests COMMAND cpu-ee-memory-map-tests)
