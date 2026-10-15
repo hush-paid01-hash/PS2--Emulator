@@ -38,3 +38,8 @@ add_executable(cpu-bus-dma-integration-tests tests/cpu_bus_dma_integration_tests
 target_include_directories(cpu-bus-dma-integration-tests PRIVATE include)
 target_compile_options(cpu-bus-dma-integration-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-bus-dma-integration-tests COMMAND cpu-bus-dma-integration-tests)
+
+add_executable(cpu-cop0-tests tests/cpu_cop0_tests.cpp src/cpu.cpp src/system_bus.cpp)
+target_include_directories(cpu-cop0-tests PRIVATE include)
+target_compile_options(cpu-cop0-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME cpu-cop0-tests COMMAND cpu-cop0-tests)
