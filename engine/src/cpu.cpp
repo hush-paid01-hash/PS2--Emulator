@@ -139,46 +139,46 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x0F: // LUI
         set_reg(rt, static_cast<std::uint64_t>(instruction & 0xFFFFU) << 16U);
         return true;
-    case 0x23: case 0x2B: { // LW / SW in small test RAM only
+    case 0x20: case 0x21: case 0x23: case 0x24: case 0x25:
+    case 0x28: case 0x29: case 0x2B: { // LB/LH/LW/LBU/LHU/SB/SH/SW
+        const bool store = opcode == 0x28 || opcode == 0x29 || opcode == 0x2B;
+        const std::size_t width = (opcode == 0x20 || opcode == 0x24 || opcode == 0x28) ? 1U :
+                                  (opcode == 0x21 || opcode == 0x25 || opcode == 0x29) ? 2U : 4U;
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
         std::uint8_t* bytes = nullptr;
         std::size_t offset = 0;
+        const auto fault = [&](const char* message) {
+            if (error) *error = message;
+            raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
+            return false;
+        };
         if (active_ram_ != nullptr) {
-            if (address < active_ram_base_) {
-                if (error) *error = "Data access is below external RAM";
-                raise_exception(opcode == 0x23 ? ExcAddressErrorLoad : ExcAddressErrorStore, cur_pc, in_delay);
-                return false;
-            }
+            if (address < active_ram_base_) return fault("Data access is below external RAM");
             const std::uint64_t relative = address - active_ram_base_;
-            if ((address & 3U) != 0U || relative > active_ram_->size() ||
-                active_ram_->size() - static_cast<std::size_t>(relative) < sizeof(std::uint32_t)) {
-                if (error) *error = "Unaligned or out-of-range external RAM access";
-                raise_exception(opcode == 0x23 ? ExcAddressErrorLoad : ExcAddressErrorStore, cur_pc, in_delay);
-                return false;
-            }
+            if ((address & (width - 1U)) != 0U || relative > active_ram_->size() ||
+                active_ram_->size() - static_cast<std::size_t>(relative) < width)
+                return fault("Unaligned or out-of-range external RAM access");
             offset = static_cast<std::size_t>(relative);
             bytes = active_ram_->data();
         } else {
-            if ((address & 3U) != 0U || address > TestMemorySize - sizeof(std::uint32_t)) {
-                if (error) *error = "Unaligned or out-of-range 32-bit memory access";
-                raise_exception(opcode == 0x23 ? ExcAddressErrorLoad : ExcAddressErrorStore, cur_pc, in_delay);
-                return false;
-            }
+            if ((address & (width - 1U)) != 0U || address > TestMemorySize - width)
+                return fault("Unaligned or out-of-range test RAM access");
             offset = static_cast<std::size_t>(address);
             bytes = memory_.data();
         }
-        if (opcode == 0x23) {
-            const std::uint32_t value = static_cast<std::uint32_t>(bytes[offset]) |
-                (static_cast<std::uint32_t>(bytes[offset + 1]) << 8U) |
-                (static_cast<std::uint32_t>(bytes[offset + 2]) << 16U) |
-                (static_cast<std::uint32_t>(bytes[offset + 3]) << 24U);
-            set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int32_t>(value)));
+
+        if (store) {
+            const std::uint32_t value = static_cast<std::uint32_t>(reg(rt));
+            for (std::size_t i = 0; i < width; ++i)
+                bytes[offset + i] = static_cast<std::uint8_t>((value >> (8U * i)) & 0xFFU);
         } else {
-            const auto value = static_cast<std::uint32_t>(reg(rt) & 0xFFFFFFFFU);
-            bytes[offset] = static_cast<std::uint8_t>(value & 0xFFU);
-            bytes[offset + 1] = static_cast<std::uint8_t>((value >> 8U) & 0xFFU);
-            bytes[offset + 2] = static_cast<std::uint8_t>((value >> 16U) & 0xFFU);
-            bytes[offset + 3] = static_cast<std::uint8_t>((value >> 24U) & 0xFFU);
+            std::uint32_t value = 0;
+            for (std::size_t i = 0; i < width; ++i)
+                value |= static_cast<std::uint32_t>(bytes[offset + i]) << (8U * i);
+            if (opcode == 0x20) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int8_t>(value))));
+            else if (opcode == 0x21) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int16_t>(value))));
+            else if (opcode == 0x23) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int32_t>(value)));
+            else set_reg(rt, value); // unsigned byte/halfword loads zero-extend
         }
         return true;
     }
