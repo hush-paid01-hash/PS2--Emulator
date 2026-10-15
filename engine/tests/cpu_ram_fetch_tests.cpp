@@ -64,6 +64,7 @@ int main() {
     put32(data_ram, 0, (0x0FU << 26U) | (8U << 16U) | 0x0010U); // lui $t0, 0x0010
     put32(data_ram, 4, (0x09U << 26U) | (9U << 16U) | 0x0055U); // addiu $t1, $zero, 0x55
     put32(data_ram, 8, (0x2BU << 26U) | (8U << 21U) | (9U << 16U) | 0x0001U); // sw $t1, 1($t0)
+    const auto ram_before_unaligned_store = data_ram;
     cpu.set_pc(0x00100000);
     assert(cpu.step_from_ram(data_ram, 0x00100000, &error));
     assert(cpu.step_from_ram(data_ram, 0x00100000, &error));
@@ -71,7 +72,7 @@ int main() {
     assert(!error.empty());
     assert((cpu.cop0_cause() & (0x1FU << 2U)) ==
            (retroshelf::Cpu::ExcAddressErrorStore << 2U));
-    for (std::uint8_t byte : data_ram) assert(byte == 0);
+    assert(data_ram == ram_before_unaligned_store);
 
     // An aligned store at the first byte beyond RAM must also fault safely.
     cpu.reset();
@@ -79,13 +80,14 @@ int main() {
     put32(data_ram, 0, (0x0FU << 26U) | (8U << 16U) | 0x0010U); // lui $t0, 0x0010
     put32(data_ram, 4, (0x09U << 26U) | (9U << 16U) | 0x0055U); // addiu $t1, $zero, 0x55
     put32(data_ram, 8, (0x2BU << 26U) | (8U << 21U) | (9U << 16U) | 0x0040U); // sw $t1, 64($t0)
+    const auto ram_before_out_of_bounds_store = data_ram;
     cpu.set_pc(0x00100000);
     assert(cpu.step_from_ram(data_ram, 0x00100000, &error));
     assert(cpu.step_from_ram(data_ram, 0x00100000, &error));
     assert(!cpu.step_from_ram(data_ram, 0x00100000, &error));
     assert((cpu.cop0_cause() & (0x1FU << 2U)) ==
            (retroshelf::Cpu::ExcAddressErrorStore << 2U));
-    for (std::uint8_t byte : data_ram) assert(byte == 0);
+    assert(data_ram == ram_before_out_of_bounds_store);
 
     std::cout << "CPU RAM fetch/data-access tests passed\n";
 }
