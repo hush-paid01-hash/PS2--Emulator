@@ -177,7 +177,7 @@ int main() {
     // Fault in an untaken-branch delay slot, and in a JR delay slot (store, AdES).
     cpu.reset(); cpu.set_pc(0x200); cpu.set_reg(1, 1);
     cpu.step(itype(0x04, 1, 0, 3));
-    cpu.step(0xFFFFFFFFU, &error);
+    cpu.step(0x0000003FU, &error);
     check(cpu.cop0_epc() == 0x200 && (cpu.cop0_cause() & Cpu::CauseBd) != 0 &&
           ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcReservedInstruction, "RI in untaken-branch delay slot sets BD");
     cpu.reset(); cpu.set_pc(0x300); cpu.set_reg(5, 0x400); cpu.set_reg(6, 3);
