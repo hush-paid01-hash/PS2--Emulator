@@ -259,11 +259,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
         if (opcode == 0x2A) { // SWL: store high-end rt bytes into memory bytes 0..lane
-            const unsigned count = lane + 1U;
-            const unsigned shift = (3U - lane) * 8U;
-            const std::uint32_t mask = 0xFFFFFFFFU << shift;
-            result = (mem & ~mask) | (old_rt >> (shift));
-            (void)count;
+            const unsigned shift = lane * 8U;
+            const std::uint32_t mask = (shift == 24U) ? 0x000000FFU :
+                                      (shift == 16U) ? 0x0000FFFFU :
+                                      (shift == 8U) ? 0x00FFFFFFU : 0xFFFFFFFFU;
+            result = (mem & ~mask) | (old_rt >> ((3U - lane) * 8U));
         } else { // SWR: store low-end rt bytes into memory bytes lane..3
             const unsigned shift = lane * 8U;
             const std::uint32_t mask = 0xFFFFFFFFU >> shift;
