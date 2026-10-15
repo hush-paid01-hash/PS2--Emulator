@@ -27,31 +27,45 @@ void record(std::vector<std::uint8_t>& b, std::size_t p, std::uint32_t extent,
     for (std::size_t i=0;i<n;++i) b[p+33+i] = static_cast<std::uint8_t>(name[i]);
 }
 }
+
 int main() {
     constexpr std::size_t sectors = 24, sector = 2048;
+    const auto path = std::filesystem::temp_directory_path() / "retroshelf_iso_reader_test.iso";
     std::vector<std::uint8_t> image(sectors * sector, 0);
     auto* pvd = image.data() + 16 * sector;
     pvd[0]=1; pvd[1]='C'; pvd[2]='D'; pvd[3]='0'; pvd[4]='0'; pvd[5]='1'; pvd[6]=1;
     std::vector<std::uint8_t> descriptor(pvd,pvd+sector);
-    record(descriptor,156,20,sector,2,std::string(1,'\0'));
+    record(descriptor,156,20,sector,2,std::string(1,'\\0'));
     std::copy(descriptor.begin()+156,descriptor.begin()+190,image.begin()+16*sector+156);
-    auto* dir = image.data() + 20 * sector;
+
     std::vector<std::uint8_t> directory(sector,0);
-    record(directory,0,20,sector,2,std::string(1,'\0'));
-    record(directory,34,20,sector,2,std::string(1,'\1'));
+    record(directory,0,20,sector,2,std::string(1,'\\0'));
+    record(directory,34,20,sector,2,std::string(1,'\\1'));
     record(directory,68,21,5,0,"HELLO.TXT;1");
-    std::copy(directory.begin(),directory.end(),dir);
+    std::copy(directory.begin(),directory.end(),image.begin()+20*sector);
     const std::string payload="hello";
     std::copy(payload.begin(),payload.end(),image.begin()+21*sector);
-    const auto path=std::filesystem::temp_directory_path()/"retroshelf_iso_reader_test.iso";
     { std::ofstream f(path,std::ios::binary); f.write(reinterpret_cast<const char*>(image.data()),static_cast<std::streamsize>(image.size())); }
-    retroshelf::Iso9660Disc disc; std::string error;
+
+    retroshelf::Iso9660Disc disc;
+    std::string error;
     assert(disc.open(path,&error) && error.empty());
     assert(disc.sector_count()==sectors);
     std::vector<std::uint8_t> bytes;
     assert(disc.read_file("/hello.txt",bytes,&error));
     assert(std::string(bytes.begin(),bytes.end())==payload);
     assert(!disc.read_file("/missing.bin",bytes,&error));
+    assert(!disc.read_sector(static_cast<std::uint32_t>(sectors),bytes,&error));
+    assert(bytes.empty());
+
+    // A file of sufficient length but without an ISO-9660 PVD must be rejected.
+    const auto invalid_path = std::filesystem::temp_directory_path() / "retroshelf_invalid_disc_test.iso";
+    std::vector<std::uint8_t> invalid(17 * sector, 0);
+    { std::ofstream f(invalid_path,std::ios::binary); f.write(reinterpret_cast<const char*>(invalid.data()),static_cast<std::streamsize>(invalid.size())); }
+    retroshelf::Iso9660Disc invalid_disc;
+    assert(!invalid_disc.open(invalid_path,&error));
+    assert(!invalid_disc.is_open());
+    std::filesystem::remove(invalid_path);
     std::filesystem::remove(path);
     std::cout << "ISO-9660 disc reader tests passed\n";
 }
