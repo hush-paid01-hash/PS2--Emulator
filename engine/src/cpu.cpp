@@ -1,4 +1,5 @@
 #include "retroshelf/cpu.hpp"
+#include "retroshelf/ps2_ee_memory_map.hpp"
 
 #include <sstream>
 #include <vector>
@@ -6,7 +7,7 @@
 namespace retroshelf {
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
-    gpr_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; pc_ = 0; next_pc_ = 4;
+    gpr_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
     delay_slot_pending_ = false; delay_branch_pc_ = 0; status_ = 0; cause_ = 0; epc_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
@@ -153,7 +154,21 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
             return false;
         };
-        if (active_ram_ != nullptr) {
+        if (active_ee_memory_ != nullptr) {
+            std::uint64_t value = 0;
+            if (store) {
+                if (!active_ee_memory_->write(static_cast<std::uint32_t>(address), width, reg(rt), nullptr))
+                    return fault("Unaligned or unmapped EE RAM store");
+            } else {
+                if (!active_ee_memory_->read(static_cast<std::uint32_t>(address), width, value, nullptr))
+                    return fault("Unaligned or unmapped EE RAM load");
+                if (opcode == 0x20) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int8_t>(value))));
+                else if (opcode == 0x21) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int16_t>(value))));
+                else if (opcode == 0x23) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
+                else set_reg(rt, value);
+            }
+            return true;
+        } else if (active_ram_ != nullptr) {
             if (address < active_ram_base_) return fault("Data access is below external RAM");
             const std::uint64_t relative = address - active_ram_base_;
             if ((address & (width - 1U)) != 0U || relative > active_ram_->size() ||
@@ -219,4 +234,21 @@ bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
     active_ram_base_ = 0;
     return succeeded;
 }
+
+bool Cpu::step_from_ee_memory(Ps2EeMemoryMap& memory, std::string* error) {
+    if ((pc_ & 3U) != 0U) {
+        if (error) *error = "Unaligned instruction fetch";
+        return false;
+    }
+    std::uint64_t fetched = 0;
+    if (!memory.read(static_cast<std::uint32_t>(pc_), 4, fetched, error)) {
+        if (error && error->empty()) *error = "Instruction fetch is outside mapped EE RAM";
+        return false;
+    }
+    active_ee_memory_ = &memory;
+    const bool succeeded = step(static_cast<std::uint32_t>(fetched), error);
+    active_ee_memory_ = nullptr;
+    return succeeded;
+}
+
 } // namespace retroshelf
