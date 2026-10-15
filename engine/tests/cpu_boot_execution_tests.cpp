@@ -298,8 +298,8 @@ int main() {
     const std::uint32_t merge_pc = 0x8000C100U;
     const std::uint32_t lwl_expected[] = {0x11BBCCDDU, 0x2211CCDDU, 0x332211DDU, 0x44332211U};
     const std::uint32_t lwr_expected[] = {0x44332211U, 0xAA443322U, 0xAABB4433U, 0xAABBCC44U};
-    const std::uint32_t swl_expected[] = {0x443322AAU, 0x4433BBAAU, 0x44CCBBAAU, 0xAABBCCDDU};
-    const std::uint32_t swr_expected[] = {0xAABBCCDDU, 0xBBCCDD11U, 0xBBCC2211U, 0xDD332211U};
+    const std::uint32_t swl_expected[] = {0x443322AAU, 0x4433AABBU, 0x44AABBCCU, 0xAABBCCDDU};
+    const std::uint32_t swr_expected[] = {0xAABBCCDDU, 0xBBCCDD11U, 0xCCDD2211U, 0xDD332211U};
     const std::uint32_t merge_opcodes[] = {0x22U, 0x26U, 0x2AU, 0x2EU};
     const std::uint32_t* merge_expected[] = {lwl_expected, lwr_expected, swl_expected, swr_expected};
     for (unsigned op = 0; op < 4; ++op) {
