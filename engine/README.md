@@ -55,3 +55,11 @@ or hardware arbitration. Payload transfers and aggregate chain processing are bo
 compatibility has been validated.
 
 Use only BIOS and game images you are legally entitled to use. The portable engine can be developed on Linux, but a native iPhone app requires an appropriate Apple build/signing workflow, and iOS imposes restrictions on JIT execution.
+
+## CPU branch / delay-slot subset
+
+The test CPU now supports J, JAL, JR, JALR, BEQ, BNE, BLEZ, BGTZ, BLTZ, BGEZ, BLTZAL and BGEZAL with one-instruction
+delay slots (no "likely" branches, no branch-in-delay-slot, no fetch-time address errors for unaligned jump targets).
+A minimal COP0 subset (Status.EXL, Cause.ExcCode/BD, EPC) records address-error and reserved-instruction exceptions;
+exceptions in a delay slot set Cause.BD and EPC to the branch address. The vector is fixed at 0x80000180. This is not a
+full Emotion Engine and cannot boot a BIOS.
