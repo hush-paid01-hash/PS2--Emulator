@@ -1,4 +1,6 @@
 #include "retroshelf/ps2_boot_image.hpp"
+#include "retroshelf/elf_ram_loader.hpp"
+#include "retroshelf/cpu.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -38,15 +40,15 @@ std::size_t record(std::vector<std::uint8_t>& b, std::size_t p,
 }
 std::vector<std::uint8_t> valid_elf() {
     // Minimal little-endian ELF32 MIPS executable with one PT_LOAD segment.
-    std::vector<std::uint8_t> b(88, 0);
+    std::vector<std::uint8_t> b(92, 0);
     b[0] = 0x7f; b[1] = 'E'; b[2] = 'L'; b[3] = 'F';
     b[4] = 1; b[5] = 1; b[6] = 1;
     put16(b, 16, 2); put16(b, 18, 8); put32(b, 20, 1);
     put32(b, 24, 0x00100000); put32(b, 28, 52);
     put16(b, 40, 52); put16(b, 42, 32); put16(b, 44, 1);
     put32(b, 52, 1); put32(b, 56, 84); put32(b, 60, 0x00100000);
-    put32(b, 68, 4); put32(b, 72, 8); put32(b, 76, 5);
-    b[84] = 0x11; b[85] = 0x22; b[86] = 0x33; b[87] = 0x44;
+    put32(b, 68, 8); put32(b, 72, 12); put32(b, 76, 5);
+    b[84] = 0x07; b[85] = 0x00; b[86] = 0x08; b[87] = 0x24;\n    b[88] = 0x05; b[89] = 0x00; b[90] = 0x09; b[91] = 0x24;
     return b;
 }
 std::filesystem::path make_disc() {
@@ -96,10 +98,25 @@ int main() {
     assert(image.entry_point == 0x00100000);
     assert(image.load_segments.size() == 1);
     assert(image.load_segments[0].virtual_address == 0x00100000);
-    assert(image.load_segments[0].memory_size == 8);
-    assert(image.load_segments[0].file_bytes.size() == 4);
-    assert(image.load_segments[0].file_bytes[0] == 0x11);
-    assert(image.load_segments[0].file_bytes[3] == 0x44);
+    assert(image.load_segments[0].memory_size == 12);
+    assert(image.load_segments[0].file_bytes.size() == 8);
+    assert(image.load_segments[0].file_bytes[0] == 0x07);
+    assert(image.load_segments[0].file_bytes[7] == 0x24);
+    std::vector<std::uint8_t> ram(2 * 1024 * 1024, 0xA5);
+    std::uint32_t entry = 0;
+    assert(retroshelf::load_elf32_into_ram(image, 0, ram, entry, &error));
+    assert(entry == 0x00100000);
+    assert(ram[entry] == 0x07 && ram[entry + 1] == 0x00);
+    assert(ram[entry + 8] == 0 && ram[entry + 11] == 0);
+
+    retroshelf::Cpu cpu;
+    cpu.set_pc(entry);
+    assert(cpu.step_from_ram(ram, 0, &error));
+    assert(cpu.reg(8) == 7);
+    assert(cpu.pc() == entry + 4);
+    assert(cpu.step_from_ram(ram, 0, &error));
+    assert(cpu.reg(9) == 5);
+    assert(cpu.pc() == entry + 8);
     std::filesystem::remove(disc_path);
 
     retroshelf::Iso9660Disc unopened;
