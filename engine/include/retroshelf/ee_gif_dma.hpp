@@ -3,8 +3,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
+
+#include "retroshelf/system_bus.hpp"
 
 namespace retroshelf {
 
@@ -31,6 +34,8 @@ public:
 
     EeGifDma(std::vector<std::uint8_t>& ee_ram, PayloadHandler payload_handler,
              InterruptHandler interrupt_handler = {});
+    EeGifDma(SystemBus& bus, PayloadHandler payload_handler,
+             InterruptHandler interrupt_handler = {});
 
     EeGifDmaRegisters registers;
     State state() const;
@@ -40,10 +45,10 @@ public:
 private:
     bool transfer(std::uint32_t address, std::uint32_t qwc);
     bool fail(const std::string& message);
-    bool valid_range(std::uint32_t address, std::size_t size) const;
     void interrupt(Interrupt reason);
 
-    std::vector<std::uint8_t>& ee_ram_;
+    std::unique_ptr<SystemBus> owned_bus_;
+    SystemBus& bus_;
     PayloadHandler payload_handler_;
     InterruptHandler interrupt_handler_;
     State state_{State::Idle};

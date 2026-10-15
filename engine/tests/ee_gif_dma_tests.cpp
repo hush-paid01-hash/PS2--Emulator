@@ -1,7 +1,10 @@
 #include "retroshelf/ee_gif_dma.hpp"
+#include "retroshelf/gs_packet_processor.hpp"
+#include "retroshelf/system_bus.hpp"
 
 #include <cstdint>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -22,6 +25,15 @@ void write_tag(std::vector<std::uint8_t>& ram, std::uint32_t address, std::uint1
     for (std::size_t byte = 0; byte < 8; ++byte) {
         ram[address + byte] = static_cast<std::uint8_t>(low >> (byte * 8U));
         ram[address + 8U + byte] = static_cast<std::uint8_t>(high >> (byte * 8U));
+    }
+}
+
+void write_qword(std::vector<std::uint8_t>& ram, std::uint32_t address,
+                 std::uint64_t low, std::uint64_t high = 0) {
+    for (std::size_t byte = 0; byte < 8; ++byte) {
+        ram[address + byte] = static_cast<std::uint8_t>(low >> (byte * 8U));
+        ram[address + 8U + byte] =
+            static_cast<std::uint8_t>(high >> (byte * 8U));
     }
 }
 
@@ -197,6 +209,23 @@ int main() {
 
     {
         std::vector<std::uint8_t> ram(64);
+        write_tag(ram, 0, 0, 1, 0, true);
+        write_tag(ram, 16, 0, 7);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction | Chain;
+        dma.registers.tadr = 0;
+        check(dma.start() && dma.registers.tadr == 32 &&
+                  dma.state() == retroshelf::EeGifDma::State::Completed,
+              "tag IRQ does not stop the chain when TIE is clear");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Completion,
+              "ignored tag IRQ proceeds to the completion interrupt");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
         std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
         retroshelf::EeGifDma dma(ram, [](const auto&) {},
                                  [&](auto reason) { interrupts.push_back(reason); });
@@ -248,13 +277,113 @@ int main() {
     {
         std::vector<std::uint8_t> ram(64);
         fill(ram, 16, 0x81);
-        retroshelf::EeGifDma dma(ram, [](const auto&) {});
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
         dma.registers.chcr = Start | Direction;
         dma.registers.madr = 16;
         dma.registers.qwc = 1;
         check(dma.start() && dma.registers.madr == 32 && dma.registers.qwc == 0 &&
                   dma.state() == retroshelf::EeGifDma::State::Completed,
               "normal mode remains a direct MADR/QWC transfer");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Completion,
+              "normal EE-RAM-to-GIF transfer signals completion");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
+        fill(ram, 16, 0x82);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction;
+        dma.registers.madr = 16;
+        dma.registers.qwc = 1;
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  (dma.registers.chcr & Start) == 0 && dma.registers.qwc == 0 &&
+                  dma.error().find("no payload handler") != std::string::npos,
+              "nonempty transfer fails instead of dropping payload without a handler");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Error,
+              "missing payload handler signals a DMA error");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
+        fill(ram, 16, 0x83);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) { throw std::runtime_error("GS failed"); },
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction;
+        dma.registers.madr = 16;
+        dma.registers.qwc = 1;
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  (dma.registers.chcr & Start) == 0 && dma.registers.qwc == 0,
+              "payload submission failure clears STR and QWC");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Error,
+              "payload submission failure signals a DMA error");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(128);
+        write_tag(ram, 0, 2, 1);
+        const std::uint64_t gif_tag = 1U | (1ULL << 15U) | (1ULL << 60U);
+        write_qword(ram, 16, gif_tag, 0xE);
+        write_qword(ram, 32, 0x1122334455667788ULL, 0x99AABBCCDDEEFF00ULL);
+        write_tag(ram, 48, 0, 7);
+
+        retroshelf::SystemBus bus(ram);
+        retroshelf::GsPacketProcessor gs;
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(
+            bus,
+            [&](const auto& payload) {
+                if (!gs.submit(payload)) {
+                    throw std::runtime_error(gs.error());
+                }
+            },
+            [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction | Chain;
+        dma.registers.tadr = 0;
+
+        check(dma.start() && gs.finish_stream(),
+              "chained EE RAM transfer passes through bus, DMA, and GIF parser");
+        const auto packets = gs.take_packets();
+        std::vector<std::uint8_t> expected(ram.begin() + 16, ram.begin() + 48);
+        check(packets.size() == 1 && packets[0].bytes == expected &&
+                  packets[0].tag_count == 1,
+              "integrated GIF packet preserves source bytes and order");
+        check(dma.registers.tadr == 64 && dma.registers.madr == 64 &&
+                  dma.registers.qwc == 0 &&
+                  dma.state() == retroshelf::EeGifDma::State::Completed &&
+                  interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Completion,
+              "integrated chain updates registers and signals completion once");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(32);
+        write_tag(ram, 0, 2, 1);
+        retroshelf::SystemBus bus(ram);
+        retroshelf::GsPacketProcessor gs;
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(
+            bus,
+            [&](const auto& payload) {
+                if (!gs.submit(payload)) {
+                    throw std::runtime_error(gs.error());
+                }
+            },
+            [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction | Chain;
+
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  (dma.registers.chcr & Start) == 0 &&
+                  interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Error,
+              "bus rejects an out-of-range chained payload with one DMA error interrupt");
     }
 
     {
@@ -264,6 +393,18 @@ int main() {
         check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
                   dma.error().find("direction") != std::string::npos,
               "reverse GIF DMA direction is rejected");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
+        retroshelf::SystemBus bus(ram);
+        retroshelf::EeGifDma dma(bus, [](const auto&) {});
+        dma.registers.chcr = Start | Direction;
+        dma.registers.madr = 17;
+        dma.registers.qwc = 1;
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  dma.error().find("unaligned") != std::string::npos,
+              "system-bus DMA rejects a payload address not aligned to a qword");
     }
 
     return failures == 0 ? 0 : 1;
