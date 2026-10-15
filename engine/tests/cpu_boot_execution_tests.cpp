@@ -132,5 +132,29 @@ int main() {
     assert((reserved_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
     assert(reserved_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
 
+    // Misaligned word accesses must raise Address Error rather than read/write
+    // partially overlapping RAM bytes.
+    retroshelf::Cpu unaligned_load_cpu;
+    unaligned_load_cpu.set_pc(0x80006000U);
+    unaligned_load_cpu.set_reg(16, 0x21U);
+    assert(ee.write(0x80006000U, 4,
+                    (0x23U << 26U) | (16U << 21U) | (9U << 16U), &error)); // LW t1,0(s0)
+    assert(!unaligned_load_cpu.step_from_ee_memory(ee, &error));
+    assert((unaligned_load_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
+    assert(unaligned_load_cpu.cop0_epc() == 0x80006000U);
+    assert((unaligned_load_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+
+    retroshelf::Cpu unaligned_store_cpu;
+    unaligned_store_cpu.set_pc(0x80007000U);
+    unaligned_store_cpu.set_reg(16, 0x21U);
+    assert(ee.write(0x80007000U, 4,
+                    (0x2BU << 26U) | (16U << 21U) | (8U << 16U), &error)); // SW t0,0(s0)
+    assert(!unaligned_store_cpu.step_from_ee_memory(ee, &error));
+    assert((unaligned_store_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorStore << 2U));
+    assert(unaligned_store_cpu.cop0_epc() == 0x80007000U);
+    assert((unaligned_store_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+
     std::cout << "CPU boot execution tests passed\n";
 }
