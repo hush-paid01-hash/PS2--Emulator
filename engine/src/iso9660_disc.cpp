@@ -63,14 +63,20 @@ bool Iso9660Disc::open(const std::filesystem::path& path, std::string* error) {
     const std::uint32_t root_offset = 156;
     const std::uint32_t record_length = probe[root_offset];
     if (record_length < 34 || root_offset + record_length > probe.size()) {
-        if (error) *error = "Malformed ISO-9660 root directory record"; return false;
+        if (error) {
+            *error = "Malformed ISO-9660 root directory record";
+        }
+        return false;
     }
     root_.extent = le32(&probe[root_offset + 2]);
     root_.size = le32(&probe[root_offset + 10]);
     root_.flags = probe[root_offset + 25];
     root_.name = "/";
     if ((root_.flags & 2U) == 0 || root_.extent >= sectors_ || root_.size > file_size_) {
-        if (error) *error = "Invalid ISO-9660 root directory extent"; return false;
+        if (error) {
+            *error = "Invalid ISO-9660 root directory extent";
+        }
+        return false;
     }
     open_ = true;
     if (error) error->clear();
@@ -92,7 +98,11 @@ bool Iso9660Disc::read_sector(std::uint32_t lba, std::vector<std::uint8_t>& out,
     input.seekg(static_cast<std::streamoff>(pos));
     out.resize(2048);
     if (!input.read(reinterpret_cast<char*>(out.data()), 2048)) {
-        if (error) *error = "Short read while reading disc sector"; out.clear(); return false;
+        if (error) {
+            *error = "Short read while reading disc sector";
+        }
+        out.clear();
+        return false;
     }
     if (error) error->clear();
     return true;
@@ -108,12 +118,18 @@ bool Iso9660Disc::read_record(std::uint32_t lba, std::uint32_t offset,
     }
     record_length = sector[offset];
     if (record_length < 34 || offset + record_length > sector.size()) {
-        if (error) *error = "Malformed ISO-9660 directory record"; return false;
+        if (error) {
+            *error = "Malformed ISO-9660 directory record";
+        }
+        return false;
     }
     const auto* p = sector.data() + offset;
     const std::uint8_t name_length = p[32];
     if (33U + name_length > record_length) {
-        if (error) *error = "Invalid ISO-9660 filename length"; return false;
+        if (error) {
+            *error = "Invalid ISO-9660 filename length";
+        }
+        return false;
     }
     record.extent = le32(p + 2);
     record.size = le32(p + 10);
@@ -124,7 +140,10 @@ bool Iso9660Disc::read_record(std::uint32_t lba, std::uint32_t offset,
         record.name.assign(reinterpret_cast<const char*>(p + 33), name_length);
     }
     if (record.extent >= sectors_ || record.size > file_size_) {
-        if (error) *error = "Directory entry points outside the disc image"; return false;
+        if (error) {
+            *error = "Directory entry points outside the disc image";
+        }
+        return false;
     }
     return true;
 }
@@ -175,7 +194,11 @@ bool Iso9660Disc::read_file(std::string iso_path, std::vector<std::uint8_t>& out
     if (!find_record(iso_path, record, error)) { out.clear(); return false; }
     if ((record.flags & 2U) != 0) { if (error) *error = "Requested ISO path is a directory"; out.clear(); return false; }
     if (record.size > std::numeric_limits<std::size_t>::max()) {
-        if (error) *error = "File is too large for this platform"; out.clear(); return false;
+        if (error) {
+            *error = "File is too large for this platform";
+        }
+        out.clear();
+        return false;
     }
     out.clear();
     out.reserve(record.size);
