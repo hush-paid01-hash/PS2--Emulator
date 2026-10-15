@@ -286,11 +286,11 @@ int main() {
     assert(!cop0_cpu.step(0xFFFFFFFFU, &error)); // reserved instruction records EPC
     assert(cop0_cpu.cop0_epc() == 0x8000C000U);
     assert(cop0_cpu.step((0x10U << 26U) | (8U << 16U) | (14U << 11U), &error)); // MFC0 t0,EPC
-    assert(cop0_cpu.reg(8) == 0x8000C000U);
-    assert(cop0_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (14U << 11U) | 0x04U, &error)); // MTC0 t0,EPC
-    assert(cop0_cpu.cop0_epc() == 0x8000C000U);
+    assert(cop0_cpu.reg(8) == 0xFFFFFFFF8000C000ULL); // MFC0 sign-extends
+    assert(cop0_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (14U << 11U), &error)); // MTC0 t0,EPC
+    assert(cop0_cpu.cop0_epc() == 0xFFFFFFFF8000C000ULL);
     assert(cop0_cpu.step((0x10U << 26U) | (16U << 21U) | 0x18U, &error)); // ERET
-    assert(cop0_cpu.pc() == 0x8000C000U);
+    assert(cop0_cpu.pc() == 0xFFFFFFFF8000C000ULL);
     assert((cop0_cpu.cop0_status() & retroshelf::Cpu::StatusExl) == 0U);
 
     std::cout << "CPU boot execution tests passed\\n";

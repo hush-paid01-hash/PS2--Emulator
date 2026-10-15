@@ -166,13 +166,13 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             default: return false;
             }
         };
-        if (funct == 0x00) { // MFC0 rt, rd
+        if (rs == 0x00) { // MFC0 rt, rd
             std::uint64_t value = 0;
             if (!read_cop0(rd, value)) return unsupported();
             set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
             return true;
         }
-        if (funct == 0x04) { // MTC0 rt, rd
+        if (rs == 0x04) { // MTC0 rt, rd
             switch (rd) {
             case 12: status_ = static_cast<std::uint32_t>(reg(rt)); return true;
             case 13: cause_ = (cause_ & CauseBd) | (static_cast<std::uint32_t>(reg(rt)) & ~(CauseBd | (0x1FU << 2U))); return true;
@@ -180,7 +180,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             default: return unsupported();
             }
         }
-        if (funct == 0x18) { // ERET: return to EPC and clear Status.EXL.
+        if (rs == 0x10 && funct == 0x18) { // ERET: return to EPC and clear Status.EXL.
             pc_ = epc_;
             next_pc_ = epc_ + 4;
             status_ &= ~StatusExl;
