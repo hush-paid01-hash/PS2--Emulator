@@ -1,4 +1,6 @@
 #include "retroshelf/ps2_boot_image.hpp"
+#include "retroshelf/elf_ram_loader.hpp"
+#include "retroshelf/cpu.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -38,7 +40,7 @@ std::size_t record(std::vector<std::uint8_t>& b, std::size_t p,
 }
 std::vector<std::uint8_t> valid_elf() {
     // Minimal little-endian ELF32 MIPS executable with one PT_LOAD segment.
-    std::vector<std::uint8_t> b(88, 0);
+    std::vector<std::uint8_t> b(92, 0);
     b[0] = 0x7f; b[1] = 'E'; b[2] = 'L'; b[3] = 'F';
     b[4] = 1; b[5] = 1; b[6] = 1;
     put16(b, 16, 2); put16(b, 18, 8); put32(b, 20, 1);
