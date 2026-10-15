@@ -215,5 +215,27 @@ int main() {
     check(cpu.step(shift(1, 2, 9, 0, 0x04)) && cpu.reg(9) == 0x10,
           "SLLV masks shift amount to five bits");
 
+
+    // Byte and halfword accesses: sign extension for LB/LH, zero extension for LBU/LHU.
+    cpu.reset(); cpu.set_reg(11, 32); cpu.set_reg(12, 0x80);
+    check(cpu.step(itype(0x28, 11, 12, 0)), "SB stores a byte");
+    check(cpu.step(itype(0x20, 11, 13, 0)) &&
+          cpu.reg(13) == 0xFFFFFFFFFFFFFF80ULL, "LB sign-extends negative byte");
+    check(cpu.step(itype(0x24, 11, 14, 0)) && cpu.reg(14) == 0x80,
+          "LBU zero-extends byte");
+    cpu.set_reg(12, 0x8001);
+    check(cpu.step(itype(0x29, 11, 12, 2)), "SH stores a halfword");
+    check(cpu.step(itype(0x21, 11, 15, 2)) &&
+          cpu.reg(15) == 0xFFFFFFFFFFFF8001ULL, "LH sign-extends negative halfword");
+    check(cpu.step(itype(0x25, 11, 16, 2)) && cpu.reg(16) == 0x8001,
+          "LHU zero-extends halfword");
+    cpu.set_reg(11, 33); error.clear();
+    check(!cpu.step(itype(0x21, 11, 17, 0), &error) && !error.empty(),
+          "misaligned LH faults");
+    cpu.reset(); cpu.set_reg(11, 0); cpu.set_reg(12, 0x1234);
+    check(cpu.step(itype(0x29, 11, 12, 0)), "SH can store to aligned test RAM");
+    check(cpu.step(itype(0x25, 11, 13, 0)) && cpu.reg(13) == 0x1234,
+          "LHU reads halfword stored by SH");
+
     return failures == 0 ? 0 : 1;
 }
