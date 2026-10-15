@@ -95,7 +95,10 @@ target_compile_options(cpu-ram-fetch-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-ram-fetch-tests COMMAND cpu-ram-fetch-tests)
 
 add_executable(cpu-boot-execution-tests tests/cpu_boot_execution_tests.cpp
-    src/cpu.cpp src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/ps2_ee_memory_map.cpp)
+    src/cpu.cpp
+    src/elf_memory_staging.cpp
+    src/elf_ram_loader.cpp
+    src/ps2_ee_memory_map.cpp)
 target_include_directories(cpu-boot-execution-tests PRIVATE include)
 target_compile_options(cpu-boot-execution-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-boot-execution-tests COMMAND cpu-boot-execution-tests)
