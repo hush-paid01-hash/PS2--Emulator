@@ -45,6 +45,8 @@ public:
     std::uint64_t cop0_epc() const;
     bool in_delay_slot() const; // true if the next step() runs a branch delay slot
     std::uint64_t next_pc() const;
+    std::uint64_t hi() const;
+    std::uint64_t lo() const;
 
 private:
     std::array<std::uint64_t, RegisterCount> gpr_{};
@@ -61,6 +63,8 @@ private:
     std::uint32_t status_{0};
     std::uint32_t cause_{0};
     std::uint64_t epc_{0};
+    std::uint64_t hi_{0};
+    std::uint64_t lo_{0};
 };
 
 } // namespace retroshelf

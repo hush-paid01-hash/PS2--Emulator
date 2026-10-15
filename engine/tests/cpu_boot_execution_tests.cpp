@@ -206,5 +206,31 @@ int main() {
     assert(byte_cpu.step_from_ee_memory(ee, &error));
     assert(byte_cpu.reg(10) == 0x80U);
 
+    // MULT/MULTU write the 64-bit product to HI:LO; MFHI/MFLO expose halves.
+    retroshelf::Cpu multu_cpu;
+    multu_cpu.set_pc(0x8000B000U);
+    multu_cpu.set_reg(8, 0xFFFFFFFFU);
+    multu_cpu.set_reg(9, 2U);
+    assert(ee.write(0x8000B000U, 4, (8U << 21U) | (9U << 16U) | 0x19U, &error)); // MULTU t0,t1
+    assert(ee.write(0x8000B004U, 4, (10U << 11U) | 0x12U, &error)); // MFLO t2
+    assert(ee.write(0x8000B008U, 4, (11U << 11U) | 0x10U, &error)); // MFHI t3
+    assert(multu_cpu.step_from_ee_memory(ee, &error));
+    assert(multu_cpu.lo() == 0xFFFFFFFEU);
+    assert(multu_cpu.hi() == 1U);
+    assert(multu_cpu.step_from_ee_memory(ee, &error));
+    assert(multu_cpu.reg(10) == 0xFFFFFFFEU);
+    assert(multu_cpu.step_from_ee_memory(ee, &error));
+    assert(multu_cpu.reg(11) == 1U);
+
+    // Signed MULT of -2 by 3 yields the two's-complement 64-bit product.
+    retroshelf::Cpu mult_cpu;
+    mult_cpu.set_pc(0x8000B100U);
+    mult_cpu.set_reg(8, 0xFFFFFFFEU);
+    mult_cpu.set_reg(9, 3U);
+    assert(ee.write(0x8000B100U, 4, (8U << 21U) | (9U << 16U) | 0x18U, &error)); // MULT t0,t1
+    assert(mult_cpu.step_from_ee_memory(ee, &error));
+    assert(mult_cpu.lo() == 0xFFFFFFFAU);
+    assert(mult_cpu.hi() == 0xFFFFFFFFU);
+
     std::cout << "CPU boot execution tests passed\n";
 }
