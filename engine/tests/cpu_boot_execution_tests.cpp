@@ -79,5 +79,30 @@ int main() {
     assert(ee.read(0x00000000U, 4, stored, &error));
     assert(stored == 0U); // rejected store must not corrupt physical address zero
 
+    // Unmapped EE data loads/stores must raise the expected address exception.
+    retroshelf::Cpu bad_load_cpu;
+    bad_load_cpu.set_pc(0x80002000U);
+    bad_load_cpu.set_reg(16, 0x30000000U); // outside the currently mapped RAM aliases
+    assert(ee.write(0x80002000U, 4,
+                    (0x23U << 26U) | (16U << 21U) | (9U << 16U), &error)); // LW t1,0(s0)
+    assert(!bad_load_cpu.step_from_ee_memory(ee, &error));
+    assert((bad_load_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
+    assert((bad_load_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+    assert(bad_load_cpu.cop0_epc() == 0x80002000U);
+    assert(bad_load_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
+
+    retroshelf::Cpu bad_store_cpu;
+    bad_store_cpu.set_pc(0x80003000U);
+    bad_store_cpu.set_reg(16, 0x30000000U);
+    assert(ee.write(0x80003000U, 4,
+                    (0x2BU << 26U) | (16U << 21U) | (8U << 16U), &error)); // SW t0,0(s0)
+    assert(!bad_store_cpu.step_from_ee_memory(ee, &error));
+    assert((bad_store_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorStore << 2U));
+    assert((bad_store_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+    assert(bad_store_cpu.cop0_epc() == 0x80003000U);
+    assert(bad_store_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
+
     std::cout << "CPU boot execution tests passed\n";
 }
