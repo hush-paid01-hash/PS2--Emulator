@@ -1,5 +1,6 @@
 #include "retroshelf/ps2_boot_image.hpp"
 #include "retroshelf/elf_ram_loader.hpp"
+#include "retroshelf/ps2_ee_memory_map.hpp"
 #include "retroshelf/cpu.hpp"
 
 #include <algorithm>
@@ -118,6 +119,18 @@ int main() {
     assert(cpu.step_from_ram(ram, 0, &error));
     assert(cpu.reg(9) == 5);
     assert(cpu.pc() == entry + 8);
+    // The public orchestration API should perform disc parsing and mapped-RAM loading.
+    retroshelf::Ps2EeMemoryMap boot_memory(2 * 1024 * 1024);
+    std::fill(boot_memory.main_ram().begin(), boot_memory.main_ram().end(), 0xA5);
+    std::uint32_t boot_entry = 0;
+    std::string boot_executable;
+    assert(retroshelf::boot_ps2_disc_into_ee_memory(disc, boot_memory,
+                                                     boot_executable, boot_entry, &error));
+    assert(boot_executable == "SLUS_123.45;1");
+    assert(boot_entry == 0x00100000U);
+    assert(boot_memory.main_ram()[boot_entry] == 0x07);
+    assert(boot_memory.main_ram()[boot_entry + 8] == 0);
+
     std::filesystem::remove(disc_path);
 
     retroshelf::Iso9660Disc unopened;
@@ -128,5 +141,14 @@ int main() {
     assert(image.load_segments.empty());
     assert(image.entry_point == 0);
     assert(!error.empty());
+    std::fill(boot_memory.main_ram().begin(), boot_memory.main_ram().end(), 0x5A);
+    const auto before_failed_boot = boot_memory.main_ram();
+    boot_entry = 0xFFFFFFFFU;
+    boot_executable = "stale-path";
+    assert(!retroshelf::boot_ps2_disc_into_ee_memory(unopened, boot_memory,
+                                                      boot_executable, boot_entry, &error));
+    assert(boot_entry == 0);
+    assert(boot_executable.empty());
+    assert(boot_memory.main_ram() == before_failed_boot);
     std::cout << "PS2 disc-to-ELF integration tests passed\n";
 }
