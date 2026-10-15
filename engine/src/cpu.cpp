@@ -101,3 +101,4 @@ bool Cpu::step_from_ram(const std::vector<std::uint8_t>& ram,
     return step(instruction, error);
 }
 } // namespace retroshelf
+
