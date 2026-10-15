@@ -45,3 +45,8 @@ add_executable(gs-register-state-tests tests/gs_register_state_tests.cpp
 target_include_directories(gs-register-state-tests PRIVATE include)
 target_compile_options(gs-register-state-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-register-state-tests COMMAND gs-register-state-tests)
+
+add_executable(elf32-loader-tests tests/elf32_loader_tests.cpp src/elf32_loader.cpp)
+target_include_directories(elf32-loader-tests PRIVATE include)
+target_compile_options(elf32-loader-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME elf32-loader-tests COMMAND elf32-loader-tests)
