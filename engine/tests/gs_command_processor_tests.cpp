@@ -22,13 +22,12 @@ std::uint64_t xyz(std::uint16_t x, std::uint16_t y) {
 int main() {
     int failures = 0;
     const auto check = [&failures](bool ok, const char* name) {
-        if (!ok) { std::cerr << "FAIL: " << name << '\n'; ++failures; }
-        else std::cout << "PASS: " << name << '\n';
+        if (!ok) { std::cerr << "FAIL: " << name << '\\n'; ++failures; }
+        else std::cout << "PASS: " << name << '\\n';
     };
 
     retroshelf::GsCommandProcessor gs(8, 8);
     std::vector<std::uint8_t> packet;
-    // PACKED tag: one loop, two register descriptors: address 1 then address 2.
     append_qword(packet, packed_tag(1, true, 2), 0x21ULL);
     append_qword(packet, 0x1122334455667788ULL);
     append_qword(packet, 0x8877665544332211ULL);
@@ -50,39 +49,16 @@ int main() {
     check(gs.packets_processed() == 1 && gs.writes_processed() == 2,
           "failed packet does not increment successful counters");
 
-    // One PACKED GIF tag emits PRIM, RGBAQ, then three XYZ2 vertices.
+    // First tag writes PRIM, RGBAQ, and the first XYZ2 vertex. A second
+    // tag streams the remaining two XYZ2 vertices to complete the triangle.
     std::vector<std::uint8_t> triangle;
-    append_qword(triangle, packed_tag(5, true, 1), 0x510U); // NREG=1, XYZ2
-    // Use a separate tag with the register descriptor sequence PRIM/RGBAQ/XYZ2.
-    triangle.clear();
-    append_qword(triangle, packed_tag(5, true, 3), 0x510U);
+    append_qword(triangle, packed_tag(1, false, 3), 0x510U);
     append_qword(triangle, 3U);              // PRIM: triangle list
     append_qword(triangle, 0xFF0000FFU);     // RGBAQ: opaque red
     append_qword(triangle, xyz(16, 16));     // (1,1)
+    append_qword(triangle, packed_tag(2, true, 1), 0x5U);
     append_qword(triangle, xyz(96, 16));     // (6,1)
     append_qword(triangle, xyz(16, 96));     // (1,6)
-    // NREG=3 descriptor order repeats: PRIM, RGBAQ, XYZ2, then PRIM...
-    // The sequence above must be encoded as a single descriptor per vertex
-    // cycle, so build a proper tag with NREG=3 and two loops: this also
-    // exercises the repeated descriptor sequence.
-    triangle.clear();
-    append_qword(triangle, packed_tag(2, true, 3), 0x510U);
-    append_qword(triangle, 3U);              // PRIM
-    append_qword(triangle, 0xFF0000FFU);     // RGBAQ
-    append_qword(triangle, xyz(16, 16));     // first vertex
-    append_qword(triangle, 3U);
-    append_qword(triangle, 0xFF0000FFU);
-    append_qword(triangle, xyz(96, 16));     // second vertex
-    // NREG=3 can't represent an arbitrary register stream; send the third
-    // vertex in a second valid tag with PRIM/RGBAQ/XYZ2 descriptors.
-    triangle.clear();
-    append_qword(triangle, packed_tag(1, false, 3), 0x510U);
-    append_qword(triangle, 3U);
-    append_qword(triangle, 0xFF0000FFU);
-    append_qword(triangle, xyz(16, 16));
-    append_qword(triangle, packed_tag(2, true, 1), 0x5U);
-    append_qword(triangle, xyz(96, 16));
-    append_qword(triangle, xyz(16, 96));
     check(gs.submit_packed_packet(triangle), "packed GS primitive commands are accepted");
     retroshelf::GsFramebuffer::Pixel pixel{};
     check(gs.framebuffer().get_pixel(2, 2, pixel) &&
