@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(retroshelf-engine src/main.cpp src/cpu.cpp src/system_bus.cpp
     src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_register_decoder.cpp
-    src/gs_register_state.cpp src/iso9660_disc.cpp)
+    src/gs_register_state.cpp src/iso9660_disc.cpp src/ps2_boot_config.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -50,3 +50,8 @@ add_executable(iso9660-disc-tests tests/iso9660_disc_tests.cpp src/iso9660_disc.
 target_include_directories(iso9660-disc-tests PRIVATE include)
 target_compile_options(iso9660-disc-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME iso9660-disc-tests COMMAND iso9660-disc-tests)
+
+add_executable(ps2-boot-config-tests tests/ps2_boot_config_tests.cpp src/ps2_boot_config.cpp)
+target_include_directories(ps2-boot-config-tests PRIVATE include)
+target_compile_options(ps2-boot-config-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ps2-boot-config-tests COMMAND ps2-boot-config-tests)
