@@ -14,7 +14,7 @@ target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
 enable_testing()
-add_executable(cpu-tests tests/cpu_tests.cpp src/cpu.cpp)
+add_executable(cpu-tests tests/cpu_tests.cpp src/cpu.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(cpu-tests PRIVATE include)
 target_compile_options(cpu-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-tests COMMAND cpu-tests)
@@ -72,7 +72,7 @@ add_test(NAME elf32-mips-tests COMMAND elf32-mips-tests)
 add_executable(ps2-boot-image-tests tests/ps2_boot_image_tests.cpp
     src/iso9660_disc.cpp src/ps2_boot_config.cpp src/ps2_disc_boot_loader.cpp
     src/elf32_mips.cpp src/ps2_boot_image.cpp
-    src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/cpu.cpp)
+    src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/cpu.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(ps2-boot-image-tests PRIVATE include)
 target_compile_options(ps2-boot-image-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ps2-boot-image-tests COMMAND ps2-boot-image-tests)
@@ -89,7 +89,7 @@ target_include_directories(elf-ram-loader-tests PRIVATE include)
 target_compile_options(elf-ram-loader-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME elf-ram-loader-tests COMMAND elf-ram-loader-tests)
 
-add_executable(cpu-ram-fetch-tests tests/cpu_ram_fetch_tests.cpp src/cpu.cpp)
+add_executable(cpu-ram-fetch-tests tests/cpu_ram_fetch_tests.cpp src/cpu.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(cpu-ram-fetch-tests PRIVATE include)
 target_compile_options(cpu-ram-fetch-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-ram-fetch-tests COMMAND cpu-ram-fetch-tests)
