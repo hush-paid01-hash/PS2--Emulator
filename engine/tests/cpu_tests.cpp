@@ -189,5 +189,31 @@ int main() {
     // Delay-slot fault followed by an ordinary instruction: handler instruction runs normally.
     cpu.reset(); cpu.set_pc(0x100); cpu.step(bad_lw);
     check(cpu.step(set1) && cpu.reg(20) == 1 && cpu.pc() == Cpu::GeneralExceptionVector + 4, "execution continues at exception vector");
+
+    // Fixed and variable 32-bit shift operations.
+    const auto shift = [](std::uint32_t rs, std::uint32_t rt, std::uint32_t rd,
+                          std::uint32_t shamt, std::uint32_t funct) {
+        return (rs << 21U) | (rt << 16U) | (rd << 11U) | (shamt << 6U) | funct;
+    };
+    cpu.reset(); cpu.set_reg(2, 0x00000001U);
+    check(cpu.step(shift(0, 2, 3, 4, 0x00)) && cpu.reg(3) == 0x10,
+          "SLL shifts left by encoded amount");
+    cpu.set_reg(2, 0x80000000U);
+    check(cpu.step(shift(0, 2, 4, 1, 0x02)) && cpu.reg(4) == 0xFFFFFFFFC0000000ULL,
+          "SRL shifts logically and sign-extends 32-bit result");
+    check(cpu.step(shift(0, 2, 5, 1, 0x03)) && cpu.reg(5) == 0xFFFFFFFFC0000000ULL,
+          "SRA preserves sign while shifting right");
+    cpu.set_reg(1, 3); cpu.set_reg(2, 0x10);
+    check(cpu.step(shift(1, 2, 6, 0, 0x04)) && cpu.reg(6) == 0x80,
+          "SLLV uses low five bits of rs as shift amount");
+    cpu.set_reg(2, 0x80000000U);
+    check(cpu.step(shift(1, 2, 7, 0, 0x06)) && cpu.reg(7) == 0xFFFFFFFFF0000000ULL,
+          "SRLV shifts right by variable amount");
+    check(cpu.step(shift(1, 2, 8, 0, 0x07)) && cpu.reg(8) == 0xFFFFFFFFF0000000ULL,
+          "SRAV shifts right arithmetically by variable amount");
+    cpu.set_reg(1, 0x20); cpu.set_reg(2, 0x10);
+    check(cpu.step(shift(1, 2, 9, 0, 0x04)) && cpu.reg(9) == 0x10,
+          "SLLV masks shift amount to five bits");
+
     return failures == 0 ? 0 : 1;
 }
