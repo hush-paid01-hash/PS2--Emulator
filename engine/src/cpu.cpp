@@ -1,6 +1,7 @@
 #include "retroshelf/cpu.hpp"
 
 #include <sstream>
+#include <vector>
 
 namespace retroshelf {
 Cpu::Cpu() { reset(); }
