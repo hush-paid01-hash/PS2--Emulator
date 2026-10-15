@@ -18,6 +18,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     const auto rs = (instruction >> 21U) & 0x1FU;
     const auto rt = (instruction >> 16U) & 0x1FU;
     const auto rd = (instruction >> 11U) & 0x1FU;
+    const auto shamt = (instruction >> 6U) & 0x1FU;
     const auto funct = instruction & 0x3FU;
     const auto imm = static_cast<std::int16_t>(instruction & 0xFFFFU);
     pc_ += 4; // Sequential test harness; branch delay slots are not implemented.
@@ -25,18 +26,33 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     switch (opcode) {
     case 0x00:
         switch (funct) {
-        case 0x21: set_reg(rd, reg(rs) + reg(rt)); return true; // ADDU
+        case 0x21: case 0x2D: set_reg(rd, reg(rs) + reg(rt)); return true; // ADDU / DADDU
+        case 0x23: set_reg(rd, reg(rs) - reg(rt)); return true; // SUBU
+        case 0x24: set_reg(rd, reg(rs) & reg(rt)); return true; // AND
         case 0x25: set_reg(rd, reg(rs) | reg(rt)); return true; // OR
-        case 0x00: set_reg(rd, reg(rt) << ((instruction >> 6U) & 0x1FU)); return true; // SLL/NOP
+        case 0x26: set_reg(rd, reg(rs) ^ reg(rt)); return true; // XOR
+        case 0x27: set_reg(rd, ~(reg(rs) | reg(rt))); return true; // NOR
+        case 0x00: set_reg(rd, reg(rt) << shamt); return true; // SLL/NOP
+        case 0x02: set_reg(rd, reg(rt) >> shamt); return true; // SRL
+        case 0x03: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> shamt)); return true; // SRA
+        case 0x04: set_reg(rd, reg(rt) << (reg(rs) & 0x3FU)); return true; // SLLV
+        case 0x06: set_reg(rd, reg(rt) >> (reg(rs) & 0x3FU)); return true; // SRLV
+        case 0x07: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> (reg(rs) & 0x3FU))); return true; // SRAV
+        case 0x2A: set_reg(rd, static_cast<std::int64_t>(reg(rs)) < static_cast<std::int64_t>(reg(rt)) ? 1U : 0U); return true; // SLT
+        case 0x2B: set_reg(rd, reg(rs) < reg(rt) ? 1U : 0U); return true; // SLTU
         default: break;
         }
         break;
     case 0x09: // ADDIU
         set_reg(rt, reg(rs) + static_cast<std::uint64_t>(static_cast<std::int64_t>(imm)));
         return true;
+    case 0x0C: set_reg(rt, reg(rs) & static_cast<std::uint16_t>(instruction)); return true; // ANDI
     case 0x0D: // ORI
         set_reg(rt, reg(rs) | static_cast<std::uint16_t>(instruction & 0xFFFFU));
         return true;
+    case 0x0E: set_reg(rt, reg(rs) ^ static_cast<std::uint16_t>(instruction)); return true; // XORI
+    case 0x0A: set_reg(rt, static_cast<std::int64_t>(reg(rs)) < static_cast<std::int64_t>(imm) ? 1U : 0U); return true; // SLTI
+    case 0x0B: set_reg(rt, reg(rs) < static_cast<std::uint64_t>(static_cast<std::int64_t>(imm)) ? 1U : 0U); return true; // SLTIU
     case 0x0F: // LUI
         set_reg(rt, static_cast<std::uint64_t>(instruction & 0xFFFFU) << 16U);
         return true;
