@@ -6,7 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(retroshelf-engine src/main.cpp src/cpu.cpp src/system_bus.cpp
-    src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_register_decoder.cpp)
+    src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_register_decoder.cpp
+    src/gs_register_state.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -38,3 +39,9 @@ add_executable(gs-register-decoder-tests tests/gs_register_decoder_tests.cpp
 target_include_directories(gs-register-decoder-tests PRIVATE include)
 target_compile_options(gs-register-decoder-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-register-decoder-tests COMMAND gs-register-decoder-tests)
+
+add_executable(gs-register-state-tests tests/gs_register_state_tests.cpp
+    src/gs_register_state.cpp)
+target_include_directories(gs-register-state-tests PRIVATE include)
+target_compile_options(gs-register-state-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-register-state-tests COMMAND gs-register-state-tests)
