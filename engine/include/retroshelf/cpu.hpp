@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace retroshelf {
 
@@ -17,6 +18,9 @@ public:
     Cpu();
     void reset();
     bool step(std::uint32_t instruction, std::string* error = nullptr);
+    bool step_from_ram(const std::vector<std::uint8_t>& ram,
+                       std::uint32_t ram_base,
+                       std::string* error = nullptr);
 
     std::uint64_t reg(std::size_t index) const;
     void set_reg(std::size_t index, std::uint64_t value);
