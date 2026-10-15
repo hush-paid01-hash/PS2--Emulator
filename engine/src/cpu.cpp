@@ -1,10 +1,11 @@
 #include "retroshelf/cpu.hpp"
 
 #include <sstream>
+#include <vector>
 
 namespace retroshelf {
-Cpu::Cpu() { reset(); }
-void Cpu::reset() { gpr_.fill(0); memory_.fill(0); pc_ = 0; }
+Cpu::Cpu(SystemBus& bus) : bus_(bus) { reset(); }
+void Cpu::reset() { gpr_.fill(0); pc_ = 0; }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
 void Cpu::set_reg(std::size_t index, std::uint64_t value) {
     if (index > 0 && index < RegisterCount) gpr_[index] = value;
@@ -40,25 +41,36 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x0F: // LUI
         set_reg(rt, static_cast<std::uint64_t>(instruction & 0xFFFFU) << 16U);
         return true;
-    case 0x23: case 0x2B: { // LW / SW in small test RAM only
+    case 0x23: case 0x2B: { // LW / SW through the shared SystemBus (EE RAM offsets only)
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(static_cast<std::int64_t>(imm));
-        if ((address & 3U) != 0U || address > TestMemorySize - sizeof(std::uint32_t)) {
+        if ((address & 3U) != 0U || address > 0xFFFFFFFFULL) {
             if (error) *error = "Unaligned or out-of-range 32-bit memory access";
             return false;
         }
-        const auto offset = static_cast<std::size_t>(address);
+        const auto bus_address = static_cast<std::uint32_t>(address);
+        std::string bus_error;
         if (opcode == 0x23) {
-            const std::uint32_t value = static_cast<std::uint32_t>(memory_[offset]) |
-                (static_cast<std::uint32_t>(memory_[offset + 1]) << 8U) |
-                (static_cast<std::uint32_t>(memory_[offset + 2]) << 16U) |
-                (static_cast<std::uint32_t>(memory_[offset + 3]) << 24U);
+            std::vector<std::uint8_t> bytes;
+            if (!bus_.read(bus_address, sizeof(std::uint32_t), bytes, &bus_error)) {
+                if (error) *error = "LW failed: " + bus_error;
+                return false;
+            }
+            const std::uint32_t value = static_cast<std::uint32_t>(bytes[0]) |
+                (static_cast<std::uint32_t>(bytes[1]) << 8U) |
+                (static_cast<std::uint32_t>(bytes[2]) << 16U) |
+                (static_cast<std::uint32_t>(bytes[3]) << 24U);
             set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int32_t>(value)));
         } else {
             const auto value = static_cast<std::uint32_t>(reg(rt) & 0xFFFFFFFFU);
-            memory_[offset] = static_cast<std::uint8_t>(value & 0xFFU);
-            memory_[offset + 1] = static_cast<std::uint8_t>((value >> 8U) & 0xFFU);
-            memory_[offset + 2] = static_cast<std::uint8_t>((value >> 16U) & 0xFFU);
-            memory_[offset + 3] = static_cast<std::uint8_t>((value >> 24U) & 0xFFU);
+            const std::vector<std::uint8_t> bytes{
+                static_cast<std::uint8_t>(value & 0xFFU),
+                static_cast<std::uint8_t>((value >> 8U) & 0xFFU),
+                static_cast<std::uint8_t>((value >> 16U) & 0xFFU),
+                static_cast<std::uint8_t>((value >> 24U) & 0xFFU)};
+            if (!bus_.write(bus_address, bytes, &bus_error)) {
+                if (error) *error = "SW failed: " + bus_error;
+                return false;
+            }
         }
         return true;
     }

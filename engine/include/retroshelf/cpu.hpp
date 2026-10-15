@@ -5,16 +5,18 @@
 #include <cstdint>
 #include <string>
 
+#include "retroshelf/system_bus.hpp"
+
 namespace retroshelf {
 
 // Educational milestone only: this is not yet a complete PS2 Emotion Engine.
-// The memory here is a small test RAM, not the PS2's real memory map.
+// LW/SW use the shared SystemBus; addresses are plain byte offsets into the bus's
+// EE RAM (no KSEG/TLB translation, MMIO, or real PS2 memory map).
 class Cpu {
 public:
     static constexpr std::size_t RegisterCount = 32;
-    static constexpr std::size_t TestMemorySize = 64 * 1024;
 
-    Cpu();
+    explicit Cpu(SystemBus& bus);
     void reset();
     bool step(std::uint32_t instruction, std::string* error = nullptr);
 
@@ -25,7 +27,7 @@ public:
 
 private:
     std::array<std::uint64_t, RegisterCount> gpr_{};
-    std::array<std::uint8_t, TestMemorySize> memory_{};
+    SystemBus& bus_;
     std::uint64_t pc_{0};
 };
 

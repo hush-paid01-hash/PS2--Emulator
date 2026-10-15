@@ -11,7 +11,7 @@ target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
 enable_testing()
-add_executable(cpu-tests tests/cpu_tests.cpp src/cpu.cpp)
+add_executable(cpu-tests tests/cpu_tests.cpp src/cpu.cpp src/system_bus.cpp)
 target_include_directories(cpu-tests PRIVATE include)
 target_compile_options(cpu-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-tests COMMAND cpu-tests)
@@ -32,3 +32,9 @@ add_executable(gs-packet-processor-tests tests/gs_packet_processor_tests.cpp
 target_include_directories(gs-packet-processor-tests PRIVATE include)
 target_compile_options(gs-packet-processor-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-packet-processor-tests COMMAND gs-packet-processor-tests)
+
+add_executable(cpu-bus-dma-integration-tests tests/cpu_bus_dma_integration_tests.cpp
+    src/cpu.cpp src/system_bus.cpp src/ee_gif_dma.cpp src/gs_packet_processor.cpp)
+target_include_directories(cpu-bus-dma-integration-tests PRIVATE include)
+target_compile_options(cpu-bus-dma-integration-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME cpu-bus-dma-integration-tests COMMAND cpu-bus-dma-integration-tests)
