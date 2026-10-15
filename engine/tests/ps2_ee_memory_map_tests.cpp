@@ -8,8 +8,8 @@ int main() {
     retroshelf::Ps2EeMemoryMap memory(1024U * 1024U);
     int failures = 0;
     const auto check = [&failures](bool condition, const char* label) {
-        if (!condition) { std::cerr << "FAIL: " << label << '\n'; ++failures; }
-        else std::cout << "PASS: " << label << '\n';
+        if (!condition) { std::cerr << "FAIL: " << label << '\\n'; ++failures; }
+        else std::cout << "PASS: " << label << '\\n';
     };
     std::string error;
     std::uint64_t value = 0;
@@ -31,7 +31,7 @@ int main() {
           "unaligned word access is rejected");
     check(!memory.write(0x40000000, 4, 1, &error) && !error.empty(),
           "unmapped address is rejected");
-    check(!memory.write(0x1000, 8, 1, &error) && error.empty() == false,
+    check(!memory.write(0x100000, 8, 1, &error) && !error.empty(),
           "out-of-range access is rejected for small configured RAM");
 
     retroshelf::Ps2EeMemoryMap small(256);
