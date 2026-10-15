@@ -1,6 +1,6 @@
 #include "retroshelf/elf32_mips.hpp"
 
-#include <limits>
+#include <utility>
 
 namespace retroshelf {
 namespace {
