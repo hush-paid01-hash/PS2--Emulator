@@ -199,16 +199,16 @@ int main() {
     check(cpu.step(shift(0, 2, 3, 4, 0x00)) && cpu.reg(3) == 0x10,
           "SLL shifts left by encoded amount");
     cpu.set_reg(2, 0x80000000U);
-    check(cpu.step(shift(0, 2, 4, 1, 0x02)) && cpu.reg(4) == 0xFFFFFFFFC0000000ULL,
-          "SRL shifts logically and sign-extends 32-bit result");
+    check(cpu.step(shift(0, 2, 4, 1, 0x02)) && cpu.reg(4) == 0x40000000ULL,
+          "SRL shifts logically and zero-fills from the left");
     check(cpu.step(shift(0, 2, 5, 1, 0x03)) && cpu.reg(5) == 0xFFFFFFFFC0000000ULL,
           "SRA preserves sign while shifting right");
     cpu.set_reg(1, 3); cpu.set_reg(2, 0x10);
     check(cpu.step(shift(1, 2, 6, 0, 0x04)) && cpu.reg(6) == 0x80,
           "SLLV uses low five bits of rs as shift amount");
     cpu.set_reg(2, 0x80000000U);
-    check(cpu.step(shift(1, 2, 7, 0, 0x06)) && cpu.reg(7) == 0xFFFFFFFFF0000000ULL,
-          "SRLV shifts right by variable amount");
+    check(cpu.step(shift(1, 2, 7, 0, 0x06)) && cpu.reg(7) == 0x10000000ULL,
+          "SRLV shifts right logically by variable amount");
     check(cpu.step(shift(1, 2, 8, 0, 0x07)) && cpu.reg(8) == 0xFFFFFFFFF0000000ULL,
           "SRAV shifts right arithmetically by variable amount");
     cpu.set_reg(1, 0x20); cpu.set_reg(2, 0x10);
