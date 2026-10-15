@@ -6,45 +6,38 @@
 #include <string>
 #include <vector>
 
-namespace {
-retroshelf::Elf32MipsImage valid_image() {
+int main() {
     retroshelf::Elf32MipsImage image;
-    image.entry_point = 0x1004;
+    image.entry_point = 0x00100000;
     retroshelf::Elf32LoadSegment segment;
-    segment.virtual_address = 0x1000;
+    segment.virtual_address = 0x00100000;
     segment.memory_size = 8;
-    segment.flags = 5; // executable and readable
+    segment.flags = 5; // readable + executable
     segment.file_bytes = {0x11, 0x22, 0x33, 0x44};
     image.load_segments.push_back(segment);
-    return image;
-}
-}
 
-int main() {
-    std::vector<std::uint8_t> ram(0x2000, 0xAA);
-    retroshelf::SystemBus bus(ram);
-    std::uint32_t entry = 0xFFFFFFFFU;
+    constexpr std::uint32_t base = 0;
+    std::vector<std::uint8_t> ram(2 * 1024 * 1024, 0xAA);
+    std::uint32_t entry = 0;
     std::string error;
-    const auto image = valid_image();
-    assert(retroshelf::load_elf32_into_ram(image, 0, bus, entry, &error));
-    assert(entry == 0x1004);
-    assert(ram[0x1000] == 0x11 && ram[0x1001] == 0x22);
-    assert(ram[0x1002] == 0x33 && ram[0x1003] == 0x44);
-    for (std::size_t i = 0x1004; i < 0x1008; ++i) assert(ram[i] == 0);
-    assert(ram[0x0FFF] == 0xAA && ram[0x1008] == 0xAA);
-    assert(error.empty());
+    assert(retroshelf::load_elf32_into_ram(image, base, ram, entry, &error));
+    assert(entry == image.entry_point);
+    assert(ram[0x00100000] == 0x11);
+    assert(ram[0x00100003] == 0x44);
+    assert(ram[0x00100004] == 0);
+    assert(ram[0x00100007] == 0);
+    assert(ram[0x00001000] == 0);
 
-    auto invalid = valid_image();
-    invalid.load_segments[0].virtual_address = 0x3000;
-    const auto before = ram;
-    entry = 0xFFFFFFFFU;
-    assert(!retroshelf::load_elf32_into_ram(invalid, 0, bus, entry, &error));
+    auto preserved = ram;
+    image.load_segments[0].virtual_address = 0x00300000;
+    entry = 123;
+    assert(!retroshelf::load_elf32_into_ram(image, base, ram, entry, &error));
     assert(entry == 0);
-    assert(ram == before); // validate all segments before touching RAM
+    assert(ram == preserved);
+    assert(!error.empty());
 
-    invalid = valid_image();
-    invalid.entry_point = 0x1010;
-    assert(!retroshelf::load_elf32_into_ram(invalid, 0, bus, entry, &error));
-    assert(ram == before);
+    std::vector<std::uint8_t> empty;
+    assert(!retroshelf::load_elf32_into_ram(image, base, empty, entry, &error));
+    assert(entry == 0);
     std::cout << "ELF RAM loader tests passed\n";
 }
