@@ -48,7 +48,8 @@ std::vector<std::uint8_t> valid_elf() {
     put16(b, 40, 52); put16(b, 42, 32); put16(b, 44, 1);
     put32(b, 52, 1); put32(b, 56, 84); put32(b, 60, 0x00100000);
     put32(b, 68, 8); put32(b, 72, 12); put32(b, 76, 5);
-    b[84] = 0x07; b[85] = 0x00; b[86] = 0x08; b[87] = 0x24;\n    b[88] = 0x05; b[89] = 0x00; b[90] = 0x09; b[91] = 0x24;
+    b[84] = 0x07; b[85] = 0x00; b[86] = 0x08; b[87] = 0x24;
+    b[88] = 0x05; b[89] = 0x00; b[90] = 0x09; b[91] = 0x24;
     return b;
 }
 std::filesystem::path make_disc() {
