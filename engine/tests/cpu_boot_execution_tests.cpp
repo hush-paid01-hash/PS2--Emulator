@@ -156,5 +156,34 @@ int main() {
     assert(unaligned_store_cpu.cop0_epc() == 0x80007000U);
     assert((unaligned_store_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
 
+
+    // Halfword accesses also require two-byte alignment and must report the
+    // load/store-specific Address Error without modifying neighboring bytes.
+    assert(ee.write(0x00000020U, 4, 0xA1B2C3D4U, &error));
+    retroshelf::Cpu unaligned_half_load_cpu;
+    unaligned_half_load_cpu.set_pc(0x80008000U);
+    unaligned_half_load_cpu.set_reg(16, 0x21U);
+    assert(ee.write(0x80008000U, 4,
+                    (0x21U << 26U) | (16U << 21U) | (9U << 16U), &error)); // LH t1,0(s0)
+    assert(!unaligned_half_load_cpu.step_from_ee_memory(ee, &error));
+    assert((unaligned_half_load_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
+    assert(unaligned_half_load_cpu.cop0_epc() == 0x80008000U);
+    assert((unaligned_half_load_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+
+    retroshelf::Cpu unaligned_half_store_cpu;
+    unaligned_half_store_cpu.set_pc(0x80009000U);
+    unaligned_half_store_cpu.set_reg(16, 0x21U);
+    unaligned_half_store_cpu.set_reg(8, 0xFFFFFFFFU);
+    assert(ee.write(0x80009000U, 4,
+                    (0x29U << 26U) | (16U << 21U) | (8U << 16U), &error)); // SH t0,0(s0)
+    assert(!unaligned_half_store_cpu.step_from_ee_memory(ee, &error));
+    assert((unaligned_half_store_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorStore << 2U));
+    assert(unaligned_half_store_cpu.cop0_epc() == 0x80009000U);
+    assert((unaligned_half_store_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+    assert(ee.read(0x00000020U, 4, stored, &error));
+    assert(stored == 0xA1B2C3D4U); // failed SH leaves the original word untouched
+
     std::cout << "CPU boot execution tests passed\n";
 }
