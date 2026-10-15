@@ -82,7 +82,13 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x00:
         switch (funct) {
         case 0x21: set_reg(rd, reg(rs) + reg(rt)); return true; // ADDU
+        case 0x23: set_reg(rd, reg(rs) - reg(rt)); return true; // SUBU
+        case 0x24: set_reg(rd, reg(rs) & reg(rt)); return true; // AND
         case 0x25: set_reg(rd, reg(rs) | reg(rt)); return true; // OR
+        case 0x26: set_reg(rd, reg(rs) ^ reg(rt)); return true; // XOR
+        case 0x27: set_reg(rd, ~(reg(rs) | reg(rt))); return true; // NOR
+        case 0x2A: set_reg(rd, sreg(rs) < sreg(rt) ? 1U : 0U); return true; // SLT
+        case 0x2B: set_reg(rd, reg(rs) < reg(rt) ? 1U : 0U); return true; // SLTU
         case 0x00: set_reg(rd, reg(rt) << ((instruction >> 6U) & 0x1FU)); return true; // SLL/NOP
         case 0x08: return branch(true, reg(rs)); // JR
         case 0x09: { // JALR
@@ -110,8 +116,20 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x09: // ADDIU
         set_reg(rt, reg(rs) + static_cast<std::uint64_t>(simm));
         return true;
+    case 0x0A: // SLTI
+        set_reg(rt, sreg(rs) < simm ? 1U : 0U);
+        return true;
+    case 0x0B: // SLTIU (the immediate is sign-extended, then compared unsigned)
+        set_reg(rt, reg(rs) < static_cast<std::uint64_t>(simm) ? 1U : 0U);
+        return true;
+    case 0x0C: // ANDI
+        set_reg(rt, reg(rs) & static_cast<std::uint16_t>(instruction & 0xFFFFU));
+        return true;
     case 0x0D: // ORI
         set_reg(rt, reg(rs) | static_cast<std::uint16_t>(instruction & 0xFFFFU));
+        return true;
+    case 0x0E: // XORI
+        set_reg(rt, reg(rs) ^ static_cast<std::uint16_t>(instruction & 0xFFFFU));
         return true;
     case 0x0F: // LUI
         set_reg(rt, static_cast<std::uint64_t>(instruction & 0xFFFFU) << 16U);
