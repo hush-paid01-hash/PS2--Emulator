@@ -36,6 +36,8 @@ Using `-j1` keeps memory use lower on small cloud servers.
 
 This is **not yet a complete PlayStation 2 emulator** and cannot boot or play games. The PS2 Emotion Engine requires substantial additional work, including accurate CPU behavior, exceptions, memory/bus handling, COP0/COP1/COP2, vector units, timers, DMA, the Graphics Synthesizer, sound hardware, and BIOS integration. This initial subset is for testing the build workflow and code structure only.
 
+CPU `LW`/`SW` now go through the shared `SystemBus`, so CPU accesses and GIF DMA see the same EE RAM. Addresses are plain byte offsets into that RAM (no KSEG/TLB translation, MMIO, scratchpad or other PS2 regions); misaligned or out-of-range accesses fail with an error.
+
 `SystemBus` currently bounds reads and writes to the supplied EE-RAM vector; it is not a
 PS2 memory map or an address-aliasing implementation. GIF DMA reads both chain tags and
 payloads through that bus interface and submits payloads to `GsPacketProcessor`, which
