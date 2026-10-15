@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(retroshelf-engine src/main.cpp src/cpu.cpp src/system_bus.cpp
     src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_register_decoder.cpp
     src/gs_register_state.cpp src/iso9660_disc.cpp src/ps2_boot_config.cpp
-    src/ps2_disc_boot_loader.cpp src/elf32_mips.cpp)
+    src/ps2_disc_boot_loader.cpp src/elf32_mips.cpp src/ps2_boot_image.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -67,3 +67,10 @@ add_executable(elf32-mips-tests tests/elf32_mips_tests.cpp src/elf32_mips.cpp)
 target_include_directories(elf32-mips-tests PRIVATE include)
 target_compile_options(elf32-mips-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME elf32-mips-tests COMMAND elf32-mips-tests)
+
+add_executable(ps2-boot-image-tests tests/ps2_boot_image_tests.cpp
+    src/iso9660_disc.cpp src/ps2_boot_config.cpp src/ps2_disc_boot_loader.cpp
+    src/elf32_mips.cpp src/ps2_boot_image.cpp)
+target_include_directories(ps2-boot-image-tests PRIVATE include)
+target_compile_options(ps2-boot-image-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ps2-boot-image-tests COMMAND ps2-boot-image-tests)
