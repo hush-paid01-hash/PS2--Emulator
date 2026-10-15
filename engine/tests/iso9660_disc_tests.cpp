@@ -1,5 +1,6 @@
 #include "retroshelf/iso9660_disc.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
@@ -48,9 +49,9 @@ int main() {
     assert(disc.open(path,&error) && error.empty());
     assert(disc.sector_count()==sectors);
     std::vector<std::uint8_t> bytes;
-    assert(disc.read_file("/hello.txt",&bytes,&error));
+    assert(disc.read_file("/hello.txt",bytes,&error));
     assert(std::string(bytes.begin(),bytes.end())==payload);
-    assert(!disc.read_file("/missing.bin",&bytes,&error));
+    assert(!disc.read_file("/missing.bin",bytes,&error));
     std::filesystem::remove(path);
     std::cout << "ISO-9660 disc reader tests passed\n";
 }
