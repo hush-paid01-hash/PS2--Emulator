@@ -45,3 +45,9 @@ add_executable(gs-register-state-tests tests/gs_register_state_tests.cpp
 target_include_directories(gs-register-state-tests PRIVATE include)
 target_compile_options(gs-register-state-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-register-state-tests COMMAND gs-register-state-tests)
+
+add_executable(gs-command-processor-tests tests/gs_command_processor_tests.cpp
+    src/gs_command_processor.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp)
+target_include_directories(gs-command-processor-tests PRIVATE include)
+target_compile_options(gs-command-processor-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-command-processor-tests COMMAND gs-command-processor-tests)
