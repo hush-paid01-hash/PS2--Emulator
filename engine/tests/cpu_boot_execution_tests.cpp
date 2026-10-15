@@ -232,5 +232,34 @@ int main() {
     assert(mult_cpu.lo() == 0xFFFFFFFAU);
     assert(mult_cpu.hi() == 0xFFFFFFFFU);
 
+    // DIV/DIVU place quotient in LO and remainder in HI.
+    retroshelf::Cpu div_cpu;
+    div_cpu.set_pc(0x8000B200U);
+    div_cpu.set_reg(8, static_cast<std::uint32_t>(-17));
+    div_cpu.set_reg(9, 5U);
+    assert(ee.write(0x8000B200U, 4, (8U << 21U) | (9U << 16U) | 0x1AU, &error)); // DIV t0,t1
+    assert(div_cpu.step_from_ee_memory(ee, &error));
+    assert(div_cpu.lo() == static_cast<std::uint64_t>(static_cast<std::int64_t>(-3)));
+    assert(div_cpu.hi() == static_cast<std::uint64_t>(static_cast<std::int64_t>(-2)));
+
+    retroshelf::Cpu divu_cpu;
+    divu_cpu.set_pc(0x8000B300U);
+    divu_cpu.set_reg(8, 17U);
+    divu_cpu.set_reg(9, 5U);
+    assert(ee.write(0x8000B300U, 4, (8U << 21U) | (9U << 16U) | 0x1BU, &error)); // DIVU t0,t1
+    assert(divu_cpu.step_from_ee_memory(ee, &error));
+    assert(divu_cpu.lo() == 3U);
+    assert(divu_cpu.hi() == 2U);
+
+    // Division by zero is handled deterministically and must not crash.
+    retroshelf::Cpu div_zero_cpu;
+    div_zero_cpu.set_pc(0x8000B400U);
+    div_zero_cpu.set_reg(8, 7U);
+    div_zero_cpu.set_reg(9, 0U);
+    assert(ee.write(0x8000B400U, 4, (8U << 21U) | (9U << 16U) | 0x1AU, &error));
+    assert(div_zero_cpu.step_from_ee_memory(ee, &error));
+    assert(div_zero_cpu.lo() == 0xFFFFFFFFFFFFFFFFULL);
+    assert(div_zero_cpu.hi() == 7U);
+
     std::cout << "CPU boot execution tests passed\n";
 }

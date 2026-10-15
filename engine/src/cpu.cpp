@@ -94,6 +94,37 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             hi_ = static_cast<std::uint32_t>(bits >> 32U);
             return true;
         }
+        case 0x1A: { // DIV: signed 32-bit quotient in LO, remainder in HI
+            const auto dividend = static_cast<std::int32_t>(reg(rs));
+            const auto divisor = static_cast<std::int32_t>(reg(rt));
+            std::int32_t quotient = 0;
+            std::int32_t remainder = dividend;
+            if (divisor == 0) {
+                // Deterministic legacy-MIPS convention for divide by zero.
+                quotient = dividend < 0 ? 1 : -1;
+            } else if (dividend == INT32_MIN && divisor == -1) {
+                quotient = INT32_MIN;
+                remainder = 0;
+            } else {
+                quotient = dividend / divisor;
+                remainder = dividend % divisor;
+            }
+            lo_ = static_cast<std::uint64_t>(static_cast<std::int64_t>(quotient));
+            hi_ = static_cast<std::uint64_t>(static_cast<std::int64_t>(remainder));
+            return true;
+        }
+        case 0x1B: { // DIVU: unsigned 32-bit quotient in LO, remainder in HI
+            const auto dividend = static_cast<std::uint32_t>(reg(rs));
+            const auto divisor = static_cast<std::uint32_t>(reg(rt));
+            if (divisor == 0U) {
+                lo_ = 0xFFFFFFFFU;
+                hi_ = dividend;
+            } else {
+                lo_ = dividend / divisor;
+                hi_ = dividend % divisor;
+            }
+            return true;
+        }
         case 0x19: { // MULTU: unsigned 32-bit product into HI:LO
             const auto product = static_cast<std::uint64_t>(static_cast<std::uint32_t>(reg(rs))) *
                                  static_cast<std::uint64_t>(static_cast<std::uint32_t>(reg(rt)));
