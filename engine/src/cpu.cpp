@@ -157,6 +157,38 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         default: break;
         }
         break;
+    case 0x10: { // Minimal COP0 support: MFC0, MTC0 and ERET.
+        const auto read_cop0 = [this](std::uint32_t index, std::uint64_t& value) {
+            switch (index) {
+            case 12: value = status_; return true; // Status
+            case 13: value = cause_; return true;  // Cause
+            case 14: value = epc_; return true;    // EPC
+            default: return false;
+            }
+        };
+        if (rs == 0x00) { // MFC0 rt, rd
+            std::uint64_t value = 0;
+            if (!read_cop0(rd, value)) return unsupported();
+            set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
+            return true;
+        }
+        if (rs == 0x04) { // MTC0 rt, rd
+            switch (rd) {
+            case 12: status_ = static_cast<std::uint32_t>(reg(rt)); return true;
+            case 13: cause_ = (cause_ & CauseBd) | (static_cast<std::uint32_t>(reg(rt)) & ~(CauseBd | (0x1FU << 2U))); return true;
+            case 14: epc_ = reg(rt); return true;
+            default: return unsupported();
+            }
+        }
+        if (rs == 0x10 && funct == 0x18) { // ERET: return to EPC and clear Status.EXL.
+            pc_ = epc_;
+            next_pc_ = epc_ + 4;
+            status_ &= ~StatusExl;
+            delay_slot_pending_ = false;
+            return true;
+        }
+        return unsupported();
+    }
     case 0x01: { // REGIMM subset: BLTZ, BGEZ, BLTZAL, BGEZAL
         if (rt != 0x00 && rt != 0x01 && rt != 0x10 && rt != 0x11) return unsupported();
         const bool taken = (rt & 1U) ? sreg(rs) >= 0 : sreg(rs) < 0;
