@@ -6,7 +6,7 @@
 namespace retroshelf {
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
-    gpr_.fill(0); memory_.fill(0); pc_ = 0; next_pc_ = 4;
+    gpr_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; pc_ = 0; next_pc_ = 4;
     delay_slot_pending_ = false; delay_branch_pc_ = 0; status_ = 0; cause_ = 0; epc_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
@@ -118,24 +118,44 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         return true;
     case 0x23: case 0x2B: { // LW / SW in small test RAM only
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
-        if ((address & 3U) != 0U || address > TestMemorySize - sizeof(std::uint32_t)) {
-            if (error) *error = "Unaligned or out-of-range 32-bit memory access";
-            raise_exception(opcode == 0x23 ? ExcAddressErrorLoad : ExcAddressErrorStore, cur_pc, in_delay);
-            return false;
+        std::uint8_t* bytes = nullptr;
+        std::size_t offset = 0;
+        if (active_ram_ != nullptr) {
+            if (address < active_ram_base_) {
+                if (error) *error = "Data access is below external RAM";
+                raise_exception(opcode == 0x23 ? ExcAddressErrorLoad : ExcAddressErrorStore, cur_pc, in_delay);
+                return false;
+            }
+            const std::uint64_t relative = address - active_ram_base_;
+            if ((address & 3U) != 0U || relative > active_ram_->size() ||
+                active_ram_->size() - static_cast<std::size_t>(relative) < sizeof(std::uint32_t)) {
+                if (error) *error = "Unaligned or out-of-range external RAM access";
+                raise_exception(opcode == 0x23 ? ExcAddressErrorLoad : ExcAddressErrorStore, cur_pc, in_delay);
+                return false;
+            }
+            offset = static_cast<std::size_t>(relative);
+            bytes = active_ram_->data();
+        } else {
+            if ((address & 3U) != 0U || address > TestMemorySize - sizeof(std::uint32_t)) {
+                if (error) *error = "Unaligned or out-of-range 32-bit memory access";
+                raise_exception(opcode == 0x23 ? ExcAddressErrorLoad : ExcAddressErrorStore, cur_pc, in_delay);
+                return false;
+            }
+            offset = static_cast<std::size_t>(address);
+            bytes = memory_.data();
         }
-        const auto offset = static_cast<std::size_t>(address);
         if (opcode == 0x23) {
-            const std::uint32_t value = static_cast<std::uint32_t>(memory_[offset]) |
-                (static_cast<std::uint32_t>(memory_[offset + 1]) << 8U) |
-                (static_cast<std::uint32_t>(memory_[offset + 2]) << 16U) |
-                (static_cast<std::uint32_t>(memory_[offset + 3]) << 24U);
+            const std::uint32_t value = static_cast<std::uint32_t>(bytes[offset]) |
+                (static_cast<std::uint32_t>(bytes[offset + 1]) << 8U) |
+                (static_cast<std::uint32_t>(bytes[offset + 2]) << 16U) |
+                (static_cast<std::uint32_t>(bytes[offset + 3]) << 24U);
             set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int32_t>(value)));
         } else {
             const auto value = static_cast<std::uint32_t>(reg(rt) & 0xFFFFFFFFU);
-            memory_[offset] = static_cast<std::uint8_t>(value & 0xFFU);
-            memory_[offset + 1] = static_cast<std::uint8_t>((value >> 8U) & 0xFFU);
-            memory_[offset + 2] = static_cast<std::uint8_t>((value >> 16U) & 0xFFU);
-            memory_[offset + 3] = static_cast<std::uint8_t>((value >> 24U) & 0xFFU);
+            bytes[offset] = static_cast<std::uint8_t>(value & 0xFFU);
+            bytes[offset + 1] = static_cast<std::uint8_t>((value >> 8U) & 0xFFU);
+            bytes[offset + 2] = static_cast<std::uint8_t>((value >> 16U) & 0xFFU);
+            bytes[offset + 3] = static_cast<std::uint8_t>((value >> 24U) & 0xFFU);
         }
         return true;
     }
@@ -144,7 +164,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     return unsupported();
 }
 
-bool Cpu::step_from_ram(const std::vector<std::uint8_t>& ram,
+bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
                         std::uint32_t ram_base,
                         std::string* error) {
     if ((pc_ & 3U) != 0U) {
@@ -168,6 +188,11 @@ bool Cpu::step_from_ram(const std::vector<std::uint8_t>& ram,
         (static_cast<std::uint32_t>(ram[index + 2]) << 16U) |
         (static_cast<std::uint32_t>(ram[index + 3]) << 24U);
     if (error) error->clear();
-    return step(instruction, error);
+    active_ram_ = &ram;
+    active_ram_base_ = ram_base;
+    const bool succeeded = step(instruction, error);
+    active_ram_ = nullptr;
+    active_ram_base_ = 0;
+    return succeeded;
 }
 } // namespace retroshelf
