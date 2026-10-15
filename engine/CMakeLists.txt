@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(retroshelf-engine src/main.cpp src/cpu.cpp src/system_bus.cpp
     src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_register_decoder.cpp
-    src/gs_register_state.cpp src/gs_command_processor.cpp src/gs_framebuffer.cpp)
+    src/gs_register_state.cpp src/gs_command_processor.cpp src/gs_framebuffer.cpp src/gif_to_gs_pipeline.cpp)
 target_include_directories(retroshelf-engine PRIVATE include)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
