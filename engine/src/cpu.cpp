@@ -6,7 +6,7 @@
 namespace retroshelf {
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
-    gpr_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; pc_ = 0; next_pc_ = 4;
+    gpr_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
     delay_slot_pending_ = false; delay_branch_pc_ = 0; status_ = 0; cause_ = 0; epc_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
@@ -153,7 +153,15 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
             return false;
         };
-        if (active_ram_ != nullptr) {
+        if (active_ee_memory_ != nullptr) {
+            std::size_t mapped_offset = 0;
+            std::string map_error;
+            if (!active_ee_memory_->resolve_main_ram(static_cast<std::uint32_t>(address), width, width,
+                                                     mapped_offset, &map_error))
+                return fault("Unaligned or unmapped EE main-RAM access");
+            offset = mapped_offset;
+            bytes = active_ee_memory_->main_ram().data();
+        } else if (active_ram_ != nullptr) {
             if (address < active_ram_base_) return fault("Data access is below external RAM");
             const std::uint64_t relative = address - active_ram_base_;
             if ((address & (width - 1U)) != 0U || relative > active_ram_->size() ||
@@ -217,6 +225,24 @@ bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
     const bool succeeded = step(instruction, error);
     active_ram_ = nullptr;
     active_ram_base_ = 0;
+    return succeeded;
+}
+
+bool Cpu::step_from_ee_memory(Ps2EeMemoryMap& memory, std::string* error) {
+    if ((pc_ & 3U) != 0U) {
+        if (error) *error = "Unaligned instruction fetch";
+        return false;
+    }
+    std::uint64_t raw_instruction = 0;
+    std::string map_error;
+    if (!memory.read(static_cast<std::uint32_t>(pc_), 4, raw_instruction, &map_error)) {
+        if (error) *error = "Instruction fetch is outside supported EE main RAM";
+        return false;
+    }
+    if (error) error->clear();
+    active_ee_memory_ = &memory;
+    const bool succeeded = step(static_cast<std::uint32_t>(raw_instruction), error);
+    active_ee_memory_ = nullptr;
     return succeeded;
 }
 } // namespace retroshelf
