@@ -71,7 +71,8 @@ add_test(NAME elf32-mips-tests COMMAND elf32-mips-tests)
 
 add_executable(ps2-boot-image-tests tests/ps2_boot_image_tests.cpp
     src/iso9660_disc.cpp src/ps2_boot_config.cpp src/ps2_disc_boot_loader.cpp
-    src/elf32_mips.cpp src/ps2_boot_image.cpp\n    src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/cpu.cpp)
+    src/elf32_mips.cpp src/ps2_boot_image.cpp
+    src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/cpu.cpp)
 target_include_directories(ps2-boot-image-tests PRIVATE include)
 target_compile_options(ps2-boot-image-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ps2-boot-image-tests COMMAND ps2-boot-image-tests)
