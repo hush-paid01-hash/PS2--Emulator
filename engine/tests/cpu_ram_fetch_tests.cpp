@@ -43,5 +43,18 @@ int main() {
     cpu.set_pc(0);
     assert(!cpu.step_from_ram(ram, 4, &error));
     assert(cpu.pc() == 0);
-    std::cout << "CPU RAM fetch tests passed\n";
+
+    // LW/SW through step_from_ram use caller-owned RAM for data accesses too.
+    std::vector<std::uint8_t> data_ram(64, 0);
+    put32(data_ram, 0, (0x0FU << 26U) | (8U << 16U) | 0x0010U); // lui $t0, 0x0010
+    put32(data_ram, 4, (0x09U << 26U) | (9U << 16U) | 0x1234U); // addiu $t1, $zero, 0x1234
+    put32(data_ram, 8, (0x2BU << 26U) | (8U << 21U) | (9U << 16U) | 0x20U); // sw $t1, 0x20($t0)
+    put32(data_ram, 12, (0x23U << 26U) | (8U << 21U) | (10U << 16U) | 0x20U); // lw $t2, 0x20($t0)
+    cpu.reset();
+    cpu.set_pc(0x00100000);
+    for (int i = 0; i < 4; ++i) assert(cpu.step_from_ram(data_ram, 0x00100000, &error));
+    assert(data_ram[0x20] == 0x34 && data_ram[0x21] == 0x12);
+    assert(data_ram[0x22] == 0x00 && data_ram[0x23] == 0x00);
+    assert(cpu.reg(10) == 0x1234);
+    std::cout << "CPU RAM fetch/data-access tests passed\n";
 }
