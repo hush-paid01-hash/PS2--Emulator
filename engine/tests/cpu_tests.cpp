@@ -56,6 +56,41 @@ int main() {
     const std::uint32_t set1 = itype(0x09, 0, 20, 1); // ADDIU r20,r0,1 (delay-slot marker)
     const std::uint32_t bad_lw = itype(0x23, 0, 21, 3); // misaligned LW -> AdEL
 
+    const auto rtype = [](std::uint32_t rs, std::uint32_t rt, std::uint32_t rd, std::uint32_t funct) {
+        return (rs << 21U) | (rt << 16U) | (rd << 11U) | funct;
+    };
+
+    // Immediate logical operations zero-extend their 16-bit masks.
+    cpu.reset(); cpu.set_reg(1, 0x12345678);
+    check(cpu.step(itype(0x0C, 1, 2, 0x00FF)) && cpu.reg(2) == 0x78,
+          "ANDI zero-extends mask and clears other bits");
+    check(cpu.step(itype(0x0E, 1, 3, 0x00FF)) && cpu.reg(3) == 0x12345687,
+          "XORI zero-extends mask and toggles bits");
+
+    // Signed and unsigned comparisons, including a negative sign-extended immediate.
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-1));
+    check(cpu.step(itype(0x0A, 1, 2, 1)) && cpu.reg(2) == 1,
+          "SLTI compares signed register values");
+    check(cpu.step(itype(0x0A, 1, 3, -2)) && cpu.reg(3) == 0,
+          "SLTI handles negative immediates");
+    cpu.reset(); cpu.set_reg(1, 1);
+    check(cpu.step(itype(0x0B, 1, 2, -1)) && cpu.reg(2) == 1,
+          "SLTIU sign-extends immediate before unsigned comparison");
+    cpu.set_reg(1, static_cast<std::uint64_t>(-1));
+    check(cpu.step(itype(0x0B, 1, 3, -1)) && cpu.reg(3) == 0,
+          "SLTIU handles unsigned equality at all-ones");
+
+    // Register-register logical, subtract, and compare instructions.
+    cpu.reset(); cpu.set_reg(1, 0xF0F0); cpu.set_reg(2, 0x0FF0);
+    check(cpu.step(rtype(1, 2, 3, 0x24)) && cpu.reg(3) == 0x00F0, "AND computes bitwise intersection");
+    check(cpu.step(rtype(1, 2, 4, 0x26)) && cpu.reg(4) == 0xFF00, "XOR computes bitwise difference");
+    check(cpu.step(rtype(1, 2, 5, 0x27)) && cpu.reg(5) == ~std::uint64_t(0xFFF0), "NOR complements bitwise OR");
+    check(cpu.step(rtype(1, 2, 6, 0x23)) && cpu.reg(6) == 0xE100, "SUBU subtracts without signed overflow traps");
+    check(cpu.step(rtype(1, 2, 7, 0x2A)) && cpu.reg(7) == 0, "SLT uses signed comparison");
+    cpu.set_reg(1, static_cast<std::uint64_t>(-1)); cpu.set_reg(2, 1);
+    check(cpu.step(rtype(1, 2, 8, 0x2A)) && cpu.reg(8) == 1, "SLT treats high-bit values as negative");
+    check(cpu.step(rtype(1, 2, 9, 0x2B)) && cpu.reg(9) == 0, "SLTU compares register values unsigned");
+
     // BEQ taken: delay slot runs, then target.
     cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
     check(cpu.step(itype(0x04, 1, 2, 3)), "BEQ taken executes");
