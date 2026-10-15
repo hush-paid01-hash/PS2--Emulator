@@ -84,7 +84,6 @@ add_test(NAME elf-memory-staging-tests COMMAND elf-memory-staging-tests)
 
 add_executable(elf-ram-loader-tests tests/elf_ram_loader_tests.cpp
     src/elf_memory_staging.cpp src/elf_ram_loader.cpp)
-    src/elf_ram_loader.cpp src/elf_memory_staging.cpp src/system_bus.cpp)
 target_include_directories(elf-ram-loader-tests PRIVATE include)
 target_compile_options(elf-ram-loader-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME elf-ram-loader-tests COMMAND elf-ram-loader-tests)
@@ -93,3 +92,9 @@ add_executable(cpu-ram-fetch-tests tests/cpu_ram_fetch_tests.cpp src/cpu.cpp)
 target_include_directories(cpu-ram-fetch-tests PRIVATE include)
 target_compile_options(cpu-ram-fetch-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-ram-fetch-tests COMMAND cpu-ram-fetch-tests)
+
+add_executable(cpu-boot-execution-tests tests/cpu_boot_execution_tests.cpp
+    src/cpu.cpp src/elf_memory_staging.cpp src/elf_ram_loader.cpp)
+target_include_directories(cpu-boot-execution-tests PRIVATE include)
+target_compile_options(cpu-boot-execution-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME cpu-boot-execution-tests COMMAND cpu-boot-execution-tests)
