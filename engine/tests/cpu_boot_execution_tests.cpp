@@ -185,5 +185,26 @@ int main() {
     assert(ee.read(0x00000020U, 4, stored, &error));
     assert(stored == 0xA1B2C3D4U); // failed SH leaves the original word untouched
 
+
+    // Byte accesses may use any address; SB changes one byte, LB sign-extends,
+    // and LBU zero-extends the same high-bit-set byte.
+    retroshelf::Cpu byte_cpu;
+    byte_cpu.set_pc(0x8000A000U);
+    byte_cpu.set_reg(16, 0x25U);
+    byte_cpu.set_reg(8, 0x80U);
+    assert(ee.write(0x8000A000U, 4,
+                    (0x28U << 26U) | (16U << 21U) | (8U << 16U), &error)); // SB t0,0(s0)
+    assert(ee.write(0x8000A004U, 4,
+                    (0x20U << 26U) | (16U << 21U) | (9U << 16U), &error)); // LB t1,0(s0)
+    assert(ee.write(0x8000A008U, 4,
+                    (0x24U << 26U) | (16U << 21U) | (10U << 16U), &error)); // LBU t2,0(s0)
+    assert(byte_cpu.step_from_ee_memory(ee, &error));
+    assert(ee.read(0x25U, 1, stored, &error));
+    assert(stored == 0x80U);
+    assert(byte_cpu.step_from_ee_memory(ee, &error));
+    assert(byte_cpu.reg(9) == 0xFFFFFFFFFFFFFF80ULL);
+    assert(byte_cpu.step_from_ee_memory(ee, &error));
+    assert(byte_cpu.reg(10) == 0x80U);
+
     std::cout << "CPU boot execution tests passed\n";
 }
