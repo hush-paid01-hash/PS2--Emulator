@@ -224,6 +224,53 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x0F: // LUI
         set_reg(rt, static_cast<std::uint64_t>(instruction & 0xFFFFU) << 16U);
         return true;
+    case 0x22: case 0x26: case 0x2A: case 0x2E: { // LWL/LWR/SWL/SWR (little-endian word merges)
+        const bool store = opcode == 0x2A || opcode == 0x2E;
+        const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
+        const std::uint64_t aligned = address & ~std::uint64_t{3};
+        const unsigned lane = static_cast<unsigned>(address & 3U);
+        const auto fault = [&](const char* message) {
+            if (error) *error = message;
+            raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
+            return false;
+        };
+        if (active_ee_memory_ == nullptr)
+            return fault("LWL/LWR/SWL/SWR require the mapped EE memory interface");
+        if (aligned > 0xFFFFFFFFULL)
+            return fault("EE RAM effective address exceeds 32-bit address space");
+        std::uint64_t memory_value = 0;
+        if (!active_ee_memory_->read(static_cast<std::uint32_t>(aligned), 4, memory_value, nullptr))
+            return fault("Unmapped EE RAM word-merge access");
+        const std::uint32_t mem = static_cast<std::uint32_t>(memory_value);
+        const std::uint32_t old_rt = static_cast<std::uint32_t>(reg(rt));
+        std::uint32_t result = old_rt;
+        if (opcode == 0x22) { // LWL: memory bytes up to lane merge into the high end of rt
+            const unsigned shift = (3U - lane) * 8U;
+            const std::uint32_t mask = 0xFFFFFFFFU << shift;
+            result = (old_rt & ~mask) | (mem << shift);
+            set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))));
+            return true;
+        }
+        if (opcode == 0x26) { // LWR: memory bytes from lane through the end merge into low end
+            const unsigned shift = lane * 8U;
+            const std::uint32_t mask = 0xFFFFFFFFU >> shift;
+            result = (old_rt & ~mask) | (mem >> shift);
+            set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))));
+            return true;
+        }
+        if (opcode == 0x2A) { // SWL: store high-end rt bytes into memory bytes 0..lane
+            const unsigned shift = (3U - lane) * 8U;
+            const std::uint32_t mask = 0xFFFFFFFFU >> shift;
+            result = (mem & ~mask) | (old_rt >> shift);
+        } else { // SWR: store low-end rt bytes into memory bytes lane..3
+            const unsigned shift = lane * 8U;
+            const std::uint32_t mask = 0xFFFFFFFFU << shift;
+            result = (mem & ~mask) | (old_rt << shift);
+        }
+        if (!active_ee_memory_->write(static_cast<std::uint32_t>(aligned), 4, result, nullptr))
+            return fault("Unmapped EE RAM word-merge store");
+        return true;
+    }
     case 0x20: case 0x21: case 0x23: case 0x24: case 0x25: case 0x27:
     case 0x28: case 0x29: case 0x2B: case 0x37: case 0x3F: { // LB/LH/LW/LBU/LHU/LWU/SB/SH/SW/LD/SD
         const bool store = opcode == 0x28 || opcode == 0x29 || opcode == 0x2B || opcode == 0x3F;
