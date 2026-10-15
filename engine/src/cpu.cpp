@@ -8,7 +8,7 @@ namespace retroshelf {
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
     gpr_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
-    delay_slot_pending_ = false; delay_branch_pc_ = 0; status_ = 0; cause_ = 0; epc_ = 0;
+    delay_slot_pending_ = false; delay_branch_pc_ = 0; status_ = 0; cause_ = 0; epc_ = 0; hi_ = 0; lo_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
 void Cpu::set_reg(std::size_t index, std::uint64_t value) {
@@ -22,6 +22,8 @@ std::uint32_t Cpu::cop0_cause() const { return cause_; }
 std::uint64_t Cpu::cop0_epc() const { return epc_; }
 bool Cpu::in_delay_slot() const { return delay_slot_pending_; }
 std::uint64_t Cpu::next_pc() const { return next_pc_; }
+std::uint64_t Cpu::hi() const { return hi_; }
+std::uint64_t Cpu::lo() const { return lo_; }
 
 void Cpu::raise_exception(std::uint32_t code, std::uint64_t fault_pc, bool in_delay_slot) {
     if ((status_ & StatusExl) == 0U) {
@@ -82,6 +84,23 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     switch (opcode) {
     case 0x00:
         switch (funct) {
+        case 0x10: set_reg(rd, hi_); return true; // MFHI
+        case 0x12: set_reg(rd, lo_); return true; // MFLO
+        case 0x18: { // MULT: signed 32-bit product into HI:LO
+            const auto product = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs))) *
+                                 static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)));
+            const auto bits = static_cast<std::uint64_t>(product);
+            lo_ = static_cast<std::uint32_t>(bits);
+            hi_ = static_cast<std::uint32_t>(bits >> 32U);
+            return true;
+        }
+        case 0x19: { // MULTU: unsigned 32-bit product into HI:LO
+            const auto product = static_cast<std::uint64_t>(static_cast<std::uint32_t>(reg(rs))) *
+                                 static_cast<std::uint64_t>(static_cast<std::uint32_t>(reg(rt)));
+            lo_ = static_cast<std::uint32_t>(product);
+            hi_ = static_cast<std::uint32_t>(product >> 32U);
+            return true;
+        }
         case 0x21: set_reg(rd, reg(rs) + reg(rt)); return true; // ADDU
         case 0x23: set_reg(rd, reg(rs) - reg(rt)); return true; // SUBU
         case 0x24: set_reg(rd, reg(rs) & reg(rt)); return true; // AND
