@@ -84,7 +84,7 @@ target_compile_options(elf-memory-staging-tests PRIVATE -Wall -Wextra -Wpedantic
 add_test(NAME elf-memory-staging-tests COMMAND elf-memory-staging-tests)
 
 add_executable(elf-ram-loader-tests tests/elf_ram_loader_tests.cpp
-    src/elf_memory_staging.cpp src/elf_ram_loader.cpp)
+    src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(elf-ram-loader-tests PRIVATE include)
 target_compile_options(elf-ram-loader-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME elf-ram-loader-tests COMMAND elf-ram-loader-tests)
@@ -104,3 +104,9 @@ add_executable(ps2-ee-memory-map-tests tests/ps2_ee_memory_map_tests.cpp src/ps2
 target_include_directories(ps2-ee-memory-map-tests PRIVATE include)
 target_compile_options(ps2-ee-memory-map-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ps2-ee-memory-map-tests COMMAND ps2-ee-memory-map-tests)
+
+add_executable(elf-ee-memory-loader-tests tests/elf_ee_memory_loader_tests.cpp
+    src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/ps2_ee_memory_map.cpp)
+target_include_directories(elf-ee-memory-loader-tests PRIVATE include)
+target_compile_options(elf-ee-memory-loader-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME elf-ee-memory-loader-tests COMMAND elf-ee-memory-loader-tests)
