@@ -88,3 +88,8 @@ add_executable(elf-ram-loader-tests tests/elf_ram_loader_tests.cpp
 target_include_directories(elf-ram-loader-tests PRIVATE include)
 target_compile_options(elf-ram-loader-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME elf-ram-loader-tests COMMAND elf-ram-loader-tests)
+
+add_executable(cpu-ram-fetch-tests tests/cpu_ram_fetch_tests.cpp src/cpu.cpp)
+target_include_directories(cpu-ram-fetch-tests PRIVATE include)
+target_compile_options(cpu-ram-fetch-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME cpu-ram-fetch-tests COMMAND cpu-ram-fetch-tests)
