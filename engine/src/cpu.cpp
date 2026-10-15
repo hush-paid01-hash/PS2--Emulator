@@ -89,11 +89,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         case 0x27: set_reg(rd, ~(reg(rs) | reg(rt))); return true; // NOR
         case 0x2A: set_reg(rd, sreg(rs) < sreg(rt) ? 1U : 0U); return true; // SLT
         case 0x2B: set_reg(rd, reg(rs) < reg(rt) ? 1U : 0U); return true; // SLTU
-        case 0x00: set_reg(rd, reg(rt) << ((instruction >> 6U) & 0x1FU)); return true; // SLL/NOP
-        case 0x02: set_reg(rd, static_cast<std::uint32_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU)); return true; // SRL
+        case 0x00: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt) << ((instruction >> 6U) & 0x1FU)))))); return true; // SLL/NOP
+        case 0x02: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU))))); return true; // SRL
         case 0x03: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt))) >> ((instruction >> 6U) & 0x1FU))); return true; // SRA
-        case 0x04: set_reg(rd, reg(rt) << (reg(rs) & 0x1FU)); return true; // SLLV
-        case 0x06: set_reg(rd, static_cast<std::uint32_t>(reg(rt)) >> (reg(rs) & 0x1FU)); return true; // SRLV
+        case 0x04: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt) << (reg(rs) & 0x1FU)))))); return true; // SLLV
+        case 0x06: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt)) >> (reg(rs) & 0x1FU))))); return true; // SRLV
         case 0x07: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt))) >> (reg(rs) & 0x1FU))); return true; // SRAV
         case 0x08: return branch(true, reg(rs)); // JR
         case 0x09: { // JALR
