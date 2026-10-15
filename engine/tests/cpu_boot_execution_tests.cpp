@@ -104,5 +104,33 @@ int main() {
     assert(bad_store_cpu.cop0_epc() == 0x80003000U);
     assert(bad_store_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
 
+    // A memory fault in a branch delay slot records the branch PC in EPC
+    // and sets Cause.BD, rather than reporting the delay-slot PC as the origin.
+    retroshelf::Cpu delay_fault_cpu;
+    delay_fault_cpu.set_pc(0x80004000U);
+    delay_fault_cpu.set_reg(16, 0x30000000U);
+    assert(ee.write(0x80004000U, 4, (0x04U << 26U), &error)); // BEQ zero,zero,0
+    assert(ee.write(0x80004004U, 4,
+                    (0x23U << 26U) | (16U << 21U) | (9U << 16U), &error)); // LW t1,0(s0)
+    assert(delay_fault_cpu.step_from_ee_memory(ee, &error));
+    assert(delay_fault_cpu.in_delay_slot());
+    assert(!delay_fault_cpu.step_from_ee_memory(ee, &error));
+    assert((delay_fault_cpu.cop0_cause() & retroshelf::Cpu::CauseBd) != 0U);
+    assert((delay_fault_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
+    assert(delay_fault_cpu.cop0_epc() == 0x80004000U);
+    assert(delay_fault_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
+
+    // Unsupported instructions should raise Reserved Instruction and save EPC.
+    retroshelf::Cpu reserved_cpu;
+    reserved_cpu.set_pc(0x80005000U);
+    assert(ee.write(0x80005000U, 4, 0xFFFFFFFFU, &error));
+    assert(!reserved_cpu.step_from_ee_memory(ee, &error));
+    assert((reserved_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcReservedInstruction << 2U));
+    assert(reserved_cpu.cop0_epc() == 0x80005000U);
+    assert((reserved_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+    assert(reserved_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
+
     std::cout << "CPU boot execution tests passed\n";
 }
