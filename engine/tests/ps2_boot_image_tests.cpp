@@ -56,7 +56,7 @@ std::filesystem::path make_disc() {
     pvd[0] = 1; pvd[1] = 'C'; pvd[2] = 'D'; pvd[3] = '0';
     pvd[4] = '0'; pvd[5] = '1'; pvd[6] = 1;
     std::vector<std::uint8_t> descriptor(pvd, pvd + sector);
-    record(descriptor, 156, 20, sector, 2, std::string(1, '\\0'));
+    record(descriptor, 156, 20, sector, 2, std::string(1, '\0'));
     std::copy(descriptor.begin() + 156, descriptor.begin() + 190,
               image.begin() + 16 * sector + 156);
 
@@ -64,8 +64,8 @@ std::filesystem::path make_disc() {
     const auto elf = valid_elf();
     std::vector<std::uint8_t> dir(sector, 0);
     std::size_t offset = 0;
-    offset += record(dir, offset, 20, sector, 2, std::string(1, '\\0'));
-    offset += record(dir, offset, 20, sector, 2, std::string(1, '\\1'));
+    offset += record(dir, offset, 20, sector, 2, std::string(1, '\0'));
+    offset += record(dir, offset, 20, sector, 2, std::string(1, '\1'));
     offset += record(dir, offset, 21, static_cast<std::uint32_t>(cnf.size()),
                      0, "SYSTEM.CNF;1");
     record(dir, offset, 22, static_cast<std::uint32_t>(elf.size()),
