@@ -124,7 +124,7 @@ int main() {
     // Unsupported instructions should raise Reserved Instruction and save EPC.
     retroshelf::Cpu reserved_cpu;
     reserved_cpu.set_pc(0x80005000U);
-    assert(ee.write(0x80005000U, 4, 0x3EU << 26U, &error));
+    assert(ee.write(0x80005000U, 4, 0x10U << 26U, &error)); // unsupported COP0 opcode
     assert(!reserved_cpu.step_from_ee_memory(ee, &error));
     assert((reserved_cpu.cop0_cause() & (0x1FU << 2U)) ==
            (retroshelf::Cpu::ExcReservedInstruction << 2U));
