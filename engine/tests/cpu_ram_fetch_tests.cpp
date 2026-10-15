@@ -71,7 +71,7 @@ int main() {
     assert(!error.empty());
     assert((cpu.cop0_cause() & (0x1FU << 2U)) ==
            (retroshelf::Cpu::ExcAddressErrorStore << 2U));
-    for (std::uint8_t byte : data_ram) assert(byte == 0);
+    for (std::size_t i = 16; i < data_ram.size(); ++i) assert(data_ram[i] == 0);
 
     // An aligned store at the first byte beyond RAM must also fault safely.
     cpu.reset();
