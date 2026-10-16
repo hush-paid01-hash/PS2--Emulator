@@ -9,6 +9,8 @@ struct ContentView: View {
     @State private var biosURL: URL?
     @State private var gameURL: URL?
     @State private var statusMessage = "Checking engine bridge…"
+    @State private var smokeTestMessage: String?
+    @State private var isRunningSmokeTest = false
 
     private let supportedGameExtensions: Set<String> = ["iso", "bin", "img", "chd", "rom"]
     private let preflightExtensions: Set<String> = ["iso", "bin", "img"]
@@ -67,6 +69,29 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Engine test (not gameplay)", systemImage: "cpu").font(.headline)
+                        Text("Runs up to 10,000 instructions from the imported disc executable using the current incomplete CPU interpreter. It does not boot the BIOS or render a game.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Button {
+                            runSmokeTest()
+                        } label: {
+                            Label(isRunningSmokeTest ? "Running engine test…" : "Run limited engine test", systemImage: "play.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isRunningSmokeTest || gameURL == nil || !preflightExtensions.contains(gameURL?.pathExtension.lowercased() ?? ""))
+
+                        if let smokeTestMessage {
+                            Text(smokeTestMessage)
+                                .font(.footnote)
+                                .textSelection(.enabled)
+                        }
                     }
                     .padding()
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -156,6 +181,24 @@ struct ContentView: View {
 
         case .failure(let error):
             statusMessage = "File import failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func runSmokeTest() {
+        guard let gameURL else {
+            statusMessage = "Import a supported ISO/BIN/IMG disc first."
+            return
+        }
+        isRunningSmokeTest = true
+        defer { isRunningSmokeTest = false }
+        guard EngineBridge.validateDiscBootImage(at: gameURL) else {
+            smokeTestMessage = "The selected image did not pass disc preflight."
+            return
+        }
+        if let report = EngineBridge.runDiscSmokeTest(at: gameURL) {
+            smokeTestMessage = report.summary
+        } else {
+            smokeTestMessage = "The engine could not load the disc executable for the limited test."
         }
     }
 
