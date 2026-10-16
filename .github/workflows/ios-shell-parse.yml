@@ -59,12 +59,12 @@ jobs:
         run: xcodegen generate --spec project.yml
 
       - name: Verify generated scheme
-        run: xcodebuild -list -project OriginalPS2.xcodeproj
+        run: xcodebuild -list -project Hush.xcodeproj
 
       - name: Build app and linked C++ engine
         run: |
           xcodebuild \
-            -project OriginalPS2.xcodeproj \
+            -project Hush.xcodeproj \
             -scheme OriginalPS2 \
             -sdk iphonesimulator \
             -configuration Debug \
