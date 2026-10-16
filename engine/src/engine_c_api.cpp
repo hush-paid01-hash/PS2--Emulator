@@ -11,6 +11,51 @@
 #include <limits>
 #include <string>
 
+
+#include "retroshelf/gs_framebuffer.hpp"
+#include "retroshelf/gs_software_rasterizer.hpp"
+
+#include <cstddef>
+#include <cstdint>
+
+namespace {
+retroshelf::GsFramebuffer g_preview_framebuffer;
+bool g_preview_ready = false;
+}
+
+extern "C" int32_t retroshelf_engine_render_demo_frame(void) {
+    constexpr std::size_t width = 320;
+    constexpr std::size_t height = 240;
+    if (!g_preview_framebuffer.resize(width, height)) {
+        g_preview_ready = false;
+        return 0;
+    }
+
+    g_preview_framebuffer.clear({12, 18, 32, 255});
+    retroshelf::GsSoftwareRasterizer rasterizer;
+    const bool first = rasterizer.draw_triangle(
+        g_preview_framebuffer, {160, 28}, {38, 202}, {282, 202},
+        {0, 220, 255, 255});
+    const bool second = rasterizer.draw_triangle(
+        g_preview_framebuffer, {160, 68}, {104, 158}, {216, 158},
+        {255, 90, 120, 255});
+    g_preview_ready = first && second;
+    return g_preview_ready ? 1 : 0;
+}
+
+extern "C" const uint8_t *retroshelf_engine_framebuffer_pixels(void) {
+    if (!g_preview_ready) return nullptr;
+    return g_preview_framebuffer.rgba_bytes().data();
+}
+
+extern "C" uint32_t retroshelf_engine_framebuffer_width(void) {
+    return g_preview_ready ? static_cast<uint32_t>(g_preview_framebuffer.width()) : 0U;
+}
+
+extern "C" uint32_t retroshelf_engine_framebuffer_height(void) {
+    return g_preview_ready ? static_cast<uint32_t>(g_preview_framebuffer.height()) : 0U;
+}
+
 extern "C" uint32_t retroshelf_engine_abi_version(void) {
     return 1U;
 }
