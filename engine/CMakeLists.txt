@@ -82,7 +82,8 @@ target_compile_options(gs-register-state-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-register-state-tests COMMAND gs-register-state-tests)
 
 add_executable(gs-gif-pipeline-tests tests/gs_gif_pipeline_tests.cpp
-    src/gs_gif_pipeline.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp)
+    src/gs_gif_pipeline.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp
+    src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp src/gs_framebuffer.cpp)
 target_include_directories(gs-gif-pipeline-tests PRIVATE include)
 target_compile_options(gs-gif-pipeline-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-gif-pipeline-tests COMMAND gs-gif-pipeline-tests)
