@@ -364,5 +364,32 @@ int main() {
     assert(nonoverflow_cpu.step((0x09U << 26U) | (8U << 21U) | (11U << 16U) | 1U, &error)); // ADDIU wraps
     assert(nonoverflow_cpu.reg(11) == 0x80000000ULL);
 
+
+    // SYSCALL and BREAK raise their own exception codes and save the fault PC.
+    retroshelf::Cpu syscall_cpu;
+    syscall_cpu.set_pc(0x8000F000U);
+    assert(!syscall_cpu.step(0x0000000CU, &error)); // SYSCALL
+    assert((syscall_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcSyscall << 2U));
+    assert(syscall_cpu.cop0_epc() == 0x8000F000U);
+    assert((syscall_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+
+    retroshelf::Cpu break_cpu;
+    break_cpu.set_pc(0x8000F100U);
+    assert(!break_cpu.step(0x0000000DU, &error)); // BREAK
+    assert((break_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcBreakpoint << 2U));
+    assert(break_cpu.cop0_epc() == 0x8000F100U);
+
+    // A SYSCALL in a delay slot reports the branch PC and sets Cause.BD.
+    retroshelf::Cpu syscall_delay_cpu;
+    syscall_delay_cpu.set_pc(0x8000F200U);
+    assert(syscall_delay_cpu.step((0x04U << 26U), &error)); // BEQ zero,zero,0
+    assert(!syscall_delay_cpu.step(0x0000000CU, &error)); // SYSCALL in delay slot
+    assert((syscall_delay_cpu.cop0_cause() & retroshelf::Cpu::CauseBd) != 0U);
+    assert((syscall_delay_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcSyscall << 2U));
+    assert(syscall_delay_cpu.cop0_epc() == 0x8000F200U);
+
     std::cout << "CPU boot execution tests passed\\n";
 }

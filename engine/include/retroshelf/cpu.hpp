@@ -34,6 +34,8 @@ public:
     // Minimal COP0 subset: only Status.EXL, Cause.ExcCode/BD and EPC are modelled.
     static constexpr std::uint32_t CauseBd = 1U << 31U;
     static constexpr std::uint32_t StatusExl = 1U << 1U;
+    static constexpr std::uint32_t ExcSyscall = 8;
+    static constexpr std::uint32_t ExcBreakpoint = 9;
     static constexpr std::uint32_t ExcAddressErrorLoad = 4;
     static constexpr std::uint32_t ExcAddressErrorStore = 5;
     static constexpr std::uint32_t ExcReservedInstruction = 10;
