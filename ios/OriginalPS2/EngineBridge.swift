@@ -11,6 +11,16 @@ private func retroshelfEngineValidateDiscBootImage(_ path: UnsafePointer<CChar>?
 @_silgen_name("retroshelf_engine_run_disc_subset")
 private func retroshelfEngineRunDiscSubset(_ path: UnsafePointer<CChar>?, _ budget: UInt64, _ executed: UnsafeMutablePointer<UInt64>?, _ pc: UnsafeMutablePointer<UInt64>?, _ reason: UnsafeMutablePointer<Int32>?) -> Int32
 
+
+@_silgen_name("retroshelf_engine_render_demo_frame")
+private func retroshelfEngineRenderDemoFrame() -> Int32
+@_silgen_name("retroshelf_engine_framebuffer_pixels")
+private func retroshelfEngineFramebufferPixels() -> UnsafePointer<UInt8>?
+@_silgen_name("retroshelf_engine_framebuffer_width")
+private func retroshelfEngineFramebufferWidth() -> UInt32
+@_silgen_name("retroshelf_engine_framebuffer_height")
+private func retroshelfEngineFramebufferHeight() -> UInt32
+
 struct EngineExecutionReport {
     let instructionsExecuted: UInt64
     let finalPC: UInt64
@@ -28,6 +38,14 @@ struct EngineExecutionReport {
 }
 
 enum EngineBridge {
+    static func renderDemoPreview() -> (width: Int, height: Int, rgba: Data)? {
+        guard retroshelfEngineRenderDemoFrame() != 0,
+              let pixels = retroshelfEngineFramebufferPixels() else { return nil }
+        let width = Int(retroshelfEngineFramebufferWidth())
+        let height = Int(retroshelfEngineFramebufferHeight())
+        guard width > 0, height > 0, width <= 4096, height <= 4096 else { return nil }
+        return (width, height, Data(bytes: pixels, count: width * height * 4))
+    }
     static var abiVersion: UInt32 { retroshelfEngineABIVersion() }
     static var statusMessage: String {
         guard let message = retroshelfEngineStatusMessage() else { return "Engine returned no status message" }
