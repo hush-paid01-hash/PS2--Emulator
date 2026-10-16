@@ -33,6 +33,12 @@ int main() {
     check(fb.get_pixel(0, 0, pixel) && pixel == blue &&
               fb.get_pixel(2, 1, pixel) && pixel == blue,
           "clear fills the whole surface");
+    fb.clear();
+    check(fb.get_pixel(0, 0, pixel) &&
+              pixel == retroshelf::GsFramebuffer::Rgba8{} &&
+              fb.get_pixel(2, 1, pixel) &&
+              pixel == retroshelf::GsFramebuffer::Rgba8{},
+          "clear without a color resets pixels to transparent black");
     check(fb.resize(1, 1) && fb.rgba_bytes().size() == 4U,
           "resize replaces storage and dimensions");
 

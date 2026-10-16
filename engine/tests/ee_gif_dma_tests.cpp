@@ -415,7 +415,7 @@ int main() {
         // then consumed by the GS pipeline. An empty valid stream is a no-op,
         // but it verifies that the DMA callback and parser state are persistent.
         std::vector<std::uint8_t> ram(128);
-        const std::uint64_t gif_tag = 1U | (1ULL << 15U) | (1ULL << 60U);
+        const std::uint64_t gif_tag = (1ULL << 15U) | (1ULL << 60U);
         write_qword(ram, 16, gif_tag, 0);
         write_tag(ram, 0, 1, 1);
         write_tag(ram, 32, 0, 7);
