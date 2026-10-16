@@ -22,7 +22,7 @@ jobs:
       - name: Check Swift compiler
         run: swift --version
       - name: Parse native frontend source
-        run: swiftc -parse ios/OriginalPS2/OriginalPS2App.swift ios/OriginalPS2/ContentView.swift
+        run: swiftc -parse ios/OriginalPS2/OriginalPS2App.swift ios/OriginalPS2/ContentView.swift ios/OriginalPS2/EngineBridge.swift
 
-# Parsing checks syntax only. It does not link SwiftUI, create an Xcode app
-# target, bridge the C++ engine, or prove that games can boot.
+# Parsing checks syntax only. It does not link the C++ library, create an
+# Xcode app target, or prove that BIOS boot and game rendering work.
