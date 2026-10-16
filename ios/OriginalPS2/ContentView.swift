@@ -30,21 +30,21 @@ struct ContentView: View {
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
                     VStack(alignment: .leading, spacing: 12) {
                         Label("System BIOS", systemImage: "cpu").font(.headline)
-                        Text(biosName ?? "No BIOS selected").foregroundStyle(.secondary).lineLimit(2)
+                        Text(biosName ?? "No BIOS imported").foregroundStyle(.secondary).lineLimit(2)
                         Button { showingBIOSPicker = true } label: {
-                            Label("Choose BIOS in Files", systemImage: "folder").frame(maxWidth: .infinity)
+                            Label("Import BIOS from Files", systemImage: "folder").frame(maxWidth: .infinity)
                         }.buttonStyle(.bordered)
                     }.padding().background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
                     VStack(alignment: .leading, spacing: 12) {
                         Label("Game image", systemImage: "opticaldisc").font(.headline)
-                        Text(gameName ?? "No game image selected").foregroundStyle(.secondary).lineLimit(2)
+                        Text(gameName ?? "No game image imported").foregroundStyle(.secondary).lineLimit(2)
                         Button { showingGamePicker = true } label: {
-                            Label("Import game from Files", systemImage: "folder").frame(maxWidth: .infinity)
+                            Label("Import ISO / BIN / IMG / CHD / ROM", systemImage: "folder").frame(maxWidth: .infinity)
                         }.buttonStyle(.borderedProminent)
                     }.padding().background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Development status", systemImage: "hammer").font(.headline)
-                        Text("This is the native app shell only. Selecting files does not start a game yet; the original C++ engine still needs to be connected to the iOS UI and its hardware implementation completed.")
+                        Text("Imported files are copied into this app's private Documents folder. The emulator core is not connected yet, so importing files does not start a game.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }.padding(.horizontal, 4)
                 }.padding()
@@ -58,11 +58,34 @@ struct ContentView: View {
     private func handleImport(_ result: Result<[URL], Error>, isBIOS: Bool) {
         switch result {
         case .success(let urls):
-            guard let url = urls.first else { return }
-            if isBIOS { biosName = url.lastPathComponent; statusMessage = "BIOS selected — core integration pending" }
-            else { gameName = url.lastPathComponent; statusMessage = "Game selected — boot support pending" }
+            guard let sourceURL = urls.first else { return }
+            let didAccess = sourceURL.startAccessingSecurityScopedResource()
+            defer { if didAccess { sourceURL.stopAccessingSecurityScopedResource() } }
+            do {
+                let destinationURL = try copyIntoAppDocuments(sourceURL)
+                if isBIOS {
+                    biosName = destinationURL.lastPathComponent
+                    statusMessage = "BIOS imported — core integration pending"
+                } else {
+                    gameName = destinationURL.lastPathComponent
+                    statusMessage = "Game image imported — boot support pending"
+                }
+            } catch {
+                statusMessage = "Could not import file: \(error.localizedDescription)"
+            }
         case .failure(let error):
             statusMessage = "File import failed: \(error.localizedDescription)"
         }
+    }
+
+    private func copyIntoAppDocuments(_ sourceURL: URL) throws -> URL {
+        let fileManager = FileManager.default
+        let documentsURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let importDirectory = documentsURL.appendingPathComponent("ImportedFiles", isDirectory: true)
+        try fileManager.createDirectory(at: importDirectory, withIntermediateDirectories: true)
+        let uniqueName = UUID().uuidString + "-" + sourceURL.lastPathComponent
+        let destinationURL = importDirectory.appendingPathComponent(uniqueName)
+        try fileManager.copyItem(at: sourceURL, to: destinationURL)
+        return destinationURL
     }
 }
