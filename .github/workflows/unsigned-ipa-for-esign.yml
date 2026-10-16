@@ -1,0 +1,69 @@
+name: Package unsigned iOS IPA for ESign
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-package:
+    name: Build iPhone app and package unsigned IPA
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode and install XcodeGen
+        run: |
+          sudo xcode-select --switch /Applications/Xcode.app
+          xcodebuild -version
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Verify scheme
+        run: xcodebuild -list -project OriginalPS2.xcodeproj
+
+      - name: Build iOS device app (unsigned)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project OriginalPS2.xcodeproj \
+            -scheme OriginalPS2 \
+            -sdk iphoneos \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="build/DerivedData/Build/Products/Debug-iphoneos/OriginalPS2.app"
+          test -d "$APP_PATH"
+          rm -rf build/ipa-staging
+          mkdir -p build/ipa-staging/Payload
+          /usr/bin/ditto "$APP_PATH" build/ipa-staging/Payload/OriginalPS2.app
+          mkdir -p build/artifacts
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent build/ipa-staging/Payload build/artifacts/OriginalPS2-iOS-Unsigned.ipa
+          test -s build/artifacts/OriginalPS2-iOS-Unsigned.ipa
+          echo "Created unsigned IPA package. It is not signed and cannot be installed until ESign successfully signs it."
+
+      - name: Upload unsigned IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OriginalPS2-iOS-Unsigned-IPA
+          path: build/artifacts/OriginalPS2-iOS-Unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
+
+# This workflow deliberately adds no signing certificates, profiles, passwords, or secrets.
+# The IPA is an unsigned package intended for import into ESign. ESign signing may fail
+# if its certificate/profile is invalid or incompatible. A successful build does not imply
+# that the app can boot or play PS2 games.
