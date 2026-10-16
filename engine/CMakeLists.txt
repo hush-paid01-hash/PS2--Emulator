@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(RETROSHELF_ENGINE_SOURCES
     src/cpu.cpp
+    src/ee_execution_runner.cpp
     src/system_bus.cpp
     src/ee_gif_dma.cpp
     src/gs_packet_processor.cpp
@@ -154,3 +155,9 @@ add_executable(bios-image-validator-tests tests/bios_image_validator_tests.cpp
 target_include_directories(bios-image-validator-tests PRIVATE include)
 target_compile_options(bios-image-validator-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME bios-image-validator-tests COMMAND bios-image-validator-tests)
+
+add_executable(ee-execution-runner-tests tests/ee_execution_runner_tests.cpp
+    src/ee_execution_runner.cpp src/cpu.cpp src/ps2_ee_memory_map.cpp)
+target_include_directories(ee-execution-runner-tests PRIVATE include)
+target_compile_options(ee-execution-runner-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ee-execution-runner-tests COMMAND ee-execution-runner-tests)
