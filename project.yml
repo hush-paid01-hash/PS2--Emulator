@@ -2,7 +2,7 @@ name: OriginalPS2
 options:
   bundleIdPrefix: com.retroshelf
   deploymentTarget:
-    iOS: "15.0"
+    iOS: "16.0"
   createIntermediateGroups: true
 
 settings:
@@ -15,7 +15,7 @@ targets:
   retroshelf_engine:
     type: library.static
     platform: iOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "16.0"
     sources:
       - path: engine/src
         excludes:
@@ -33,7 +33,7 @@ targets:
   OriginalPS2:
     type: application
     platform: iOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "16.0"
     sources:
       - path: ios/OriginalPS2
         excludes:
