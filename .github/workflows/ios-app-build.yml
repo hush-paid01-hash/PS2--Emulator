@@ -1,0 +1,36 @@
+name: Native iOS app build
+
+on:
+  pull_request:
+    paths:
+      - "project.yml"
+      - "ios/OriginalPS2/**"
+      - ".github/workflows/ios-app-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "project.yml"
+      - "ios/OriginalPS2/**"
+      - ".github/workflows/ios-app-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build-ios-simulator:
+    name: Build Original PS2 app for iOS Simulator
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build app for iOS Simulator
+        run: >-
+          xcodebuild
+          -project OriginalPS2.xcodeproj
+          -scheme OriginalPS2
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build
