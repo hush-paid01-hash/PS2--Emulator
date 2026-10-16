@@ -123,18 +123,23 @@ struct ContentView: View {
                     return
                 }
                 if isBIOS {
-                    // File-level sanity check only: size does not prove that this
-                    // is a genuine or compatible PS2 BIOS image.
-                    let plausibleBIOSSize = (1 * 1024 * 1024)...(16 * 1024 * 1024)
-                    let biosSizeLooksPlausible = plausibleBIOSSize.contains(fileSize)
+                    // Native engine preflight checks that the file is readable and
+                    // reports whether its size is within a broad plausible range.
+                    // This is not BIOS authentication or firmware boot support.
+                    let biosInspection = EngineBridge.inspectBIOSImage(at: importedURL)
+                    guard biosInspection != 0 else {
+                        try? FileManager.default.removeItem(at: importedURL)
+                        statusMessage = "BIOS import failed: engine could not read this file."
+                        return
+                    }
 
                     biosURL = importedURL
                     biosName = sourceURL.lastPathComponent
                     UserDefaults.standard.set(importedURL.lastPathComponent, forKey: "hush.importedBIOS")
                     UserDefaults.standard.set(sourceURL.lastPathComponent, forKey: "hush.importedBIOSDisplayName")
-                    statusMessage = biosSizeLooksPlausible
-                        ? "BIOS file saved and readable — compatibility not verified; boot support is not implemented yet"
-                        : "BIOS file saved, but its size looks unusual — check your own BIOS dump; boot support is not implemented yet"
+                    statusMessage = biosInspection == 1
+                        ? "BIOS saved; size check passed. Authenticity, compatibility, and BIOS boot are not implemented."
+                        : "BIOS saved, but its size is unusual. Verify your own BIOS dump; BIOS boot is not implemented."
                 } else {
                     gameURL = importedURL
                     gameName = sourceURL.lastPathComponent
