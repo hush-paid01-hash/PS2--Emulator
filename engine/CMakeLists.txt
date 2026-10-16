@@ -174,3 +174,9 @@ add_executable(gs-software-rasterizer-tests tests/gs_software_rasterizer_tests.c
 target_include_directories(gs-software-rasterizer-tests PRIVATE include)
 target_compile_options(gs-software-rasterizer-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-software-rasterizer-tests COMMAND gs-software-rasterizer-tests)
+
+add_executable(gs-packed-primitive-renderer-tests tests/gs_packed_primitive_renderer_tests.cpp
+    src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp src/gs_framebuffer.cpp)
+target_include_directories(gs-packed-primitive-renderer-tests PRIVATE include)
+target_compile_options(gs-packed-primitive-renderer-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-packed-primitive-renderer-tests COMMAND gs-packed-primitive-renderer-tests)
