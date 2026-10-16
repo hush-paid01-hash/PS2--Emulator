@@ -22,8 +22,8 @@ permissions:
   contents: read
 
 jobs:
-  build-ios-simulator:
-    name: Generate Xcode project and build iOS Simulator app
+  build-ios:
+    name: Generate Xcode project and build iOS targets
     runs-on: macos-15
     steps:
       - name: Check out repository
@@ -48,7 +48,7 @@ jobs:
       - name: Verify generated scheme
         run: xcodebuild -list -project OriginalPS2.xcodeproj
 
-      - name: Build app and linked C++ engine
+      - name: Build iOS Simulator app
         run: |
           xcodebuild \
             -project OriginalPS2.xcodeproj \
@@ -68,5 +68,27 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-# This produces a downloadable simulator build for Mac testing only. It is
-# unsigned, is not an iPhone-installable IPA, and does not prove PS2 gameplay.
+      - name: Build iOS device target (unsigned)
+        run: |
+          xcodebuild \
+            -project OriginalPS2.xcodeproj \
+            -scheme OriginalPS2 \
+            -sdk iphoneos \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Upload unsigned iOS device app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OriginalPS2-iOS-Device-Unsigned
+          path: build/DerivedData/Build/Products/Debug-iphoneos/OriginalPS2.app
+          if-no-files-found: error
+          retention-days: 7
+
+# The device artifact verifies an iOS-device build but is unsigned. It is not
+# directly installable on an iPhone. Installation requires valid signing and
+# provisioning; neither signing credentials nor an Apple Developer account
+# are configured by this workflow. A successful build does not prove gameplay.
