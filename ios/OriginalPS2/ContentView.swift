@@ -11,13 +11,14 @@ struct ContentView: View {
     @State private var statusMessage = "Checking engine bridge…"
 
     private let supportedGameExtensions: Set<String> = ["iso", "bin", "img", "chd", "rom"]
+    private let preflightExtensions: Set<String> = ["iso", "bin", "img"]
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Original PS2").font(.largeTitle.bold())
+                        Text("Hush").font(.largeTitle.bold())
                         Text("A native iPhone front end for our own C++ emulator engine.")
                             .foregroundStyle(.secondary)
                     }
@@ -72,7 +73,7 @@ struct ContentView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Development status", systemImage: "hammer").font(.headline)
-                        Text("The Swift wrapper now queries the engine C ABI. The iOS app target must still link the retroshelf_engine library; the engine currently cannot boot games.")
+                        Text("Disc preflight can inspect supported ISO/BIN/IMG images for a SYSTEM.CNF executable that parses as ELF32 MIPS. This is not game execution: BIOS boot, full CPU/hardware emulation, and graphics rendering are still incomplete.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -107,7 +108,8 @@ struct ContentView: View {
                 return
             }
 
-            if !isBIOS && !supportedGameExtensions.contains(sourceURL.pathExtension.lowercased()) {
+            let fileExtension = sourceURL.pathExtension.lowercased()
+            if !isBIOS && !supportedGameExtensions.contains(fileExtension) {
                 statusMessage = "Unsupported game file. Choose ISO, BIN, IMG, CHD, or ROM."
                 return
             }
@@ -138,7 +140,15 @@ struct ContentView: View {
                     gameName = sourceURL.lastPathComponent
                     UserDefaults.standard.set(importedURL.lastPathComponent, forKey: "hush.importedGame")
                     UserDefaults.standard.set(sourceURL.lastPathComponent, forKey: "hush.importedGameDisplayName")
-                    statusMessage = "Game image saved — boot support is not implemented yet"
+
+                    if preflightExtensions.contains(fileExtension) {
+                        let looksBootable = EngineBridge.validateDiscBootImage(at: importedURL)
+                        statusMessage = looksBootable
+                            ? "Disc preflight passed: SYSTEM.CNF and ELF32 MIPS found. Game execution is not implemented."
+                            : "Disc imported, but preflight could not find a supported SYSTEM.CNF/ELF32 MIPS boot image."
+                    } else {
+                        statusMessage = "Game image saved. CHD/ROM preflight is not supported yet; game execution is not implemented."
+                    }
                 }
             } catch {
                 statusMessage = "Import failed: \(error.localizedDescription)"

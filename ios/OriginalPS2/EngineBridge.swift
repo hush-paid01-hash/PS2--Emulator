@@ -12,6 +12,9 @@ private func retroshelfEngineStatusMessage() -> UnsafePointer<CChar>?
 @_silgen_name("retroshelf_engine_can_boot_games")
 private func retroshelfEngineCanBootGames() -> Int32
 
+@_silgen_name("retroshelf_engine_validate_disc_boot_image")
+private func retroshelfEngineValidateDiscBootImage(_ path: UnsafePointer<CChar>?) -> Int32
+
 enum EngineBridge {
     static var abiVersion: UInt32 { retroshelfEngineABIVersion() }
 
@@ -23,6 +26,12 @@ enum EngineBridge {
     }
 
     static var canBootGames: Bool { retroshelfEngineCanBootGames() != 0 }
+
+    static func validateDiscBootImage(at url: URL) -> Bool {
+        url.path.withCString { path in
+            retroshelfEngineValidateDiscBootImage(path) != 0
+        }
+    }
 
     static var readinessMessage: String {
         canBootGames
