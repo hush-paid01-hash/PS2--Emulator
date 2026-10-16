@@ -121,11 +121,18 @@ struct ContentView: View {
                     return
                 }
                 if isBIOS {
+                    // File-level sanity check only: size does not prove that this
+                    // is a genuine or compatible PS2 BIOS image.
+                    let plausibleBIOSSize = (1 * 1024 * 1024)...(16 * 1024 * 1024)
+                    let biosSizeLooksPlausible = plausibleBIOSSize.contains(fileSize)
+
                     biosURL = importedURL
                     biosName = sourceURL.lastPathComponent
                     UserDefaults.standard.set(importedURL.lastPathComponent, forKey: "hush.importedBIOS")
                     UserDefaults.standard.set(sourceURL.lastPathComponent, forKey: "hush.importedBIOSDisplayName")
-                    statusMessage = "BIOS saved — boot support is not implemented yet"
+                    statusMessage = biosSizeLooksPlausible
+                        ? "BIOS file saved and readable — compatibility not verified; boot support is not implemented yet"
+                        : "BIOS file saved, but its size looks unusual — check your own BIOS dump; boot support is not implemented yet"
                 } else {
                     gameURL = importedURL
                     gameName = sourceURL.lastPathComponent
