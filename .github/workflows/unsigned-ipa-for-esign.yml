@@ -31,13 +31,13 @@ jobs:
         run: xcodegen generate --spec project.yml
 
       - name: Verify scheme
-        run: xcodebuild -list -project OriginalPS2.xcodeproj
+        run: xcodebuild -list -project Hush.xcodeproj
 
       - name: Build iOS device app (unsigned)
         run: |
           set -euo pipefail
           xcodebuild \
-            -project OriginalPS2.xcodeproj \
+            -project Hush.xcodeproj \
             -scheme OriginalPS2 \
             -sdk iphoneos \
             -configuration Debug \
