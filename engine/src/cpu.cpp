@@ -134,7 +134,31 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             hi_ = static_cast<std::uint32_t>(product >> 32U);
             return true;
         }
+        case 0x20: { // ADD: signed 32-bit addition traps on overflow
+            const auto lhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs)));
+            const auto rhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)));
+            const auto sum = lhs + rhs;
+            if (sum < INT32_MIN || sum > INT32_MAX) {
+                if (error) *error = "Signed ADD overflow";
+                raise_exception(ExcOverflow, cur_pc, in_delay);
+                return false;
+            }
+            set_reg(rd, static_cast<std::uint64_t>(sum));
+            return true;
+        }
         case 0x21: set_reg(rd, reg(rs) + reg(rt)); return true; // ADDU
+        case 0x22: { // SUB: signed 32-bit subtraction traps on overflow
+            const auto lhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs)));
+            const auto rhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)));
+            const auto difference = lhs - rhs;
+            if (difference < INT32_MIN || difference > INT32_MAX) {
+                if (error) *error = "Signed SUB overflow";
+                raise_exception(ExcOverflow, cur_pc, in_delay);
+                return false;
+            }
+            set_reg(rd, static_cast<std::uint64_t>(difference));
+            return true;
+        }
         case 0x23: set_reg(rd, reg(rs) - reg(rt)); return true; // SUBU
         case 0x24: set_reg(rd, reg(rs) & reg(rt)); return true; // AND
         case 0x25: set_reg(rd, reg(rs) | reg(rt)); return true; // OR
@@ -203,6 +227,17 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x05: return branch(reg(rs) != reg(rt), rel_target); // BNE
     case 0x06: return branch(sreg(rs) <= 0, rel_target); // BLEZ
     case 0x07: return branch(sreg(rs) > 0, rel_target); // BGTZ
+    case 0x08: { // ADDI: signed 32-bit immediate addition traps on overflow
+        const auto lhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs)));
+        const auto sum = lhs + simm;
+        if (sum < INT32_MIN || sum > INT32_MAX) {
+            if (error) *error = "Signed ADDI overflow";
+            raise_exception(ExcOverflow, cur_pc, in_delay);
+            return false;
+        }
+        set_reg(rt, static_cast<std::uint64_t>(sum));
+        return true;
+    }
     case 0x09: // ADDIU
         set_reg(rt, reg(rs) + static_cast<std::uint64_t>(simm));
         return true;
