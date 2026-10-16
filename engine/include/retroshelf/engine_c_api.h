@@ -19,8 +19,9 @@ const char *retroshelf_engine_status_message(void);
 int32_t retroshelf_engine_can_boot_games(void);
 
 /*
- * Renderer bring-up preview only. Renders a test triangle into a static
- * RGBA8 framebuffer and exposes its bytes for a native UI preview.
+ * Renderer bring-up preview only. Sends a synthetic PACKED GIF triangle
+ * through the current GIF-to-GS software pipeline into a static RGBA8
+ * framebuffer and exposes its bytes for a native UI preview.
  * This is not output from a running PS2 game. The pixel pointer remains valid
  * until the next call to render_demo_frame; callers must not free it.
  */
