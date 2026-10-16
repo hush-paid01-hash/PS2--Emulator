@@ -1,0 +1,22 @@
+name: OriginalPS2
+options:
+  bundleIdPrefix: com.laurenlindsay588
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+targets:
+  OriginalPS2:
+    type: application
+    platform: iOS
+    sources:
+      - path: ios/OriginalPS2
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.laurenlindsay588.originalps2
+        PRODUCT_NAME: OriginalPS2
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Original PS2
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        CODE_SIGNING_ALLOWED: NO
