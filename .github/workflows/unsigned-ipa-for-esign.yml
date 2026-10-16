@@ -14,14 +14,16 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode and install XcodeGen
+      - name: Select Xcode and install build tools
         run: |
+          set -euo pipefail
           sudo xcode-select --switch /Applications/Xcode.app
           xcodebuild -version
-          if ! command -v xcodegen >/dev/null 2>&1; then
-            brew install xcodegen
-          fi
+          if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
+          if ! command -v rsvg-convert >/dev/null 2>&1; then brew install librsvg; fi
           xcodegen --version
+          rsvg-convert -w 1024 -h 1024 ios/OriginalPS2/Assets.xcassets/AppIcon.appiconset/AppIcon.svg -o ios/OriginalPS2/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+          test -s ios/OriginalPS2/Assets.xcassets/AppIcon.appiconset/AppIcon.png
 
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
@@ -51,19 +53,17 @@ jobs:
           mkdir -p build/ipa-staging/Payload
           /usr/bin/ditto "$APP_PATH" build/ipa-staging/Payload/OriginalPS2.app
           mkdir -p build/artifacts
-          /usr/bin/ditto -c -k --sequesterRsrc --keepParent build/ipa-staging/Payload build/artifacts/OriginalPS2-iOS-Unsigned.ipa
-          test -s build/artifacts/OriginalPS2-iOS-Unsigned.ipa
-          echo "Created unsigned IPA package. It is not signed and cannot be installed until ESign successfully signs it."
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent build/ipa-staging/Payload build/artifacts/Hush-iOS-Unsigned.ipa
+          test -s build/artifacts/Hush-iOS-Unsigned.ipa
+          echo "Created unsigned Hush IPA. ESign must sign it successfully before installation."
 
       - name: Upload unsigned IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OriginalPS2-iOS-Unsigned-IPA
-          path: build/artifacts/OriginalPS2-iOS-Unsigned.ipa
+          name: Hush-iOS-Unsigned-IPA
+          path: build/artifacts/Hush-iOS-Unsigned.ipa
           if-no-files-found: error
           retention-days: 7
 
-# This workflow deliberately adds no signing certificates, profiles, passwords, or secrets.
-# The IPA is an unsigned package intended for import into ESign. ESign signing may fail
-# if its certificate/profile is invalid or incompatible. A successful build does not imply
-# that the app can boot or play PS2 games.
+# No signing certificates, profiles, passwords, or secrets are added.
+# A successful build does not imply that PS2 games can boot or play.
