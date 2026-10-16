@@ -1,4 +1,5 @@
 #include "retroshelf/ps2_boot_image.hpp"
+#include "retroshelf/ps2_disc_execution.hpp"
 #include "retroshelf/elf_ram_loader.hpp"
 #include "retroshelf/ps2_ee_memory_map.hpp"
 #include "retroshelf/cpu.hpp"
@@ -130,6 +131,26 @@ int main() {
     assert(boot_entry == 0x00100000U);
     assert(boot_memory.main_ram()[boot_entry] == 0x07);
     assert(boot_memory.main_ram()[boot_entry + 8] == 0);
+
+    // End-to-end development path: open synthetic disc, load SYSTEM.CNF ELF,
+    // set EE entry PC, and execute two supported instructions from mapped RAM.
+    const auto execution_disc_path = make_disc();
+    retroshelf::Iso9660Disc execution_disc;
+    assert(execution_disc.open(execution_disc_path, &error));
+    retroshelf::Ps2EeMemoryMap execution_memory(2 * 1024 * 1024);
+    retroshelf::Cpu execution_cpu;
+    const auto execution = retroshelf::load_and_execute_ps2_disc(
+        execution_disc, execution_memory, execution_cpu, 2);
+    assert(execution.image_loaded);
+    assert(execution.executable_path == "SLUS_123.45;1");
+    assert(execution.entry_point == 0x00100000U);
+    assert(execution.execution.instructions_executed == 2);
+    assert(execution.execution.reason ==
+           retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(execution_cpu.reg(8) == 7);
+    assert(execution_cpu.reg(9) == 5);
+    assert(execution_cpu.pc() == 0x00100008U);
+    std::filesystem::remove(execution_disc_path);
 
     std::filesystem::remove(disc_path);
 
