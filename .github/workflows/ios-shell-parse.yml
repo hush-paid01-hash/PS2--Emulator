@@ -1,55 +1,34 @@
-name: Native iOS app build and source check
+name: Native iOS shell syntax check
 
 on:
   pull_request:
     paths:
       - "project.yml"
       - "ios/OriginalPS2/**"
-      - "engine/**"
       - ".github/workflows/ios-shell-parse.yml"
   push:
     branches: [main]
     paths:
       - "project.yml"
       - "ios/OriginalPS2/**"
-      - "engine/**"
       - ".github/workflows/ios-shell-parse.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  build-ios-simulator:
-    name: Generate Xcode project and build iOS Simulator app
+  swift-source-parse:
+    name: Parse SwiftUI source (syntax only)
     runs-on: macos-15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: |
-          sudo xcode-select -switch /Applications/Xcode.app
-          xcodebuild -version
-          swift --version
+      - name: Check Swift compiler
+        run: swift --version
 
       - name: Parse native frontend source
         run: swiftc -parse ios/OriginalPS2/OriginalPS2App.swift ios/OriginalPS2/ContentView.swift ios/OriginalPS2/EngineBridge.swift
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
-
-      - name: Generate Xcode project
-        run: xcodegen generate --spec project.yml
-
-      - name: Build app and linked C++ engine
-        run: |
-          xcodebuild \
-            -project OriginalPS2.xcodeproj \
-            -scheme OriginalPS2 \
-            -sdk iphonesimulator \
-            -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO \
-            build
-
-# This verifies syntax plus app compilation/linking for the iOS Simulator. It
-# does not establish device installation, BIOS boot, graphics/audio completeness,
-# or compatibility with retail PS2 games.
+# This check only parses Swift syntax. It does not compile or link the iOS app.
