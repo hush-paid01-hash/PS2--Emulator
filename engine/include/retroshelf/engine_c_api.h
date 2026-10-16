@@ -26,6 +26,13 @@ int32_t retroshelf_engine_can_boot_games(void);
  */
 int32_t retroshelf_engine_validate_disc_boot_image(const char *path);
 
+/*
+ * BIOS file sanity check: 0 = invalid/unreadable, 1 = readable and 1-16 MiB,
+ * 2 = readable but outside that size range. This does not authenticate,
+ * verify compatibility, or load/execute the BIOS.
+ */
+int32_t retroshelf_engine_inspect_bios_image(const char *path);
+
 #ifdef __cplusplus
 }
 #endif
