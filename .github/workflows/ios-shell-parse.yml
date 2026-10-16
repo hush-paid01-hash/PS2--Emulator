@@ -1,0 +1,28 @@
+name: Native iOS shell source check
+
+on:
+  pull_request:
+    paths:
+      - "ios/OriginalPS2/**"
+      - ".github/workflows/ios-shell-parse.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ios/OriginalPS2/**"
+      - ".github/workflows/ios-shell-parse.yml"
+  workflow_dispatch:
+
+jobs:
+  swift-source-parse:
+    name: Parse SwiftUI source (not an app build)
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Check Swift compiler
+        run: swift --version
+      - name: Parse native frontend source
+        run: swiftc -parse ios/OriginalPS2/OriginalPS2App.swift ios/OriginalPS2/ContentView.swift
+
+# Parsing checks syntax only. It does not link SwiftUI, create an Xcode app
+# target, bridge the C++ engine, or prove that games can boot.
