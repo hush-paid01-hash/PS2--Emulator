@@ -13,6 +13,7 @@ set(RETROSHELF_ENGINE_SOURCES
     src/gs_packet_processor.cpp
     src/gs_register_decoder.cpp
     src/gs_register_state.cpp
+    src/gs_framebuffer.cpp
     src/gs_gif_pipeline.cpp
     src/iso9660_disc.cpp
     src/ps2_boot_config.cpp
@@ -162,3 +163,8 @@ add_executable(ee-execution-runner-tests tests/ee_execution_runner_tests.cpp
 target_include_directories(ee-execution-runner-tests PRIVATE include)
 target_compile_options(ee-execution-runner-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-execution-runner-tests COMMAND ee-execution-runner-tests)
+
+add_executable(gs-framebuffer-tests tests/gs_framebuffer_tests.cpp src/gs_framebuffer.cpp)
+target_include_directories(gs-framebuffer-tests PRIVATE include)
+target_compile_options(gs-framebuffer-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-framebuffer-tests COMMAND gs-framebuffer-tests)
