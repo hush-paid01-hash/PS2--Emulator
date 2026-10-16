@@ -22,6 +22,7 @@ set(RETROSHELF_ENGINE_SOURCES
     src/elf_ram_loader.cpp
     src/ps2_ee_memory_map.cpp
     src/engine_c_api.cpp
+    src/bios_image_validator.cpp
 )
 
 # Reusable C++ library for native frontends. The C ABI is intentionally small
@@ -146,3 +147,10 @@ add_executable(elf-ee-memory-loader-tests tests/elf_ee_memory_loader_tests.cpp
 target_include_directories(elf-ee-memory-loader-tests PRIVATE include)
 target_compile_options(elf-ee-memory-loader-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME elf-ee-memory-loader-tests COMMAND elf-ee-memory-loader-tests)
+
+
+add_executable(bios-image-validator-tests tests/bios_image_validator_tests.cpp
+    src/bios_image_validator.cpp)
+target_include_directories(bios-image-validator-tests PRIVATE include)
+target_compile_options(bios-image-validator-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME bios-image-validator-tests COMMAND bios-image-validator-tests)
