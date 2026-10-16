@@ -1,0 +1,45 @@
+name: Original PS2 engine tests
+
+on:
+  push:
+    branches: [main, work/native-engine-test-ci]
+    paths:
+      - "engine/**"
+      - ".github/workflows/engine-tests.yml"
+  pull_request:
+    paths:
+      - "engine/**"
+      - ".github/workflows/engine-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build original engine and run CTest
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes cmake ninja-build g++
+
+      - name: Configure this repository's engine
+        run: cmake -S engine -B build/engine -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build all engine and test targets
+        run: cmake --build build/engine --parallel 2
+
+      - name: Run automated tests
+        run: ctest --test-dir build/engine --output-on-failure
+
+      - name: Run the engine demonstration
+        run: ./build/engine/retroshelf-engine
+
+# This workflow deliberately builds only the original C++ code in this
+# repository. It does not download or embed another emulator. Passing tests
+# validate the implemented subset, not retail-game compatibility.
