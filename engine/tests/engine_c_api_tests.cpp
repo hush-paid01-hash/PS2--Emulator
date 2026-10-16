@@ -11,6 +11,21 @@ int main() {
     assert(std::strstr(message, "not implemented") != nullptr);
     assert(retroshelf_engine_can_boot_games() == 0);
 
+    // The exported framebuffer preview should be a bounded RGBA test frame.
+    assert(retroshelf_engine_framebuffer_pixels() == nullptr);
+    assert(retroshelf_engine_framebuffer_width() == 0U);
+    assert(retroshelf_engine_framebuffer_height() == 0U);
+    assert(retroshelf_engine_render_demo_frame() == 1);
+    assert(retroshelf_engine_framebuffer_width() == 320U);
+    assert(retroshelf_engine_framebuffer_height() == 240U);
+    const uint8_t *pixels = retroshelf_engine_framebuffer_pixels();
+    assert(pixels != nullptr);
+    const uint32_t sample = (40U * 320U + 160U) * 4U;
+    assert(pixels[sample] == 0U);
+    assert(pixels[sample + 1U] == 220U);
+    assert(pixels[sample + 2U] == 255U);
+    assert(pixels[sample + 3U] == 255U);
+
     // Preflight must fail safely for missing, empty, or null paths.
     assert(retroshelf_engine_validate_disc_boot_image(nullptr) == 0);
     assert(retroshelf_engine_validate_disc_boot_image("") == 0);
