@@ -43,7 +43,6 @@ int main() {
     assert(framebuffer.get_pixel(2, 2, ignored));
     assert(ignored.r == 0 && ignored.g == 0 && ignored.b == 0);
 
-    std::cout << "GS packed primitive renderer tests passed
-";
+    std::cout << "GS packed primitive renderer tests passed\\n";
     return 0;
 }
