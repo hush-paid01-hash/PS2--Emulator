@@ -4,6 +4,7 @@
 #include "retroshelf/gs_framebuffer.hpp"
 #include "retroshelf/gs_gif_pipeline.hpp"
 #include "retroshelf/gs_packet_processor.hpp"
+#include "retroshelf/gs_packet_processor.hpp"
 #include "retroshelf/iso9660_disc.hpp"
 #include "retroshelf/ps2_disc_execution.hpp"
 #include "retroshelf/ps2_ee_memory_map.hpp"
@@ -71,10 +72,23 @@ extern "C" int32_t retroshelf_engine_render_demo_frame(void) {
     }
     g_preview_framebuffer.clear({12, 18, 32, 255});
 
-    retroshelf::GsGifPipeline pipeline;
+    // Exercise the GIF stream parser as well as the GS register and renderer
+    // stages. The same packet processor is intended to receive future DMA
+    // payloads; this fixture is still synthetic test data, not game output.
+    retroshelf::GsPacketProcessor packet_processor;
     const auto stream = make_preview_gif_stream();
-    const retroshelf::GifPacket packet{stream, 1};
-    g_preview_ready = pipeline.consume_and_render({packet}, g_preview_framebuffer);
+    if (!packet_processor.submit(stream) || !packet_processor.finish_stream()) {
+        g_preview_ready = false;
+        return 0;
+    }
+    const auto packets = packet_processor.take_packets();
+    if (packets.empty()) {
+        g_preview_ready = false;
+        return 0;
+    }
+
+    retroshelf::GsGifPipeline pipeline;
+    g_preview_ready = pipeline.consume_and_render(packets, g_preview_framebuffer);
     return g_preview_ready ? 1 : 0;
 }
 
