@@ -15,6 +15,7 @@ set(RETROSHELF_ENGINE_SOURCES
     src/gs_register_state.cpp
     src/gs_framebuffer.cpp
     src/gs_software_rasterizer.cpp
+    src/gs_packed_primitive_renderer.cpp
     src/gs_gif_pipeline.cpp
     src/iso9660_disc.cpp
     src/ps2_boot_config.cpp
