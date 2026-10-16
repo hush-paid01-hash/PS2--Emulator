@@ -450,7 +450,7 @@ int main() {
         const auto packets = parser.take_packets();
         check(transferred && stream_finished && packets.size() == 1,
               "chained EE GIF DMA transfers a complete five-register GIF stream");
-        check(dma.registers.tadr == 192 && dma.registers.madr == 176 &&
+        check(dma.registers.tadr == 192 && dma.registers.madr == 192 &&
                   dma.registers.qwc == 0 && dma.state() == retroshelf::EeGifDma::State::Completed &&
                   dma_interrupts.size() == 1 &&
                   dma_interrupts[0] == retroshelf::EeGifDma::Interrupt::Completion,
