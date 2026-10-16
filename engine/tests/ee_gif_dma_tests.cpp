@@ -1,5 +1,7 @@
 #include "retroshelf/ee_gif_dma.hpp"
 #include "retroshelf/gs_packet_processor.hpp"
+#include "retroshelf/gs_gif_pipeline.hpp"
+#include "retroshelf/gs_framebuffer.hpp"
 #include "retroshelf/system_bus.hpp"
 
 #include <cstdint>
@@ -405,6 +407,36 @@ int main() {
         check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
                   dma.error().find("unaligned") != std::string::npos,
               "system-bus DMA rejects a payload address not aligned to a qword");
+    }
+
+
+    {
+        // End-to-end seam: EE GIF DMA payloads are parsed as GIF packets and
+        // then consumed by the GS pipeline. An empty valid stream is a no-op,
+        // but it verifies that the DMA callback and parser state are persistent.
+        std::vector<std::uint8_t> ram(128);
+        const std::uint64_t gif_tag = (1ULL << 15U) | (1ULL << 60U);
+        write_qword(ram, 16, gif_tag, 0);
+        write_tag(ram, 0, 1, 1);
+        write_tag(ram, 32, 0, 7);
+
+        retroshelf::SystemBus bus(ram);
+        retroshelf::GsPacketProcessor parser;
+        retroshelf::GsGifPipeline pipeline;
+        retroshelf::GsFramebuffer framebuffer;
+        const bool framebuffer_ready = framebuffer.resize(64, 64);
+        retroshelf::EeGifDma dma(bus, [&](const auto& payload) {
+            if (!parser.submit(payload)) throw std::runtime_error(parser.error());
+        });
+        dma.registers.chcr = Start | Direction | Chain;
+        dma.registers.tadr = 0;
+        const bool transferred = dma.start();
+        const bool stream_finished = parser.finish_stream();
+        const auto packets = parser.take_packets();
+        check(transferred && stream_finished && packets.size() == 1,
+              "EE GIF DMA output reaches the persistent GIF packet parser");
+        check(framebuffer_ready && pipeline.consume_and_render(packets, framebuffer),
+              "parsed DMA packet reaches the GS pipeline and framebuffer");
     }
 
     return failures == 0 ? 0 : 1;
