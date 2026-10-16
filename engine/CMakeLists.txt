@@ -33,12 +33,13 @@ add_executable(retroshelf-engine src/main.cpp)
 target_link_libraries(retroshelf-engine PRIVATE retroshelf_engine)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
+enable_testing()
+
 add_executable(engine-c-api-tests tests/engine_c_api_tests.cpp)
 target_link_libraries(engine-c-api-tests PRIVATE retroshelf_engine)
 target_compile_options(engine-c-api-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME engine-c-api-tests COMMAND engine-c-api-tests)
 
-enable_testing()
 add_executable(cpu-tests tests/cpu_tests.cpp src/cpu.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(cpu-tests PRIVATE include)
 target_compile_options(cpu-tests PRIVATE -Wall -Wextra -Wpedantic)
