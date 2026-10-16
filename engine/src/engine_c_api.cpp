@@ -41,7 +41,7 @@ std::vector<std::uint8_t> make_preview_gif_stream() {
     };
     const std::uint64_t values[tag_count] = {
         0x3ULL,                    // PRIM: triangle list
-        0xFF00DC00ULL,             // RGBAQ: opaque cyan in this register model
+        0xFFFFDC00ULL,             // RGBAQ: opaque cyan in this register model
         (fixed(28) << 16U) | fixed(160),
         (fixed(202) << 16U) | fixed(38),
         (fixed(202) << 16U) | fixed(282)
