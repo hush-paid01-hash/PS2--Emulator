@@ -56,8 +56,17 @@ jobs:
             -sdk iphonesimulator \
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
 
-# This verifies simulator compilation/linking only. It does not prove the app
-# installs on a physical iPhone or that BIOS boot and PS2 gameplay work.
+      - name: Upload iOS Simulator app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OriginalPS2-iOS-Simulator-Debug
+          path: build/DerivedData/Build/Products/Debug-iphonesimulator/OriginalPS2.app
+          if-no-files-found: error
+          retention-days: 7
+
+# This produces a downloadable simulator build for Mac testing only. It is
+# unsigned, is not an iPhone-installable IPA, and does not prove PS2 gameplay.
