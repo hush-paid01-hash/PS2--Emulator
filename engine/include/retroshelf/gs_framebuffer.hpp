@@ -26,7 +26,8 @@ public:
 
     // Returns false for zero, oversized, or overflow-prone dimensions.
     bool resize(std::size_t width, std::size_t height);
-    void clear(Rgba8 color = {});
+    void clear();
+    void clear(Rgba8 color);
     // Returns false when coordinates are outside the surface.
     bool set_pixel(std::size_t x, std::size_t y, Rgba8 color);
     bool get_pixel(std::size_t x, std::size_t y, Rgba8& color) const;

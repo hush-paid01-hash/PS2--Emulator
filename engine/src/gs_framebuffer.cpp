@@ -21,6 +21,8 @@ bool GsFramebuffer::resize(std::size_t width, std::size_t height) {
     return true;
 }
 
+void GsFramebuffer::clear() { clear(Rgba8{}); }
+
 void GsFramebuffer::clear(Rgba8 color) {
     for (std::size_t i = 0; i + 3U < pixels_.size(); i += 4U) {
         pixels_[i] = color.r;
