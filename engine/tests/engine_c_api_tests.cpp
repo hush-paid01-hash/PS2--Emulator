@@ -9,5 +9,11 @@ int main() {
     assert(message != nullptr);
     assert(std::strstr(message, "not implemented") != nullptr);
     assert(retroshelf_engine_can_boot_games() == 0);
+
+    // Preflight must fail safely for missing, empty, or null paths.
+    assert(retroshelf_engine_validate_disc_boot_image(nullptr) == 0);
+    assert(retroshelf_engine_validate_disc_boot_image("") == 0);
+    assert(retroshelf_engine_validate_disc_boot_image(
+        "this-file-should-not-exist-hush-preflight.iso") == 0);
     return 0;
 }
