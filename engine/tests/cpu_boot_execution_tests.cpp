@@ -391,5 +391,26 @@ int main() {
            (retroshelf::Cpu::ExcSyscall << 2U));
     assert(syscall_delay_cpu.cop0_epc() == 0x8000F200U);
 
+
+    // EE 64-bit arithmetic and immediate shifts preserve the full GPR width.
+    retroshelf::Cpu wide_cpu;
+    wide_cpu.set_pc(0x8000F300U);
+    wide_cpu.set_reg(8, 0x00000001FFFFFFFFULL);
+    wide_cpu.set_reg(9, 2U);
+    assert(wide_cpu.step((8U << 21U) | (9U << 16U) | (10U << 11U) | 0x2DU, &error)); // DADDU
+    assert(wide_cpu.reg(10) == 0x0000000200000001ULL);
+    assert(wide_cpu.step((8U << 21U) | (9U << 16U) | (11U << 11U) | 0x2FU, &error)); // DSUBU
+    assert(wide_cpu.reg(11) == 0x00000001FFFFFFFDUll);
+
+    retroshelf::Cpu wide_shift_cpu;
+    wide_shift_cpu.set_reg(8, 0x8000000000000000ULL);
+    assert(wide_shift_cpu.step((1U << 6U) | (8U << 16U) | (9U << 11U) | 0x3AU, &error)); // DSRL rt=t0, rd=t1, sa=1
+    assert(wide_shift_cpu.reg(9) == 0x4000000000000000ULL);
+    assert(wide_shift_cpu.step((8U << 16U) | (10U << 11U) | 0x3CU, &error)); // DSLL32 t2,t0,0
+    assert(wide_shift_cpu.reg(10) == 0U); // high bit shifted out by 32
+    wide_shift_cpu.set_reg(8, 0xFFFFFFFF80000000ULL);
+    assert(wide_shift_cpu.step((8U << 16U) | (11U << 11U) | 0x3FU, &error)); // DSRA32 t3,t0,0
+    assert(wide_shift_cpu.reg(11) == 0xFFFFFFFFFFFFFFFFULL);
+
     std::cout << "CPU boot execution tests passed\\n";
 }
