@@ -1,17 +1,21 @@
-name: Native iOS shell syntax check
+name: Native iOS syntax and simulator build
 
 on:
   pull_request:
     paths:
       - "project.yml"
       - "ios/OriginalPS2/**"
+      - "engine/**"
       - ".github/workflows/ios-shell-parse.yml"
+      - ".github/workflows/ios-app-build.yml"
   push:
     branches: [main]
     paths:
       - "project.yml"
       - "ios/OriginalPS2/**"
+      - "engine/**"
       - ".github/workflows/ios-shell-parse.yml"
+      - ".github/workflows/ios-app-build.yml"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +23,7 @@ permissions:
 
 jobs:
   swift-source-parse:
-    name: Parse SwiftUI source (syntax only)
+    name: Parse SwiftUI source
     runs-on: macos-15
     steps:
       - name: Check out repository
@@ -31,4 +35,41 @@ jobs:
       - name: Parse native frontend source
         run: swiftc -parse ios/OriginalPS2/OriginalPS2App.swift ios/OriginalPS2/ContentView.swift ios/OriginalPS2/EngineBridge.swift
 
-# This check only parses Swift syntax. It does not compile or link the iOS app.
+  build-ios-simulator:
+    name: Generate Xcode project and build iOS Simulator app
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode.app
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Verify generated scheme
+        run: xcodebuild -list -project OriginalPS2.xcodeproj
+
+      - name: Build app and linked C++ engine
+        run: |
+          xcodebuild \
+            -project OriginalPS2.xcodeproj \
+            -scheme OriginalPS2 \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+# The simulator build verifies compilation/linking only; it does not prove physical-device installation or PS2 gameplay.
