@@ -40,5 +40,15 @@ int main() {
     assert(stopped.reason == retroshelf::EeExecutionRunner::StopReason::CpuExceptionOrUnsupportedInstruction);
     assert(stopped.final_pc == retroshelf::Cpu::GeneralExceptionVector);
     assert(!stopped.message.empty());
+
+    // The exception vector must be reachable through the EE's 32-bit KSEG0 map.
+    // A handler instruction at 0x80000180 should execute on the next runner call.
+    constexpr std::uint32_t exception_vector = 0x80000180U;
+    assert(memory.write(exception_vector, 4, (0x09U << 26U) | (11U << 16U) | 9U, &error));
+    const auto handler = runner.run(1);
+    assert(handler.instructions_executed == 1);
+    assert(handler.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(cpu.reg(11) == 9);
+    assert(handler.final_pc == exception_vector + 4U);
     return 0;
 }
