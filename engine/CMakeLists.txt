@@ -12,6 +12,7 @@ set(RETROSHELF_ENGINE_SOURCES
     src/gs_packet_processor.cpp
     src/gs_register_decoder.cpp
     src/gs_register_state.cpp
+    src/gs_gif_pipeline.cpp
     src/iso9660_disc.cpp
     src/ps2_boot_config.cpp
     src/ps2_disc_boot_loader.cpp
@@ -73,6 +74,12 @@ add_executable(gs-register-state-tests tests/gs_register_state_tests.cpp
 target_include_directories(gs-register-state-tests PRIVATE include)
 target_compile_options(gs-register-state-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-register-state-tests COMMAND gs-register-state-tests)
+
+add_executable(gs-gif-pipeline-tests tests/gs_gif_pipeline_tests.cpp
+    src/gs_gif_pipeline.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp)
+target_include_directories(gs-gif-pipeline-tests PRIVATE include)
+target_compile_options(gs-gif-pipeline-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-gif-pipeline-tests COMMAND gs-gif-pipeline-tests)
 
 add_executable(iso9660-disc-tests tests/iso9660_disc_tests.cpp src/iso9660_disc.cpp)
 target_include_directories(iso9660-disc-tests PRIVATE include)
