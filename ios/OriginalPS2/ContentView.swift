@@ -8,7 +8,7 @@ struct ContentView: View {
     @State private var gameName: String?
     @State private var biosURL: URL?
     @State private var gameURL: URL?
-    @State private var statusMessage = "Engine not connected"
+    @State private var statusMessage = "Checking engine bridge…"
 
     private let supportedGameExtensions: Set<String> = ["iso", "bin", "img", "chd", "rom"]
 
@@ -72,7 +72,7 @@ struct ContentView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Development status", systemImage: "hammer").font(.headline)
-                        Text("Files are copied into this app's private storage. Importing does not start a game; the original C++ engine still needs to be connected.")
+                        Text("The Swift wrapper now queries the engine C ABI. The iOS app target must still link the retroshelf_engine library; the engine currently cannot boot games.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -81,6 +81,9 @@ struct ContentView: View {
                 .padding()
             }
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                statusMessage = EngineBridge.readinessMessage
+            }
             .fileImporter(
                 isPresented: $showingBIOSPicker,
                 allowedContentTypes: [.data],
@@ -113,11 +116,11 @@ struct ContentView: View {
                 if isBIOS {
                     biosURL = importedURL
                     biosName = importedURL.lastPathComponent
-                    statusMessage = "BIOS imported — core integration pending"
+                    statusMessage = "BIOS imported — engine boot support pending"
                 } else {
                     gameURL = importedURL
                     gameName = importedURL.lastPathComponent
-                    statusMessage = "Game image imported — boot support pending"
+                    statusMessage = "Game image imported — engine boot support pending"
                 }
             } catch {
                 statusMessage = "Import failed: \(error.localizedDescription)"
