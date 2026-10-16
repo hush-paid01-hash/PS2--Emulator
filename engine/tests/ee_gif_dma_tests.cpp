@@ -411,20 +411,31 @@ int main() {
 
 
     {
-        // End-to-end seam: EE GIF DMA payloads are parsed as GIF packets and
-        // then consumed by the GS pipeline. An empty valid stream is a no-op,
-        // but it verifies that the DMA callback and parser state are persistent.
-        std::vector<std::uint8_t> ram(128);
-        const std::uint64_t gif_tag = (1ULL << 15U) | (1ULL << 60U);
-        write_qword(ram, 16, gif_tag, 0);
-        write_tag(ram, 0, 1, 1);
-        write_tag(ram, 32, 0, 7);
+        // End-to-end regression: chained EE GIF DMA carries a real PACKED
+        // triangle through the persistent GIF parser and software GS renderer.
+        std::vector<std::uint8_t> ram(192);
+        const std::uint8_t addresses[] = {0x0, 0x1, 0x5, 0x5, 0x5};
+        const std::uint64_t values[] = {
+            0x3ULL, 0xFF0000FFULL,
+            (static_cast<std::uint64_t>(1U << 4U) << 16U) | (1U << 4U),
+            (static_cast<std::uint64_t>(1U << 4U) << 16U) | (6U << 4U),
+            (static_cast<std::uint64_t>(6U << 4U) << 16U) | (1U << 4U)
+        };
+        for (std::size_t i = 0; i < 5U; ++i) {
+            const std::size_t offset = 16U + i * 32U;
+            const std::uint64_t gif_tag = 1ULL | (i == 4U ? (1ULL << 15U) : 0ULL) |
+                                          (1ULL << 60U);
+            write_qword(ram, static_cast<std::uint32_t>(offset), gif_tag, addresses[i]);
+            write_qword(ram, static_cast<std::uint32_t>(offset + 16U), values[i], 0ULL);
+        }
+        write_tag(ram, 0, 10, 1);
+        write_tag(ram, 176, 0, 7);
 
         retroshelf::SystemBus bus(ram);
         retroshelf::GsPacketProcessor parser;
         retroshelf::GsGifPipeline pipeline;
         retroshelf::GsFramebuffer framebuffer;
-        const bool framebuffer_ready = framebuffer.resize(64, 64);
+        const bool framebuffer_ready = framebuffer.resize(8, 8);
         retroshelf::EeGifDma dma(bus, [&](const auto& payload) {
             if (!parser.submit(payload)) throw std::runtime_error(parser.error());
         });
@@ -434,9 +445,14 @@ int main() {
         const bool stream_finished = parser.finish_stream();
         const auto packets = parser.take_packets();
         check(transferred && stream_finished && packets.size() == 1,
-              "EE GIF DMA output reaches the persistent GIF packet parser");
-        check(framebuffer_ready && pipeline.consume_and_render(packets, framebuffer),
-              "parsed DMA packet reaches the GS pipeline and framebuffer");
+              "chained EE GIF DMA transfers a complete five-register GIF stream");
+        const bool rendered = framebuffer_ready &&
+                              pipeline.consume_and_render(packets, framebuffer);
+        check(rendered, "DMA packet renders through GIF parser and GS pipeline");
+        retroshelf::GsFramebuffer::Rgba8 pixel{};
+        check(rendered && framebuffer.get_pixel(2, 2, pixel) &&
+                  pixel.r == 255 && pixel.g == 0 && pixel.b == 0 && pixel.a == 255,
+              "end-to-end DMA-to-GS output contains the expected red triangle pixel");
     }
 
     return failures == 0 ? 0 : 1;
