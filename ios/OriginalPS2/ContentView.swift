@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
 
 struct ContentView: View {
     @State private var showingBIOSPicker = false
@@ -11,6 +12,8 @@ struct ContentView: View {
     @State private var statusMessage = "Checking engine bridge…"
     @State private var smokeTestMessage: String?
     @State private var isRunningSmokeTest = false
+    @State private var previewImage: UIImage?
+    @State private var previewMessage = "No preview rendered yet"
 
     private let supportedGameExtensions: Set<String> = ["iso", "bin", "img", "chd", "rom"]
     private let preflightExtensions: Set<String> = ["iso", "bin", "img"]
@@ -73,6 +76,35 @@ struct ContentView: View {
                     .padding()
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Graphics output preview", systemImage: "display").font(.headline)
+                        Text("Renders a test triangle through the native software rasterizer. This is a graphics-path check, not a PS2 game frame.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        if let previewImage {
+                            Image(uiImage: previewImage)
+                                .resizable()
+                                .interpolation(.none)
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: .infinity)
+                                .background(Color.black, in: RoundedRectangle(cornerRadius: 10))
+                                .accessibilityLabel("Software rasterizer demo triangle")
+                        }
+                        Text(previewMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Button {
+                            renderGraphicsPreview()
+                        } label: {
+                            Label("Render graphics test frame", systemImage: "play.rectangle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+
                     VStack(alignment: .leading, spacing: 12) {
                         Label("Engine test (not gameplay)", systemImage: "cpu").font(.headline)
                         Text("Runs up to 10,000 instructions from the imported disc executable using the current incomplete CPU interpreter. It does not boot the BIOS or render a game.")
@@ -123,6 +155,30 @@ struct ContentView: View {
             ) { handleImport($0, isBIOS: false) }
         }
         .preferredColorScheme(.dark)
+    }
+
+
+    private func renderGraphicsPreview() {
+        guard let frame = EngineBridge.renderDemoPreview(),
+              let provider = CGDataProvider(data: frame.rgba as CFData),
+              let cgImage = CGImage(
+                width: frame.width,
+                height: frame.height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: frame.width * 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            previewMessage = "Could not render or read the native framebuffer."
+            return
+        }
+        previewImage = UIImage(cgImage: cgImage)
+        previewMessage = "Rendered \(frame.width) × \(frame.height) RGBA frame from the native software rasterizer. Test pattern only."
     }
 
     private func handleImport(_ result: Result<[URL], Error>, isBIOS: Bool) {

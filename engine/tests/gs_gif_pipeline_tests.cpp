@@ -67,5 +67,38 @@ int main() {
               "reset clears register state and pipeline error");
     }
 
+
+    {
+        // Five one-register PACKED tags exercise the complete path from GIF
+        // decoding through GS register writes into the software framebuffer.
+        std::vector<std::uint8_t> bytes(5U * 32U, 0);
+        const std::uint8_t addresses[] = {0x0, 0x1, 0x5, 0x5, 0x5};
+        const std::uint64_t values[] = {
+            0x3ULL, 0xFF0000FFULL,
+            (static_cast<std::uint64_t>(1U << 4U) << 16U) | (1U << 4U),
+            (static_cast<std::uint64_t>(1U << 4U) << 16U) | (6U << 4U),
+            (static_cast<std::uint64_t>(6U << 4U) << 16U) | (1U << 4U)
+        };
+        for (std::size_t i = 0; i < 5U; ++i) {
+            const bool last = i == 4U;
+            const std::uint64_t tag = 1ULL | (last ? (1ULL << 15U) : 0ULL) |
+                                      (1ULL << 60U);
+            const std::size_t offset = i * 32U;
+            write_u64(bytes, offset, tag);
+            write_u64(bytes, offset + 8U, addresses[i]);
+            write_u64(bytes, offset + 16U, values[i]);
+            write_u64(bytes, offset + 24U, 0ULL);
+        }
+        retroshelf::GsGifPipeline pipeline;
+        retroshelf::GsFramebuffer framebuffer;
+        check(framebuffer.resize(8, 8), "framebuffer is allocated for pipeline rendering");
+        check(pipeline.consume_and_render({retroshelf::GifPacket{bytes, 1}}, framebuffer),
+              "GIF pipeline renders a PACKED triangle into the framebuffer");
+        retroshelf::GsFramebuffer::Rgba8 pixel{};
+        check(framebuffer.get_pixel(2, 2, pixel) && pixel.r == 255 &&
+                  pixel.g == 0 && pixel.b == 0 && pixel.a == 255,
+              "pipeline output contains the expected opaque red triangle pixel");
+    }
+
     return failures == 0 ? 0 : 1;
 }

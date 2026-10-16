@@ -14,6 +14,8 @@ set(RETROSHELF_ENGINE_SOURCES
     src/gs_register_decoder.cpp
     src/gs_register_state.cpp
     src/gs_framebuffer.cpp
+    src/gs_software_rasterizer.cpp
+    src/gs_packed_primitive_renderer.cpp
     src/gs_gif_pipeline.cpp
     src/iso9660_disc.cpp
     src/ps2_boot_config.cpp
@@ -80,7 +82,8 @@ target_compile_options(gs-register-state-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-register-state-tests COMMAND gs-register-state-tests)
 
 add_executable(gs-gif-pipeline-tests tests/gs_gif_pipeline_tests.cpp
-    src/gs_gif_pipeline.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp)
+    src/gs_gif_pipeline.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp
+    src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp src/gs_framebuffer.cpp)
 target_include_directories(gs-gif-pipeline-tests PRIVATE include)
 target_compile_options(gs-gif-pipeline-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-gif-pipeline-tests COMMAND gs-gif-pipeline-tests)
@@ -151,7 +154,6 @@ target_include_directories(elf-ee-memory-loader-tests PRIVATE include)
 target_compile_options(elf-ee-memory-loader-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME elf-ee-memory-loader-tests COMMAND elf-ee-memory-loader-tests)
 
-
 add_executable(bios-image-validator-tests tests/bios_image_validator_tests.cpp
     src/bios_image_validator.cpp)
 target_include_directories(bios-image-validator-tests PRIVATE include)
@@ -168,3 +170,15 @@ add_executable(gs-framebuffer-tests tests/gs_framebuffer_tests.cpp src/gs_frameb
 target_include_directories(gs-framebuffer-tests PRIVATE include)
 target_compile_options(gs-framebuffer-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-framebuffer-tests COMMAND gs-framebuffer-tests)
+
+add_executable(gs-software-rasterizer-tests tests/gs_software_rasterizer_tests.cpp
+    src/gs_software_rasterizer.cpp src/gs_framebuffer.cpp)
+target_include_directories(gs-software-rasterizer-tests PRIVATE include)
+target_compile_options(gs-software-rasterizer-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-software-rasterizer-tests COMMAND gs-software-rasterizer-tests)
+
+add_executable(gs-packed-primitive-renderer-tests tests/gs_packed_primitive_renderer_tests.cpp
+    src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp src/gs_framebuffer.cpp)
+target_include_directories(gs-packed-primitive-renderer-tests PRIVATE include)
+target_compile_options(gs-packed-primitive-renderer-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-packed-primitive-renderer-tests COMMAND gs-packed-primitive-renderer-tests)
