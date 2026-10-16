@@ -18,6 +18,14 @@ uint32_t retroshelf_engine_abi_version(void);
 const char *retroshelf_engine_status_message(void);
 int32_t retroshelf_engine_can_boot_games(void);
 
+/*
+ * Returns 1 when path opens as a supported ISO-9660/BIN/IMG image and its
+ * SYSTEM.CNF executable parses as ELF32 MIPS with loadable segments.
+ * Returns 0 on any failure. This is a preflight check only: it does not run
+ * the executable, verify a BIOS, support CHD decoding, or imply playability.
+ */
+int32_t retroshelf_engine_validate_disc_boot_image(const char *path);
+
 #ifdef __cplusplus
 }
 #endif
