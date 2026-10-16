@@ -83,6 +83,7 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 statusMessage = EngineBridge.readinessMessage
+                restoreImportedFiles()
             }
             .fileImporter(
                 isPresented: $showingBIOSPicker,
@@ -113,14 +114,24 @@ struct ContentView: View {
 
             do {
                 let importedURL = try copyIntoAppStorage(sourceURL)
+                let fileSize = try importedURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                guard fileSize > 0 else {
+                    try? FileManager.default.removeItem(at: importedURL)
+                    statusMessage = "Import failed: the selected file is empty."
+                    return
+                }
                 if isBIOS {
                     biosURL = importedURL
-                    biosName = importedURL.lastPathComponent
-                    statusMessage = "BIOS imported — engine boot support pending"
+                    biosName = sourceURL.lastPathComponent
+                    UserDefaults.standard.set(importedURL.lastPathComponent, forKey: "hush.importedBIOS")
+                    UserDefaults.standard.set(sourceURL.lastPathComponent, forKey: "hush.importedBIOSDisplayName")
+                    statusMessage = "BIOS saved — boot support is not implemented yet"
                 } else {
                     gameURL = importedURL
-                    gameName = importedURL.lastPathComponent
-                    statusMessage = "Game image imported — engine boot support pending"
+                    gameName = sourceURL.lastPathComponent
+                    UserDefaults.standard.set(importedURL.lastPathComponent, forKey: "hush.importedGame")
+                    UserDefaults.standard.set(sourceURL.lastPathComponent, forKey: "hush.importedGameDisplayName")
+                    statusMessage = "Game image saved — boot support is not implemented yet"
                 }
             } catch {
                 statusMessage = "Import failed: \(error.localizedDescription)"
@@ -160,6 +171,36 @@ struct ContentView: View {
         )
         try fileManager.copyItem(at: sourceURL, to: destinationURL)
         return destinationURL
+    }
+
+    private func restoreImportedFiles() {
+        guard let documentsURL = FileManager.default.urls(
+            for: .documentDirectory,
+            in: .userDomainMask
+        ).first else { return }
+        let importDirectory = documentsURL.appendingPathComponent("ImportedFiles", isDirectory: true)
+
+        if let storedName = UserDefaults.standard.string(forKey: "hush.importedBIOS") {
+            let url = importDirectory.appendingPathComponent(storedName)
+            if FileManager.default.fileExists(atPath: url.path) {
+                biosURL = url
+                biosName = UserDefaults.standard.string(forKey: "hush.importedBIOSDisplayName") ?? storedName
+            } else {
+                UserDefaults.standard.removeObject(forKey: "hush.importedBIOS")
+                UserDefaults.standard.removeObject(forKey: "hush.importedBIOSDisplayName")
+            }
+        }
+
+        if let storedName = UserDefaults.standard.string(forKey: "hush.importedGame") {
+            let url = importDirectory.appendingPathComponent(storedName)
+            if FileManager.default.fileExists(atPath: url.path) {
+                gameURL = url
+                gameName = UserDefaults.standard.string(forKey: "hush.importedGameDisplayName") ?? storedName
+            } else {
+                UserDefaults.standard.removeObject(forKey: "hush.importedGame")
+                UserDefaults.standard.removeObject(forKey: "hush.importedGameDisplayName")
+            }
+        }
     }
 
     private enum ImportError: LocalizedError {
