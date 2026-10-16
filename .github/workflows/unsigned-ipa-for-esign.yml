@@ -24,6 +24,8 @@ jobs:
           xcodegen --version
           rsvg-convert -w 1024 -h 1024 ios/OriginalPS2/Assets.xcassets/AppIcon.appiconset/AppIcon.svg -o ios/OriginalPS2/Assets.xcassets/AppIcon.appiconset/AppIcon.png
           test -s ios/OriginalPS2/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+          # Xcode asset catalogs consume the generated PNG; keep the SVG source out of the compiled catalog.
+          rm ios/OriginalPS2/Assets.xcassets/AppIcon.appiconset/AppIcon.svg
 
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
@@ -47,11 +49,11 @@ jobs:
       - name: Package unsigned IPA
         run: |
           set -euo pipefail
-          APP_PATH="build/DerivedData/Build/Products/Debug-iphoneos/OriginalPS2.app"
+          APP_PATH="build/DerivedData/Build/Products/Debug-iphoneos/Hush.app"
           test -d "$APP_PATH"
           rm -rf build/ipa-staging
           mkdir -p build/ipa-staging/Payload
-          /usr/bin/ditto "$APP_PATH" build/ipa-staging/Payload/OriginalPS2.app
+          /usr/bin/ditto "$APP_PATH" build/ipa-staging/Payload/Hush.app
           mkdir -p build/artifacts
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent build/ipa-staging/Payload build/artifacts/Hush-iOS-Unsigned.ipa
           test -s build/artifacts/Hush-iOS-Unsigned.ipa
