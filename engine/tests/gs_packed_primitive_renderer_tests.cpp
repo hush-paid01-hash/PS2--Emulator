@@ -26,9 +26,11 @@ int main() {
         {0x5, xyz(1U << 4U, 6U << 4U)}
     };
     assert(renderer.consume(writes, framebuffer));
-    GsFramebuffer::Rgba8 pixel{};\n    assert(framebuffer.get_pixel(2, 2, pixel));
+    GsFramebuffer::Rgba8 pixel{};
+    assert(framebuffer.get_pixel(2, 2, pixel));
     assert(pixel.r == 255 && pixel.g == 0 && pixel.b == 0 && pixel.a == 255);
-    GsFramebuffer::Rgba8 untouched{};\n    assert(framebuffer.get_pixel(7, 7, untouched));
+    GsFramebuffer::Rgba8 untouched{};
+    assert(framebuffer.get_pixel(7, 7, untouched));
     assert(untouched.r == 0 && untouched.g == 0 && untouched.b == 0);
 
     renderer.reset();
@@ -37,9 +39,11 @@ int main() {
                              {0x5, xyz(1U << 4U, 1U << 4U)},
                              {0x5, xyz(6U << 4U, 1U << 4U)},
                              {0x5, xyz(1U << 4U, 6U << 4U)}}, framebuffer));
-    GsFramebuffer::Rgba8 ignored{};\n    assert(framebuffer.get_pixel(2, 2, ignored));
+    GsFramebuffer::Rgba8 ignored{};
+    assert(framebuffer.get_pixel(2, 2, ignored));
     assert(ignored.r == 0 && ignored.g == 0 && ignored.b == 0);
 
-    std::cout << "GS packed primitive renderer tests passed\n";
+    std::cout << "GS packed primitive renderer tests passed
+";
     return 0;
 }
