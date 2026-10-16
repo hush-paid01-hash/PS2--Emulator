@@ -84,6 +84,14 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     switch (opcode) {
     case 0x00:
         switch (funct) {
+        case 0x0C: // SYSCALL
+            if (error) *error = "EE SYSCALL exception";
+            raise_exception(ExcSyscall, cur_pc, in_delay);
+            return false;
+        case 0x0D: // BREAK
+            if (error) *error = "EE BREAK exception";
+            raise_exception(ExcBreakpoint, cur_pc, in_delay);
+            return false;
         case 0x10: set_reg(rd, hi_); return true; // MFHI
         case 0x11: hi_ = reg(rs); return true; // MTHI
         case 0x12: set_reg(rd, lo_); return true; // MFLO
