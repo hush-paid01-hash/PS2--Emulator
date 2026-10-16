@@ -1,27 +1,66 @@
 #include "retroshelf/engine_c_api.h"
 
 #include "retroshelf/cpu.hpp"
+#include "retroshelf/gs_framebuffer.hpp"
+#include "retroshelf/gs_gif_pipeline.hpp"
+#include "retroshelf/gs_packet_processor.hpp"
 #include "retroshelf/iso9660_disc.hpp"
 #include "retroshelf/ps2_disc_execution.hpp"
 #include "retroshelf/ps2_ee_memory_map.hpp"
 #include "retroshelf/ps2_boot_image.hpp"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <limits>
 #include <string>
-
-
-#include "retroshelf/gs_framebuffer.hpp"
-#include "retroshelf/gs_software_rasterizer.hpp"
-
-#include <cstddef>
-#include <cstdint>
+#include <vector>
 
 namespace {
 retroshelf::GsFramebuffer g_preview_framebuffer;
 bool g_preview_ready = false;
+
+void write_u64_le(std::vector<std::uint8_t>& bytes, std::size_t offset,
+                  std::uint64_t value) {
+    for (std::size_t i = 0; i < 8; ++i) {
+        bytes[offset + i] = static_cast<std::uint8_t>(value >> (i * 8U));
+    }
 }
+
+// Build a small, synthetic PACKED GIF stream so the native preview exercises
+// the same GIF decoder -> GS register state -> primitive renderer path as the
+// current pipeline tests. It is still a test pattern, not a PS2 game's output.
+std::vector<std::uint8_t> make_preview_gif_stream() {
+    constexpr std::size_t tag_bytes = 32;
+    constexpr std::size_t tag_count = 5;
+    std::vector<std::uint8_t> bytes(tag_bytes * tag_count, 0);
+    const std::uint8_t addresses[tag_count] = {0x0, 0x1, 0x5, 0x5, 0x5};
+    const auto fixed = [](std::uint64_t pixels) {
+        return pixels << 4U; // GS XYZ coordinates are 12.4 fixed-point here.
+    };
+    const std::uint64_t values[tag_count] = {
+        0x3ULL,                    // PRIM: triangle list
+        0xFF00DC00ULL,             // RGBAQ: opaque cyan in this register model
+        (fixed(28) << 16U) | fixed(160),
+        (fixed(202) << 16U) | fixed(38),
+        (fixed(202) << 16U) | fixed(282)
+    };
+
+    for (std::size_t i = 0; i < tag_count; ++i) {
+        const bool last = i + 1U == tag_count;
+        // NLOOP=1, EOP on the final tag, FLG=PACKED, NREG=1.
+        const std::uint64_t tag = 1ULL | (last ? (1ULL << 15U) : 0ULL) |
+                                  (1ULL << 60U);
+        const std::size_t offset = i * tag_bytes;
+        write_u64_le(bytes, offset, tag);
+        write_u64_le(bytes, offset + 8U, addresses[i]);
+        write_u64_le(bytes, offset + 16U, values[i]);
+        write_u64_le(bytes, offset + 24U, 0ULL);
+    }
+    return bytes;
+}
+} // namespace
 
 extern "C" int32_t retroshelf_engine_render_demo_frame(void) {
     constexpr std::size_t width = 320;
@@ -30,16 +69,12 @@ extern "C" int32_t retroshelf_engine_render_demo_frame(void) {
         g_preview_ready = false;
         return 0;
     }
-
     g_preview_framebuffer.clear({12, 18, 32, 255});
-    retroshelf::GsSoftwareRasterizer rasterizer;
-    const bool first = rasterizer.draw_triangle(
-        g_preview_framebuffer, {160, 28}, {38, 202}, {282, 202},
-        {0, 220, 255, 255});
-    const bool second = rasterizer.draw_triangle(
-        g_preview_framebuffer, {160, 68}, {104, 158}, {216, 158},
-        {255, 90, 120, 255});
-    g_preview_ready = first && second;
+
+    retroshelf::GsGifPipeline pipeline;
+    const auto stream = make_preview_gif_stream();
+    const retroshelf::GifPacket packet{stream, 1};
+    g_preview_ready = pipeline.consume_and_render({packet}, g_preview_framebuffer);
     return g_preview_ready ? 1 : 0;
 }
 
