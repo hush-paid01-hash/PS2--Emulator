@@ -1,0 +1,46 @@
+name: iOS engine cross-compile (not a playable app)
+
+on:
+  push:
+    branches: [main, work/ios-engine-cross-compile]
+    paths:
+      - "engine/**"
+      - ".github/workflows/ios-engine-compile.yml"
+  pull_request:
+    paths:
+      - "engine/**"
+      - ".github/workflows/ios-engine-compile.yml"
+  workflow_dispatch:
+
+jobs:
+  compile-ios-simulator:
+    name: Compile C++ engine for iOS Simulator (arm64)
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -switch /Applications/Xcode.app
+          xcodebuild -version
+          cmake --version
+
+      - name: Configure for iOS Simulator
+        run: |
+          cmake -S engine -B build/ios-simulator -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphonesimulator \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
+            -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
+
+      - name: Compile all engine targets
+        run: |
+          cmake --build build/ios-simulator --config Release --parallel 2
+
+# This workflow proves only that the current C++ foundation compiles for the
+# iOS Simulator. It does not create an installable iPhone app or establish
+# PS2 game compatibility. A native app target, emulator-core integration,
+# BIOS/game file access, rendering/input/audio, and device installation
+# still have to be implemented and tested.
