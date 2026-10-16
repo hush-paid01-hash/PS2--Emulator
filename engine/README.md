@@ -32,6 +32,22 @@ ctest --test-dir build --output-on-failure
 
 Using `-j1` keeps memory use lower on small cloud servers.
 
+## Native frontend C ABI (scaffolding)
+
+The engine sources are also built as the reusable `retroshelf_engine` static
+library. `include/retroshelf/engine_c_api.h` exposes a small C ABI that Swift
+or another native frontend can import without exposing C++ types. The current
+API reports the ABI version and an explicit capability status; it returns
+`can_boot_games = 0` because a complete BIOS-to-rendered-game path does not
+exist yet.
+
+The file `ios/OriginalPS2/RetroshelfEngine-Bridging-Header.h` is the planned
+Xcode bridging-header entry point. Once an actual Xcode app target is added,
+it must configure this header, add `engine/include` to header search paths,
+and link the compiled `retroshelf_engine` library. This repository change does
+not create that app target or establish that a Swift-to-C++ call has run inside
+an iOS app. The C ABI smoke test verifies the exported functions from C++ CI.
+
 ## Important limitations
 
 This is **not yet a complete PlayStation 2 emulator** and cannot boot or play games. The PS2 Emotion Engine requires substantial additional work, including accurate CPU behavior, exceptions, memory/bus handling, COP0/COP1/COP2, vector units, timers, DMA, the Graphics Synthesizer, sound hardware, and BIOS integration. This initial subset is for testing the build workflow and code structure only.
