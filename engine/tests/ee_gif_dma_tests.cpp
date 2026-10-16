@@ -435,10 +435,14 @@ int main() {
         retroshelf::GsPacketProcessor parser;
         retroshelf::GsGifPipeline pipeline;
         retroshelf::GsFramebuffer framebuffer;
+        std::vector<retroshelf::EeGifDma::Interrupt> dma_interrupts;
         const bool framebuffer_ready = framebuffer.resize(8, 8);
-        retroshelf::EeGifDma dma(bus, [&](const auto& payload) {
-            if (!parser.submit(payload)) throw std::runtime_error(parser.error());
-        });
+        retroshelf::EeGifDma dma(
+            bus,
+            [&](const auto& payload) {
+                if (!parser.submit(payload)) throw std::runtime_error(parser.error());
+            },
+            [&](auto reason) { dma_interrupts.push_back(reason); });
         dma.registers.chcr = Start | Direction | Chain;
         dma.registers.tadr = 0;
         const bool transferred = dma.start();
@@ -446,6 +450,11 @@ int main() {
         const auto packets = parser.take_packets();
         check(transferred && stream_finished && packets.size() == 1,
               "chained EE GIF DMA transfers a complete five-register GIF stream");
+        check(dma.registers.tadr == 192 && dma.registers.madr == 176 &&
+                  dma.registers.qwc == 0 && dma.state() == retroshelf::EeGifDma::State::Completed &&
+                  dma_interrupts.size() == 1 &&
+                  dma_interrupts[0] == retroshelf::EeGifDma::Interrupt::Completion,
+              "rendering test verifies DMA terminal registers and one completion interrupt");
         const bool rendered = framebuffer_ready &&
                               pipeline.consume_and_render(packets, framebuffer);
         check(rendered, "DMA packet renders through GIF parser and GS pipeline");
