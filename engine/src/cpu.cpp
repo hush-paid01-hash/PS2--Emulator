@@ -179,9 +179,9 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         case 0x00: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt) << ((instruction >> 6U) & 0x1FU)))))); return true; // SLL/NOP
         case 0x02: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU))))); return true; // SRL
         case 0x03: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt))) >> ((instruction >> 6U) & 0x1FU))); return true; // SRA
-        case 0x38: set_reg(rd, reg(rt) << ((instruction >> 6U) & 0x3FU)); return true; // DSLL
-        case 0x3A: set_reg(rd, reg(rt) >> ((instruction >> 6U) & 0x3FU)); return true; // DSRL
-        case 0x3B: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> ((instruction >> 6U) & 0x3FU))); return true; // DSRA
+        case 0x38: set_reg(rd, reg(rt) << ((instruction >> 6U) & 0x1FU)); return true; // DSLL
+        case 0x3A: set_reg(rd, reg(rt) >> ((instruction >> 6U) & 0x1FU)); return true; // DSRL
+        case 0x3B: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU))); return true; // DSRA
         case 0x3C: set_reg(rd, reg(rt) << (((instruction >> 6U) & 0x1FU) + 32U)); return true; // DSLL32
         case 0x3E: set_reg(rd, reg(rt) >> (((instruction >> 6U) & 0x1FU) + 32U)); return true; // DSRL32
         case 0x3F: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> (((instruction >> 6U) & 0x1FU) + 32U))); return true; // DSRA32
