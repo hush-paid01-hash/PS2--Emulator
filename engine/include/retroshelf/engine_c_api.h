@@ -19,6 +19,17 @@ const char *retroshelf_engine_status_message(void);
 int32_t retroshelf_engine_can_boot_games(void);
 
 /*
+ * Renderer bring-up preview only. Renders a test triangle into a static
+ * RGBA8 framebuffer and exposes its bytes for a native UI preview.
+ * This is not output from a running PS2 game. The pixel pointer remains valid
+ * until the next call to render_demo_frame; callers must not free it.
+ */
+int32_t retroshelf_engine_render_demo_frame(void);
+const uint8_t *retroshelf_engine_framebuffer_pixels(void);
+uint32_t retroshelf_engine_framebuffer_width(void);
+uint32_t retroshelf_engine_framebuffer_height(void);
+
+/*
  * Returns 1 when path opens as a supported ISO-9660/BIN/IMG image and its
  * SYSTEM.CNF executable parses as ELF32 MIPS with loadable segments.
  * Returns 0 on any failure. This is a preflight check only: it does not run
