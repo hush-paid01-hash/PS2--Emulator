@@ -15,5 +15,9 @@ int main() {
     assert(retroshelf_engine_validate_disc_boot_image("") == 0);
     assert(retroshelf_engine_validate_disc_boot_image(
         "this-file-should-not-exist-hush-preflight.iso") == 0);
+    assert(retroshelf_engine_inspect_bios_image(nullptr) == 0);
+    assert(retroshelf_engine_inspect_bios_image("") == 0);
+    assert(retroshelf_engine_inspect_bios_image(
+        "this-file-should-not-exist-hush-bios-check.bin") == 0);
     return 0;
 }
