@@ -1,0 +1,79 @@
+name: Build upstream ARMSX2 iOS test IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    name: Build unsigned ARM64 iOS artifact
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout upstream ARMSX2
+        uses: actions/checkout@v7
+        with:
+          repository: ARMSX2/ARMSX2
+          path: armsx2
+          submodules: recursive
+
+      - name: Record upstream revision
+        working-directory: armsx2
+        run: git rev-parse HEAD
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -switch /Applications/Xcode.app
+          xcodebuild -version
+
+      - name: Install Rust iOS target
+        run: rustup target add aarch64-apple-ios
+
+      - name: Configure upstream iOS build
+        working-directory: armsx2/platforms/ios/app/src/main/cpp
+        run: |
+          cmake -G Xcode -B build \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DARMSX2_REAL_DEVICE=ON
+
+      - name: Build upstream ARMSX2
+        working-directory: armsx2/platforms/ios/app/src/main/cpp
+        run: |
+          cmake --build build \
+            --config Release \
+            -- \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Find app bundle
+        working-directory: armsx2/platforms/ios/app/src/main/cpp
+        run: |
+          APP_PATH="$(find build -type d -name 'ARMSX2iOS.app' -print -quit)"
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::Upstream ARMSX2iOS.app was not produced."
+            find build -type d -name '*.app' -print
+            exit 1
+          fi
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          STAGING="$(mktemp -d)"
+          mkdir -p "$STAGING/Payload"
+          cp -R "$APP_PATH" "$STAGING/Payload/"
+          (cd "$STAGING" && zip -qr "$GITHUB_WORKSPACE/ARMSX2-iOS-unsigned.ipa" Payload)
+          ls -lh "$GITHUB_WORKSPACE/ARMSX2-iOS-unsigned.ipa"
+
+      - name: Upload unsigned IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARMSX2-iOS-unsigned
+          path: ARMSX2-iOS-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
