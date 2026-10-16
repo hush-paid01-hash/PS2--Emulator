@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var biosURL: URL?
     @State private var gameURL: URL?
     @State private var statusMessage = "Engine not connected"
+    @State private var isImporting = false
 
     private let supportedGameExtensions: Set<String> = ["iso", "bin", "img", "chd", "rom"]
 
@@ -50,6 +51,7 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
+                        .disabled(isImporting)
                     }
                     .padding()
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -66,6 +68,7 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
+                        .disabled(isImporting)
                     }
                     .padding()
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -108,19 +111,26 @@ struct ContentView: View {
                 return
             }
 
-            do {
-                let importedURL = try copyIntoAppStorage(sourceURL)
-                if isBIOS {
-                    biosURL = importedURL
-                    biosName = importedURL.lastPathComponent
-                    statusMessage = "BIOS imported — core integration pending"
-                } else {
-                    gameURL = importedURL
-                    gameName = importedURL.lastPathComponent
-                    statusMessage = "Game image imported — boot support pending"
+            isImporting = true
+            statusMessage = "Importing file…"
+            Task {
+                do {
+                    let importedURL = try await Task.detached(priority: .userInitiated) {
+                        try Self.copyIntoAppStorage(sourceURL)
+                    }.value
+                    if isBIOS {
+                        biosURL = importedURL
+                        biosName = importedURL.lastPathComponent
+                        statusMessage = "BIOS imported — core integration pending"
+                    } else {
+                        gameURL = importedURL
+                        gameName = importedURL.lastPathComponent
+                        statusMessage = "Game image imported — boot support pending"
+                    }
+                } catch {
+                    statusMessage = "Import failed: \(error.localizedDescription)"
                 }
-            } catch {
-                statusMessage = "Import failed: \(error.localizedDescription)"
+                isImporting = false
             }
 
         case .failure(let error):
@@ -128,7 +138,7 @@ struct ContentView: View {
         }
     }
 
-    private func copyIntoAppStorage(_ sourceURL: URL) throws -> URL {
+    nonisolated private static func copyIntoAppStorage(_ sourceURL: URL) throws -> URL {
         let fileManager = FileManager.default
         guard let documentsURL = fileManager.urls(
             for: .documentDirectory,
