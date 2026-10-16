@@ -53,6 +53,9 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         CODE_SIGNING_ALLOWED: NO
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-lc++"
         HEADER_SEARCH_PATHS:
           - "$(SRCROOT)/engine/include"
           - "$(inherited)"
