@@ -1,0 +1,57 @@
+name: OriginalPS2
+options:
+  bundleIdPrefix: com.retroshelf
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CLANG_CXX_LANGUAGE_STANDARD: "c++17"
+    CLANG_CXX_LIBRARY: libc++
+
+targets:
+  retroshelf_engine:
+    type: library.static
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: engine/src
+        excludes:
+          - main.cpp
+    settings:
+      base:
+        PRODUCT_NAME: retroshelf_engine
+        PRODUCT_MODULE_NAME: retroshelf_engine
+        HEADER_SEARCH_PATHS:
+          - "$(SRCROOT)/engine/include"
+          - "$(inherited)"
+        CLANG_CXX_LANGUAGE_STANDARD: "c++17"
+        CLANG_CXX_LIBRARY: libc++
+
+  OriginalPS2:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: ios/OriginalPS2
+        excludes:
+          - README.md
+          - RetroshelfEngine-Bridging-Header.h
+    dependencies:
+      - target: retroshelf_engine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.retroshelf.originalps2
+        PRODUCT_NAME: OriginalPS2
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Original PS2
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGNING_ALLOWED: NO
+        HEADER_SEARCH_PATHS:
+          - "$(SRCROOT)/engine/include"
+          - "$(inherited)"

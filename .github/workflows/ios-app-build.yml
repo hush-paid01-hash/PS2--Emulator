@@ -1,0 +1,63 @@
+name: Native iOS app build
+
+on:
+  pull_request:
+    paths:
+      - "project.yml"
+      - "ios/OriginalPS2/**"
+      - "engine/**"
+      - ".github/workflows/ios-app-build.yml"
+      - ".github/workflows/ios-shell-parse.yml"
+  push:
+    branches: [main]
+    paths:
+      - "project.yml"
+      - "ios/OriginalPS2/**"
+      - "engine/**"
+      - ".github/workflows/ios-app-build.yml"
+      - ".github/workflows/ios-shell-parse.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios-simulator:
+    name: Generate Xcode project and build iOS Simulator app
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode.app
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Verify generated scheme
+        run: xcodebuild -list -project OriginalPS2.xcodeproj
+
+      - name: Build app and linked C++ engine
+        run: |
+          xcodebuild \
+            -project OriginalPS2.xcodeproj \
+            -scheme OriginalPS2 \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+# This verifies simulator compilation/linking only. It does not prove the app
+# installs on a physical iPhone or that BIOS boot and PS2 gameplay work.
