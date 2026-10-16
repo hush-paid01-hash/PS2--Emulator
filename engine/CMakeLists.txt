@@ -5,15 +5,41 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(retroshelf-engine src/main.cpp src/cpu.cpp src/system_bus.cpp
-    src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_register_decoder.cpp
-    src/gs_register_state.cpp src/iso9660_disc.cpp src/ps2_boot_config.cpp
-    src/ps2_disc_boot_loader.cpp src/elf32_mips.cpp src/ps2_boot_image.cpp
-    src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/ps2_ee_memory_map.cpp)
-target_include_directories(retroshelf-engine PRIVATE include)
+set(RETROSHELF_ENGINE_SOURCES
+    src/cpu.cpp
+    src/system_bus.cpp
+    src/ee_gif_dma.cpp
+    src/gs_packet_processor.cpp
+    src/gs_register_decoder.cpp
+    src/gs_register_state.cpp
+    src/iso9660_disc.cpp
+    src/ps2_boot_config.cpp
+    src/ps2_disc_boot_loader.cpp
+    src/elf32_mips.cpp
+    src/ps2_boot_image.cpp
+    src/elf_memory_staging.cpp
+    src/elf_ram_loader.cpp
+    src/ps2_ee_memory_map.cpp
+    src/engine_c_api.cpp
+)
+
+# Reusable C++ library for native frontends. The C ABI is intentionally small
+# until the underlying engine can boot a BIOS and run a game end-to-end.
+add_library(retroshelf_engine STATIC ${RETROSHELF_ENGINE_SOURCES})
+target_include_directories(retroshelf_engine PUBLIC include)
+target_compile_options(retroshelf_engine PRIVATE -Wall -Wextra -Wpedantic)
+
+add_executable(retroshelf-engine src/main.cpp)
+target_link_libraries(retroshelf-engine PRIVATE retroshelf_engine)
 target_compile_options(retroshelf-engine PRIVATE -Wall -Wextra -Wpedantic)
 
 enable_testing()
+
+add_executable(engine-c-api-tests tests/engine_c_api_tests.cpp)
+target_link_libraries(engine-c-api-tests PRIVATE retroshelf_engine)
+target_compile_options(engine-c-api-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME engine-c-api-tests COMMAND engine-c-api-tests)
+
 add_executable(cpu-tests tests/cpu_tests.cpp src/cpu.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(cpu-tests PRIVATE include)
 target_compile_options(cpu-tests PRIVATE -Wall -Wextra -Wpedantic)
