@@ -46,12 +46,12 @@ jobs:
         run: xcodegen generate --spec project.yml
 
       - name: Verify generated scheme
-        run: xcodebuild -list -project OriginalPS2.xcodeproj
+        run: xcodebuild -list -project Hush.xcodeproj
 
       - name: Build iOS Simulator app
         run: |
           xcodebuild \
-            -project OriginalPS2.xcodeproj \
+            -project Hush.xcodeproj \
             -scheme OriginalPS2 \
             -sdk iphonesimulator \
             -configuration Debug \
@@ -64,14 +64,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OriginalPS2-iOS-Simulator-Debug
-          path: build/DerivedData/Build/Products/Debug-iphonesimulator/OriginalPS2.app
+          path: build/DerivedData/Build/Products/Debug-iphonesimulator/Hush.app
           if-no-files-found: error
           retention-days: 7
 
       - name: Build iOS device target (unsigned)
         run: |
           xcodebuild \
-            -project OriginalPS2.xcodeproj \
+            -project Hush.xcodeproj \
             -scheme OriginalPS2 \
             -sdk iphoneos \
             -configuration Debug \
@@ -84,7 +84,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OriginalPS2-iOS-Device-Unsigned
-          path: build/DerivedData/Build/Products/Debug-iphoneos/OriginalPS2.app
+          path: build/DerivedData/Build/Products/Debug-iphoneos/Hush.app
           if-no-files-found: error
           retention-days: 7
 

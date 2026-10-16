@@ -82,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild \
-            -project OriginalPS2.xcodeproj \
+            -project Hush.xcodeproj \
             -scheme OriginalPS2 \
             -configuration Release \
             -destination 'generic/platform=iOS' \
