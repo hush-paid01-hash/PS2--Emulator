@@ -257,5 +257,23 @@ int main() {
     check(!cpu.step(itype(0x3F, 11, 12, 0), &error) && !error.empty(),
           "out-of-range SD faults without writing past test RAM");
 
+    // EE 64-bit immediate arithmetic: sign extension and overflow behavior.
+    cpu.reset(); cpu.set_reg(1, 0x100000000ULL);
+    check(cpu.step(itype(0x19, 1, 2, -1)) && cpu.reg(2) == 0xFFFFFFFFULL,
+          "DADDIU adds a sign-extended immediate in 64 bits");
+    cpu.reset(); cpu.set_reg(1, 0x7FFFFFFFFFFFFFF0ULL);
+    check(cpu.step(itype(0x18, 1, 2, 15)) && cpu.reg(2) == 0x7FFFFFFFFFFFFFFFULL,
+          "DADDI handles signed 64-bit addition without overflow");
+    cpu.reset(); cpu.set_reg(1, 0x7FFFFFFFFFFFFFFFULL); cpu.set_reg(2, 123);
+    error.clear();
+    check(!cpu.step(itype(0x18, 1, 2, 1), &error) && !error.empty(),
+          "DADDI traps on signed 64-bit positive overflow");
+    check(cpu.reg(2) == 123, "DADDI overflow leaves destination register unchanged");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcOverflow,
+          "DADDI overflow records the overflow exception code");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x19, 1, 2, 1)) && cpu.reg(2) == 0,
+          "DADDIU wraps around without an overflow exception");
+
     return failures == 0 ? 0 : 1;
 }
