@@ -482,5 +482,22 @@ int main() {
               "end-to-end DMA-to-GS output contains the expected red triangle pixel");
     }
 
+    {
+        std::vector<std::uint8_t> ram(64);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction;
+        dma.registers.madr = 0xFFFFFFF0U;
+        dma.registers.qwc = 2;
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  dma.error().find("address overflows") != std::string::npos &&
+                  (dma.registers.chcr & Start) == 0 && dma.registers.qwc == 0,
+              "normal transfer rejects 32-bit guest-address wraparound before bus access");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Error,
+              "address-wrap rejection raises exactly one DMA error interrupt");
+    }
+
     return failures == 0 ? 0 : 1;
 }
