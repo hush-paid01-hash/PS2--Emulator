@@ -295,6 +295,24 @@ int main() {
 
     {
         std::vector<std::uint8_t> ram(64);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction;
+        dma.registers.madr = 0;
+        dma.registers.qwc = static_cast<std::uint32_t>(
+            retroshelf::EeGifDma::MaxTransferBytes / retroshelf::EeGifDma::QwordSize + 1U);
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  dma.error().find("transfer limit") != std::string::npos &&
+                  (dma.registers.chcr & Start) == 0 && dma.registers.qwc == 0,
+              "oversized normal transfer is rejected before reading RAM");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Error,
+              "oversized normal transfer raises one DMA error interrupt");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
         fill(ram, 16, 0x82);
         std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
         retroshelf::EeGifDma dma(ram, {},
