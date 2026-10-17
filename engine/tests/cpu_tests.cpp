@@ -298,6 +298,10 @@ int main() {
     check(cpu.step(rtype(1, 2, 3, 0x2F)) && cpu.reg(3) == 0x7FFFFFFFFFFFFFFFULL,
           "DSUBU wraps without a signed-overflow exception");
 
+    // SYNC is a valid instruction even before the memory-ordering model exists.
+    cpu.reset();
+    check(cpu.step(rtype(0, 0, 0, 0x0F)), "SYNC executes as a memory-ordering no-op");
+
     // EE conditional moves and variable 64-bit shifts.
     cpu.reset(); cpu.set_reg(1, 0x123456789ABCDEF0ULL); cpu.set_reg(2, 0);
     check(cpu.step(rtype(1, 2, 3, 0x0A)) && cpu.reg(3) == cpu.reg(1),
