@@ -92,6 +92,8 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             if (error) *error = "EE BREAK exception";
             raise_exception(ExcBreakpoint, cur_pc, in_delay);
             return false;
+        case 0x0A: if (reg(rt) == 0) set_reg(rd, reg(rs)); return true; // MOVZ
+        case 0x0B: if (reg(rt) != 0) set_reg(rd, reg(rs)); return true; // MOVN
         case 0x10: set_reg(rd, hi_); return true; // MFHI
         case 0x11: hi_ = reg(rs); return true; // MTHI
         case 0x12: set_reg(rd, lo_); return true; // MFLO
@@ -205,6 +207,9 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         case 0x00: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt) << ((instruction >> 6U) & 0x1FU)))))); return true; // SLL/NOP
         case 0x02: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU))))); return true; // SRL
         case 0x03: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt))) >> ((instruction >> 6U) & 0x1FU))); return true; // SRA
+        case 0x14: set_reg(rd, reg(rt) << (reg(rs) & 0x3FU)); return true; // DSLLV
+        case 0x16: set_reg(rd, reg(rt) >> (reg(rs) & 0x3FU)); return true; // DSRLV
+        case 0x17: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> (reg(rs) & 0x3FU))); return true; // DSRAV
         case 0x38: set_reg(rd, reg(rt) << ((instruction >> 6U) & 0x1FU)); return true; // DSLL
         case 0x3A: set_reg(rd, reg(rt) >> ((instruction >> 6U) & 0x1FU)); return true; // DSRL
         case 0x3B: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU))); return true; // DSRA
