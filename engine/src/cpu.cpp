@@ -243,6 +243,22 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x05: return branch(reg(rs) != reg(rt), rel_target); // BNE
     case 0x06: return branch(sreg(rs) <= 0, rel_target); // BLEZ
     case 0x07: return branch(sreg(rs) > 0, rel_target); // BGTZ
+    case 0x18: { // DADDI: signed 64-bit addition with overflow exception
+        const std::uint64_t lhs = reg(rs);
+        const std::uint64_t rhs = static_cast<std::uint64_t>(simm);
+        const std::uint64_t sum = lhs + rhs;
+        constexpr std::uint64_t SignBit = std::uint64_t{1} << 63U;
+        if (((lhs ^ sum) & (rhs ^ sum) & SignBit) != 0U) {
+            if (error) *error = "Signed DADDI overflow";
+            raise_exception(ExcOverflow, cur_pc, in_delay);
+            return false;
+        }
+        set_reg(rt, sum);
+        return true;
+    }
+    case 0x19: // DADDIU: 64-bit addition, no overflow exception
+        set_reg(rt, reg(rs) + static_cast<std::uint64_t>(simm));
+        return true;
     case 0x08: { // ADDI: signed 32-bit immediate addition traps on overflow
         const auto lhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs)));
         const auto sum = lhs + simm;
