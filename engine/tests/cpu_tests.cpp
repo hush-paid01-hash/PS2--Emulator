@@ -275,5 +275,28 @@ int main() {
     check(cpu.step(itype(0x19, 1, 2, 1)) && cpu.reg(2) == 0,
           "DADDIU wraps around without an overflow exception");
 
+    // EE signed 64-bit register arithmetic must trap on overflow.
+    cpu.reset(); cpu.set_reg(1, 0x7FFFFFFFFFFFFFFFULL); cpu.set_reg(2, 1);
+    error.clear();
+    check(!cpu.step(rtype(1, 2, 3, 0x2C), &error) && !error.empty(),
+          "DADD traps on signed 64-bit positive overflow");
+    check(cpu.reg(3) == 0 && ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcOverflow,
+          "DADD overflow preserves destination and raises overflow exception");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL); cpu.set_reg(2, 1);
+    check(cpu.step(rtype(1, 2, 3, 0x2C)) && cpu.reg(3) == 0,
+          "DADD handles valid negative-to-zero addition");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL); cpu.set_reg(2, 1);
+    error.clear();
+    check(!cpu.step(rtype(1, 2, 3, 0x2E), &error) && !error.empty(),
+          "DSUB traps on signed 64-bit negative overflow");
+    check(cpu.reg(3) == 0 && ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcOverflow,
+          "DSUB overflow preserves destination and raises overflow exception");
+    cpu.reset(); cpu.set_reg(1, 7); cpu.set_reg(2, 5);
+    check(cpu.step(rtype(1, 2, 3, 0x2E)) && cpu.reg(3) == 2,
+          "DSUB computes a valid signed 64-bit difference");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL); cpu.set_reg(2, 1);
+    check(cpu.step(rtype(1, 2, 3, 0x2F)) && cpu.reg(3) == 0x7FFFFFFFFFFFFFFFULL,
+          "DSUBU wraps without a signed-overflow exception");
+
     return failures == 0 ? 0 : 1;
 }
