@@ -298,5 +298,25 @@ int main() {
     check(cpu.step(rtype(1, 2, 3, 0x2F)) && cpu.reg(3) == 0x7FFFFFFFFFFFFFFFULL,
           "DSUBU wraps without a signed-overflow exception");
 
+    // EE conditional moves and variable 64-bit shifts.
+    cpu.reset(); cpu.set_reg(1, 0x123456789ABCDEF0ULL); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 3, 0x0A)) && cpu.reg(3) == cpu.reg(1),
+          "MOVZ copies source when condition register is zero");
+    cpu.set_reg(3, 99);
+    check(cpu.step(rtype(1, 2, 3, 0x0B)) && cpu.reg(3) == 99,
+          "MOVN leaves destination unchanged when condition register is zero");
+    cpu.set_reg(2, 1);
+    check(cpu.step(rtype(1, 2, 3, 0x0B)) && cpu.reg(3) == cpu.reg(1),
+          "MOVN copies source when condition register is nonzero");
+    cpu.reset(); cpu.set_reg(1, 40); cpu.set_reg(2, 3);
+    check(cpu.step(rtype(1, 2, 3, 0x14)) && cpu.reg(3) == 24,
+          "DSLLV shifts left by the low six bits of the shift register");
+    cpu.set_reg(1, 0x8000000000000000ULL); cpu.set_reg(2, 4);
+    check(cpu.step(rtype(2, 1, 4, 0x16)) && cpu.reg(4) == 0x0800000000000000ULL,
+          "DSRLV performs a logical 64-bit right shift");
+    cpu.set_reg(2, 63);
+    check(cpu.step(rtype(2, 1, 5, 0x17)) && cpu.reg(5) == 0xFFFFFFFFFFFFFFFFULL,
+          "DSRAV sign-fills a negative value when shifted by 63");
+
     return failures == 0 ? 0 : 1;
 }
