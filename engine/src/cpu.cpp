@@ -92,6 +92,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             if (error) *error = "EE BREAK exception";
             raise_exception(ExcBreakpoint, cur_pc, in_delay);
             return false;
+        case 0x0F: return true; // SYNC: ordering barrier; no concurrent EE model yet
         case 0x0A: if (reg(rt) == 0) set_reg(rd, reg(rs)); return true; // MOVZ
         case 0x0B: if (reg(rt) != 0) set_reg(rd, reg(rs)); return true; // MOVN
         case 0x10: set_reg(rd, hi_); return true; // MFHI
