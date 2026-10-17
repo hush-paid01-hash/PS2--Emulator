@@ -298,6 +298,24 @@ int main() {
     check(cpu.step(rtype(1, 2, 3, 0x2F)) && cpu.reg(3) == 0x7FFFFFFFFFFFFFFFULL,
           "DSUBU wraps without a signed-overflow exception");
 
+    // COP0 boot/exception control: MFC0, MTC0 and ERET.
+    const auto cop0 = [](std::uint32_t move, std::uint32_t rt, std::uint32_t rd) {
+        return (0x10U << 26U) | (move << 21U) | (rt << 16U) | (rd << 11U);
+    };
+    cpu.reset(); cpu.set_reg(2, 0x1234);
+    check(cpu.step(cop0(4, 2, 12)), "MTC0 writes the Status register");
+    check(cpu.step(cop0(0, 3, 12)) && cpu.reg(3) == 0x1234,
+          "MFC0 reads Status and sign-extends its 32-bit value");
+    cpu.reset(); cpu.set_pc(0x100);
+    check(!cpu.step(bad_lw, &error) && cpu.pc() == Cpu::GeneralExceptionVector,
+          "fault enters the general exception vector before ERET test");
+    cpu.set_reg(4, 0x200);
+    check(cpu.step(cop0(4, 4, 14)), "MTC0 updates EPC");
+    check(cpu.step((0x10U << 26U) | (0x10U << 21U) | 0x18U),
+          "ERET returns from an exception");
+    check(cpu.pc() == 0x200 && (cpu.cop0_status() & Cpu::StatusExl) == 0,
+          "ERET resumes at EPC and clears Status.EXL");
+
     // SYNC is a valid instruction even before the memory-ordering model exists.
     cpu.reset();
     check(cpu.step(rtype(0, 0, 0, 0x0F)), "SYNC executes as a memory-ordering no-op");
