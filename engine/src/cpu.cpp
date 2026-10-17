@@ -168,7 +168,33 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
         case 0x23: set_reg(rd, reg(rs) - reg(rt)); return true; // SUBU
+        case 0x2C: { // DADD: signed 64-bit addition with overflow trap
+            const std::uint64_t lhs = reg(rs);
+            const std::uint64_t rhs = reg(rt);
+            const std::uint64_t sum = lhs + rhs;
+            constexpr std::uint64_t SignBit = std::uint64_t{1} << 63U;
+            if (((lhs ^ sum) & (rhs ^ sum) & SignBit) != 0U) {
+                if (error) *error = "Signed DADD overflow";
+                raise_exception(ExcOverflow, cur_pc, in_delay);
+                return false;
+            }
+            set_reg(rd, sum);
+            return true;
+        }
         case 0x2D: set_reg(rd, reg(rs) + reg(rt)); return true; // DADDU (64-bit, non-trapping)
+        case 0x2E: { // DSUB: signed 64-bit subtraction with overflow trap
+            const std::uint64_t lhs = reg(rs);
+            const std::uint64_t rhs = reg(rt);
+            const std::uint64_t difference = lhs - rhs;
+            constexpr std::uint64_t SignBit = std::uint64_t{1} << 63U;
+            if (((lhs ^ rhs) & (lhs ^ difference) & SignBit) != 0U) {
+                if (error) *error = "Signed DSUB overflow";
+                raise_exception(ExcOverflow, cur_pc, in_delay);
+                return false;
+            }
+            set_reg(rd, difference);
+            return true;
+        }
         case 0x2F: set_reg(rd, reg(rs) - reg(rt)); return true; // DSUBU (64-bit, non-trapping)
         case 0x24: set_reg(rd, reg(rs) & reg(rt)); return true; // AND
         case 0x25: set_reg(rd, reg(rs) | reg(rt)); return true; // OR
