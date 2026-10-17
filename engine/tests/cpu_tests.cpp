@@ -308,8 +308,8 @@ int main() {
     cpu.set_reg(2, 1);
     check(cpu.step(rtype(1, 2, 3, 0x0B)) && cpu.reg(3) == cpu.reg(1),
           "MOVN copies source when condition register is nonzero");
-    cpu.reset(); cpu.set_reg(1, 40); cpu.set_reg(2, 3);
-    check(cpu.step(rtype(1, 2, 3, 0x14)) && cpu.reg(3) == 24,
+    cpu.reset(); cpu.set_reg(1, 3); cpu.set_reg(2, 40);
+    check(cpu.step(rtype(1, 2, 3, 0x14)) && cpu.reg(3) == 320,
           "DSLLV shifts left by the low six bits of the shift register");
     cpu.set_reg(1, 0x8000000000000000ULL); cpu.set_reg(2, 4);
     check(cpu.step(rtype(2, 1, 4, 0x16)) && cpu.reg(4) == 0x0800000000000000ULL,
