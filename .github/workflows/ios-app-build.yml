@@ -48,6 +48,15 @@ jobs:
       - name: Verify generated scheme
         run: xcodebuild -list -project Hush.xcodeproj
 
+      - name: Configure native engine tests
+        run: cmake -S engine -B build/engine -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build native engine and test executables
+        run: cmake --build build/engine --parallel 3
+
+      - name: Run native engine regression tests
+        run: ctest --test-dir build/engine --output-on-failure
+
       - name: Build iOS Simulator app
         run: |
           xcodebuild \
