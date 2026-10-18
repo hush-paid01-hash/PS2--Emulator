@@ -157,7 +157,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             set_reg(rd, static_cast<std::uint64_t>(sum));
             return true;
         }
-        case 0x21: set_reg(rd, reg(rs) + reg(rt)); return true; // ADDU
+        case 0x21: { // ADDU: 32-bit result, sign-extended to the EE GPR width
+            const auto result = static_cast<std::uint32_t>(reg(rs)) + static_cast<std::uint32_t>(reg(rt));
+            set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))));
+            return true;
+        }
         case 0x22: { // SUB: signed 32-bit subtraction traps on overflow
             const auto lhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs)));
             const auto rhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)));
@@ -170,7 +174,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             set_reg(rd, static_cast<std::uint64_t>(difference));
             return true;
         }
-        case 0x23: set_reg(rd, reg(rs) - reg(rt)); return true; // SUBU
+        case 0x23: { // SUBU: 32-bit result, sign-extended to the EE GPR width
+            const auto result = static_cast<std::uint32_t>(reg(rs)) - static_cast<std::uint32_t>(reg(rt));
+            set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(result))));
+            return true;
+        }
         case 0x2C: { // DADD: signed 64-bit addition with overflow trap
             const std::uint64_t lhs = reg(rs);
             const std::uint64_t rhs = reg(rt);
@@ -320,9 +328,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x0E: // XORI
         set_reg(rt, reg(rs) ^ static_cast<std::uint16_t>(instruction & 0xFFFFU));
         return true;
-    case 0x0F: // LUI
-        set_reg(rt, static_cast<std::uint64_t>(instruction & 0xFFFFU) << 16U);
+    case 0x0F: { // LUI: construct a 32-bit value and sign-extend to 64 bits
+        const auto value = static_cast<std::uint32_t>((instruction & 0xFFFFU) << 16U);
+        set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
         return true;
+    }
     case 0x22: case 0x26: case 0x2A: case 0x2E: { // LWL/LWR/SWL/SWR (little-endian word merges)
         const bool store = opcode == 0x2A || opcode == 0x2E;
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
