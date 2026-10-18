@@ -145,6 +145,58 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             hi_ = static_cast<std::uint32_t>(product >> 32U);
             return true;
         }
+        case 0x1C: // DMULT: signed 64-bit product into HI:LO
+        case 0x1D: { // DMULTU: unsigned 64-bit product into HI:LO
+            const std::uint64_t lhs = reg(rs);
+            const std::uint64_t rhs = reg(rt);
+            const std::uint64_t lhs_low = static_cast<std::uint32_t>(lhs);
+            const std::uint64_t lhs_high = lhs >> 32U;
+            const std::uint64_t rhs_low = static_cast<std::uint32_t>(rhs);
+            const std::uint64_t rhs_high = rhs >> 32U;
+            const std::uint64_t low_product = lhs_low * rhs_low;
+            const std::uint64_t cross_a = lhs_high * rhs_low;
+            const std::uint64_t cross_b = lhs_low * rhs_high;
+            const std::uint64_t low_with_cross = low_product + (cross_a << 32U);
+            const std::uint64_t low = low_with_cross + (cross_b << 32U);
+            std::uint64_t high = lhs_high * rhs_high + (cross_a >> 32U) +
+                                 (cross_b >> 32U) +
+                                 (low_with_cross < low_product ? 1U : 0U) +
+                                 (low < low_with_cross ? 1U : 0U);
+            if (funct == 0x1C) {
+                if ((lhs >> 63U) != 0U) high -= rhs;
+                if ((rhs >> 63U) != 0U) high -= lhs;
+            }
+            lo_ = low;
+            hi_ = high;
+            return true;
+        }
+        case 0x1E: { // DDIV: signed 64-bit quotient in LO, remainder in HI
+            const auto dividend = static_cast<std::int64_t>(reg(rs));
+            const auto divisor = static_cast<std::int64_t>(reg(rt));
+            if (divisor == 0) {
+                lo_ = dividend < 0 ? 1U : UINT64_MAX;
+                hi_ = static_cast<std::uint64_t>(dividend);
+            } else if (dividend == INT64_MIN && divisor == -1) {
+                lo_ = static_cast<std::uint64_t>(INT64_MIN);
+                hi_ = 0;
+            } else {
+                lo_ = static_cast<std::uint64_t>(dividend / divisor);
+                hi_ = static_cast<std::uint64_t>(dividend % divisor);
+            }
+            return true;
+        }
+        case 0x1F: { // DDIVU: unsigned 64-bit quotient in LO, remainder in HI
+            const std::uint64_t dividend = reg(rs);
+            const std::uint64_t divisor = reg(rt);
+            if (divisor == 0U) {
+                lo_ = UINT64_MAX;
+                hi_ = dividend;
+            } else {
+                lo_ = dividend / divisor;
+                hi_ = dividend % divisor;
+            }
+            return true;
+        }
         case 0x20: { // ADD: signed 32-bit addition traps on overflow
             const auto lhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs)));
             const auto rhs = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)));
