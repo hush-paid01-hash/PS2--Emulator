@@ -257,6 +257,17 @@ int main() {
     check(!cpu.step(itype(0x3F, 11, 12, 0), &error) && !error.empty(),
           "out-of-range SD faults without writing past test RAM");
 
+    // MIPS III/EE 32-bit results must be sign-extended to the 64-bit GPR width.
+    cpu.reset(); cpu.set_reg(1, 0x7FFFFFFFULL); cpu.set_reg(2, 1);
+    check(cpu.step(rtype(1, 2, 3, 0x21)) && cpu.reg(3) == 0xFFFFFFFF80000000ULL,
+          "ADDU sign-extends a 32-bit result");
+    cpu.reset(); cpu.set_reg(1, 0x80000000ULL); cpu.set_reg(2, 1);
+    check(cpu.step(rtype(1, 2, 3, 0x23)) && cpu.reg(3) == 0xFFFFFFFF7FFFFFFFULL,
+          "SUBU sign-extends a 32-bit result");
+    cpu.reset();
+    check(cpu.step(itype(0x0F, 0, 4, 0x8000)) && cpu.reg(4) == 0xFFFFFFFF80000000ULL,
+          "LUI sign-extends its 32-bit result on the EE");
+
     // EE 64-bit immediate arithmetic: sign extension and overflow behavior.
     cpu.reset(); cpu.set_reg(1, 0x100000000ULL);
     check(cpu.step(itype(0x19, 1, 2, -1)) && cpu.reg(2) == 0xFFFFFFFFULL,
