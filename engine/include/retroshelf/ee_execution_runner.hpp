@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace retroshelf {
 
@@ -19,11 +20,22 @@ public:
         InvalidInstructionFetch
     };
 
+    struct TraceEntry {
+        std::uint64_t pc{0};
+        std::uint32_t instruction{0};
+        bool fetched{false};
+    };
+
+    static constexpr std::size_t TraceCapacity = 256;
+
     struct Result {
         std::size_t instructions_executed{0};
         StopReason reason{StopReason::InstructionLimit};
         std::uint64_t final_pc{0};
         std::string message;
+        // First TraceCapacity attempted instructions in this run. Keeping the
+        // trace bounded makes it safe to use while diagnosing a BIOS boot loop.
+        std::vector<TraceEntry> trace;
     };
 
     EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory);
