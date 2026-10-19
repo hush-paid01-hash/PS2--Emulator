@@ -58,6 +58,24 @@ int main() {
     assert(ram == before_unaligned_generic);
     assert(!error.empty());
 
+    // The executable segment end is exclusive: an entry point exactly at
+    // that boundary must not be accepted, and a failed load must preserve RAM.
+    retroshelf::Elf32MipsImage end_entry_image;
+    end_entry_image.entry_point = 0x00100008U;
+    retroshelf::Elf32LoadSegment end_entry_segment;
+    end_entry_segment.virtual_address = 0x00100000U;
+    end_entry_segment.memory_size = 8;
+    end_entry_segment.flags = 5;
+    end_entry_segment.file_bytes = {1, 2, 3, 4, 5, 6, 7, 8};
+    end_entry_image.load_segments.push_back(end_entry_segment);
+    const auto before_end_entry = ram;
+    entry = 654;
+    assert(!retroshelf::load_elf32_into_ram(
+        end_entry_image, base, ram, entry, &error));
+    assert(entry == 0);
+    assert(ram == before_end_entry);
+    assert(!error.empty());
+
     // EE loading accepts KSEG0 aliases and writes through to physical RAM.
     retroshelf::Ps2EeMemoryMap ee_memory(2 * 1024 * 1024);
     std::fill(ee_memory.main_ram().begin(), ee_memory.main_ram().end(), 0x5A);
