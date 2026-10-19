@@ -2,6 +2,7 @@
 
 #include "retroshelf/cpu.hpp"
 #include "retroshelf/gs_framebuffer.hpp"
+#include "retroshelf/ee_gif_gs_runtime.hpp"
 #include "retroshelf/gs_gif_pipeline.hpp"
 #include "retroshelf/gs_packet_processor.hpp"
 #include "retroshelf/iso9660_disc.hpp"
@@ -70,26 +71,23 @@ extern "C" int32_t retroshelf_engine_render_demo_frame(void) {
         g_preview_ready = false;
         return 0;
     }
-    g_preview_framebuffer.clear({12, 18, 32, 255});
-
-    // Exercise the GIF stream parser as well as the GS register and renderer
-    // stages. The same packet processor is intended to receive future DMA
-    // payloads; this fixture is still synthetic test data, not game output.
-    retroshelf::GsPacketProcessor packet_processor;
+    // Keep the preview synthetic, but route its GIF stream through the same
+    // EE GIF DMA -> packet parser -> GS pipeline runtime used by integration
+    // tests. This is still not output from a running PS2 game.
     const auto stream = make_preview_gif_stream();
-    if (!packet_processor.submit(stream) || !packet_processor.finish_stream()) {
-        g_preview_ready = false;
-        return 0;
-    }
-    const auto packets = packet_processor.take_packets();
-    if (packets.empty()) {
+    std::vector<std::uint8_t> ee_ram(stream.begin(), stream.end());
+    retroshelf::EeGifGsRuntime runtime(ee_ram, width, height);
+    runtime.dma().registers.chcr = 1U << 8U; // Start normal-mode DMA, direction EE -> GIF.
+    runtime.dma().registers.madr = 0;
+    runtime.dma().registers.qwc = static_cast<std::uint32_t>(stream.size() / 16U);
+    if (!runtime.run_frame()) {
         g_preview_ready = false;
         return 0;
     }
 
-    retroshelf::GsGifPipeline pipeline;
-    g_preview_ready = pipeline.consume_and_render(packets, g_preview_framebuffer);
-    return g_preview_ready ? 1 : 0;
+    g_preview_framebuffer = runtime.framebuffer();
+    g_preview_ready = true;
+    return 1;
 }
 
 extern "C" const uint8_t *retroshelf_engine_framebuffer_pixels(void) {
