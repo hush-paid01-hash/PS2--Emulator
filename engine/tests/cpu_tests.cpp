@@ -520,5 +520,24 @@ int main() {
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
           "misaligned LH raises AdEL with the instruction PC in EPC");
 
+    // Minimal COP0 state transfers and ERET allow an exception handler to return.
+    cpu.reset();
+    cpu.set_pc(0x400);
+    const std::uint32_t mfc0_status = (0x10U << 26U) | (2U << 16U) | (12U << 11U);
+    const std::uint32_t mtc0_epc = (0x10U << 26U) | (0x04U << 21U) | (3U << 16U) | (14U << 11U);
+    const std::uint32_t eret = (0x10U << 26U) | (0x10U << 21U) | 0x18U;
+    cpu.set_reg(3, 0x80000200U);
+    check(cpu.step(mtc0_epc), "MTC0 writes EPC");
+    check(cpu.cop0_epc() == 0x80000200U, "MTC0 EPC value is retained");
+    cpu.set_reg(4, Cpu::StatusExl);
+    check(cpu.step((0x10U << 26U) | (0x04U << 21U) | (4U << 16U) | (12U << 11U)),
+          "MTC0 writes Status");
+    check(cpu.step(mfc0_status) && cpu.reg(2) == Cpu::StatusExl,
+          "MFC0 reads Status");
+    check(cpu.step(eret), "ERET executes");
+    check(cpu.pc() == 0x80000200U && cpu.next_pc() == 0x80000204U &&
+              (cpu.cop0_status() & Cpu::StatusExl) == 0U && !cpu.in_delay_slot(),
+          "ERET restores EPC and clears EXL");
+
     return failures == 0 ? 0 : 1;
 }
