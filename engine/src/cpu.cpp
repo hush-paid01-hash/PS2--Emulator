@@ -321,6 +321,37 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
         return unsupported();
     }
+    case 0x10: { // Minimal EE COP0 transfers and exception return
+        const auto cop_rs = rs;
+        if (cop_rs == 0x00U) { // MFC0 rt, rd
+            std::uint64_t value = 0;
+            switch (rd) {
+            case 12: value = status_; break; // Status
+            case 13: value = cause_; break;  // Cause
+            case 14: value = epc_; break;    // EPC
+            default: return unsupported();
+            }
+            set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
+            return true;
+        }
+        if (cop_rs == 0x04U) { // MTC0 rt, rd
+            switch (rd) {
+            case 12: status_ = static_cast<std::uint32_t>(reg(rt)); break;
+            case 13: cause_ = (cause_ & CauseBd) | (static_cast<std::uint32_t>(reg(rt)) & ~CauseBd); break;
+            case 14: epc_ = reg(rt); break;
+            default: return unsupported();
+            }
+            return true;
+        }
+        if (cop_rs == 0x10U && funct == 0x18U) { // ERET
+            if ((status_ & StatusExl) != 0U) status_ &= ~StatusExl;
+            pc_ = epc_;
+            next_pc_ = epc_ + 4U;
+            delay_slot_pending_ = false;
+            return true;
+        }
+        return unsupported();
+    }
     case 0x01: { // REGIMM subset: BLTZ, BGEZ, BLTZAL, BGEZAL
         if (rt != 0x00 && rt != 0x01 && rt != 0x10 && rt != 0x11) return unsupported();
         const bool taken = (rt & 1U) ? sreg(rs) >= 0 : sreg(rs) < 0;
