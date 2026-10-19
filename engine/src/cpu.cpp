@@ -504,6 +504,7 @@ bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
                         std::string* error) {
     if ((pc_ & 3U) != 0U) {
         if (error) *error = "Unaligned instruction fetch";
+        raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
         return false;
     }
     if (pc_ < ram_base) {
@@ -534,6 +535,7 @@ bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
 bool Cpu::step_from_ee_memory(Ps2EeMemoryMap& memory, std::string* error) {
     if ((pc_ & 3U) != 0U) {
         if (error) *error = "Unaligned instruction fetch";
+        raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
         return false;
     }
     // The EE map translates 32-bit virtual addresses. Reject high bits rather
