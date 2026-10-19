@@ -355,5 +355,15 @@ int main() {
     check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == 11 && cpu.hi() == 1,
           "DDIVU computes quotient and remainder");
 
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL); cpu.set_reg(2, 2);
+    check(cpu.step(rtype(1, 2, 0, 0x1D)) && cpu.lo() == 0xFFFFFFFFFFFFFFFEULL && cpu.hi() == 1,
+          "DMULTU produces the full unsigned 128-bit product");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL); cpu.set_reg(2, 2);
+    check(cpu.step(rtype(1, 2, 0, 0x1C)) && cpu.lo() == 0xFFFFFFFFFFFFFFFEULL && cpu.hi() == 0xFFFFFFFFFFFFFFFFULL,
+          "DMULT sign-corrects the high half for a negative operand");
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-100LL)); cpu.set_reg(2, 9);
+    check(cpu.step(rtype(1, 2, 0, 0x1E)) && cpu.lo() == static_cast<std::uint64_t>(-11LL) && cpu.hi() == static_cast<std::uint64_t>(-1LL),
+          "DDIV returns signed quotient and remainder");
+
     return failures == 0 ? 0 : 1;
 }
