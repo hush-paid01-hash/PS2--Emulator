@@ -60,5 +60,23 @@ int main() {
     assert(memory.main_ram() == before_end_entry);
     assert(!error.empty());
 
+    // A segment must not run past the end of a supported RAM alias even if
+    // its starting address resolves successfully.
+    retroshelf::Elf32MipsImage alias_crossing_image;
+    alias_crossing_image.entry_point = 0x21FFFFFCU;
+    retroshelf::Elf32LoadSegment alias_crossing_segment;
+    alias_crossing_segment.virtual_address = 0x21FFFFFCU;
+    alias_crossing_segment.memory_size = 8;
+    alias_crossing_segment.flags = 5;
+    alias_crossing_segment.file_bytes = {1, 2, 3, 4, 5, 6, 7, 8};
+    alias_crossing_image.load_segments.push_back(alias_crossing_segment);
+    const auto before_alias_crossing = memory.main_ram();
+    entry = 456;
+    assert(!retroshelf::load_elf32_into_ee_memory(
+        alias_crossing_image, memory, entry, &error));
+    assert(entry == 0);
+    assert(memory.main_ram() == before_alias_crossing);
+    assert(!error.empty());
+
     std::cout << "ELF EE memory-map loader tests passed\n";
 }
