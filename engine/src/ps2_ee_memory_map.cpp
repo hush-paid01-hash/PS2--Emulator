@@ -6,6 +6,11 @@ namespace retroshelf {
 
 Ps2EeMemoryMap::Ps2EeMemoryMap() : ram_(MainRamSize, 0) {}
 Ps2EeMemoryMap::Ps2EeMemoryMap(std::size_t main_ram_size) : ram_(main_ram_size, 0) {}
+void Ps2EeMemoryMap::set_mmio_handlers(MmioReadHandler read_handler, MmioWriteHandler write_handler) {
+    mmio_read_handler_ = std::move(read_handler);
+    mmio_write_handler_ = std::move(write_handler);
+}
+
 std::size_t Ps2EeMemoryMap::main_ram_size() const { return ram_.size(); }
 std::vector<std::uint8_t>& Ps2EeMemoryMap::main_ram() { return ram_; }
 const std::vector<std::uint8_t>& Ps2EeMemoryMap::main_ram() const { return ram_; }
@@ -47,6 +52,10 @@ bool Ps2EeMemoryMap::resolve_main_ram(std::uint32_t address, std::size_t width,
 bool Ps2EeMemoryMap::read(std::uint32_t address, std::size_t width,
                           std::uint64_t& value, std::string* error) const {
     if (width == 16) { if (error) *error = "Use read128 for 16-byte accesses"; return false; }
+    if (address >= 0x1000A000U && address <= 0x1000A050U) {
+        if (!mmio_read_handler_) { if (error) *error = "EE MMIO address has no device"; return false; }
+        return mmio_read_handler_(address, width, value, error);
+    }
     std::size_t offset = 0;
     if (!resolve_main_ram(address, width, width, offset, error)) return false;
     value = 0;
@@ -59,6 +68,10 @@ bool Ps2EeMemoryMap::read(std::uint32_t address, std::size_t width,
 bool Ps2EeMemoryMap::write(std::uint32_t address, std::size_t width,
                            std::uint64_t value, std::string* error) {
     if (width == 16) { if (error) *error = "Use write128 for 16-byte accesses"; return false; }
+    if (address >= 0x1000A000U && address <= 0x1000A050U) {
+        if (!mmio_write_handler_) { if (error) *error = "EE MMIO address has no device"; return false; }
+        return mmio_write_handler_(address, width, value, error);
+    }
     std::size_t offset = 0;
     if (!resolve_main_ram(address, width, width, offset, error)) return false;
     for (std::size_t i = 0; i < width; ++i)

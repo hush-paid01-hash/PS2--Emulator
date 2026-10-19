@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,12 @@ namespace retroshelf {
 // scratchpad, and hardware-specific bus side effects are not implemented.
 class Ps2EeMemoryMap {
 public:
+    using MmioReadHandler = std::function<bool(std::uint32_t, std::size_t, std::uint64_t&, std::string*)>;
+    using MmioWriteHandler = std::function<bool(std::uint32_t, std::size_t, std::uint64_t, std::string*)>;
+
+    // Hardware devices may register callbacks for MMIO addresses. Callbacks
+    // run before RAM translation and must reject unsupported widths/addresses.
+    void set_mmio_handlers(MmioReadHandler read_handler, MmioWriteHandler write_handler);
     static constexpr std::size_t MainRamSize = 32U * 1024U * 1024U;
     static constexpr std::uint32_t MainRamBase = 0x00000000U;
     static constexpr std::uint32_t MainRamMirrorBase = 0x20000000U;
@@ -43,6 +50,8 @@ public:
 
 private:
     std::vector<std::uint8_t> ram_;
+    MmioReadHandler mmio_read_handler_;
+    MmioWriteHandler mmio_write_handler_;
 };
 
 } // namespace retroshelf
