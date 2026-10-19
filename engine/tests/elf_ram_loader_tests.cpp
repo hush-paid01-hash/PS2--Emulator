@@ -41,6 +41,23 @@ int main() {
     assert(!retroshelf::load_elf32_into_ram(image, base, empty, entry, &error));
     assert(entry == 0);
 
+    // The generic RAM loader rejects unaligned MIPS entry points too.
+    retroshelf::Elf32MipsImage unaligned_generic_image;
+    unaligned_generic_image.entry_point = 0x00100002U;
+    retroshelf::Elf32LoadSegment generic_segment;
+    generic_segment.virtual_address = 0x00100000U;
+    generic_segment.memory_size = 8;
+    generic_segment.flags = 5;
+    generic_segment.file_bytes = {1, 2, 3, 4};
+    unaligned_generic_image.load_segments.push_back(generic_segment);
+    auto before_unaligned_generic = ram;
+    entry = 321;
+    assert(!retroshelf::load_elf32_into_ram(
+        unaligned_generic_image, base, ram, entry, &error));
+    assert(entry == 0);
+    assert(ram == before_unaligned_generic);
+    assert(!error.empty());
+
     // EE loading accepts KSEG0 aliases and writes through to physical RAM.
     retroshelf::Ps2EeMemoryMap ee_memory(2 * 1024 * 1024);
     std::fill(ee_memory.main_ram().begin(), ee_memory.main_ram().end(), 0x5A);
