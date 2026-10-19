@@ -365,5 +365,15 @@ int main() {
     check(cpu.step(rtype(1, 2, 0, 0x1E)) && cpu.lo() == static_cast<std::uint64_t>(-11LL) && cpu.hi() == static_cast<std::uint64_t>(-1LL),
           "DDIV returns signed quotient and remainder");
 
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL); cpu.set_reg(2, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(rtype(1, 2, 0, 0x1D)) && cpu.lo() == 1 && cpu.hi() == 0xFFFFFFFFFFFFFFFEULL,
+          "DMULTU handles a product with carries across both 32-bit limbs");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL); cpu.set_reg(2, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(rtype(1, 2, 0, 0x1E)) && cpu.lo() == 0x8000000000000000ULL && cpu.hi() == 0,
+          "DDIV handles signed minimum divided by negative one without host overflow");
+    cpu.reset(); cpu.set_reg(1, 123); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == 0xFFFFFFFFFFFFFFFFULL && cpu.hi() == 123,
+          "DDIVU handles division by zero deterministically");
+
     return failures == 0 ? 0 : 1;
 }
