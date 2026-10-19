@@ -93,5 +93,23 @@ int main() {
     assert(ee_memory.main_ram() == before_invalid_entry);
     assert(!error.empty());
 
+
+    // Malformed PT_LOAD metadata must fail before modifying EE RAM.
+    retroshelf::Elf32MipsImage malformed_image;
+    malformed_image.entry_point = 0x80003000U;
+    retroshelf::Elf32LoadSegment malformed_segment;
+    malformed_segment.virtual_address = 0x80003000U;
+    malformed_segment.memory_size = 2;
+    malformed_segment.flags = 5;
+    malformed_segment.file_bytes = {0x10, 0x20, 0x30};
+    malformed_image.load_segments.push_back(malformed_segment);
+    const auto before_malformed = ee_memory.main_ram();
+    entry = 456;
+    assert(!retroshelf::load_elf32_into_ee_memory(
+        malformed_image, ee_memory, entry, &error));
+    assert(entry == 0);
+    assert(ee_memory.main_ram() == before_malformed);
+    assert(!error.empty());
+
     std::cout << "ELF RAM loader tests passed\n";
 }
