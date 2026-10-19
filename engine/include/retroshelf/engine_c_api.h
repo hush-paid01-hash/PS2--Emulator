@@ -18,6 +18,11 @@ uint32_t retroshelf_engine_abi_version(void);
 const char *retroshelf_engine_status_message(void);
 int32_t retroshelf_engine_can_boot_games(void);
 
+/* Readable-file and size heuristic only; this does not authenticate or boot a BIOS. */
+int32_t retroshelf_engine_inspect_bios_image(const char *path,
+                                             uint64_t *size_bytes,
+                                             int32_t *plausible_size);
+
 /*
  * Renderer bring-up preview only. Sends a synthetic PACKED GIF stream
  * through the GIF packet processor and current GIF-to-GS software pipeline
