@@ -42,6 +42,8 @@ bool load_elf32_into_ee_memory(const Elf32MipsImage& image,
     entry_point = 0;
     if (memory.main_ram_size() == 0)
         return fail(error, "EE main RAM is empty");
+    if ((image.entry_point & 3U) != 0)
+        return fail(error, "ELF entry point is not 4-byte aligned");
     struct ResolvedSegment { std::size_t offset; std::size_t size; const Elf32LoadSegment* segment; };
     std::vector<ResolvedSegment> resolved;
     resolved.reserve(image.load_segments.size());
