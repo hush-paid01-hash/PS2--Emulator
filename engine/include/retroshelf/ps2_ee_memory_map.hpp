@@ -36,6 +36,10 @@ public:
               std::string* error = nullptr) const;
     bool write(std::uint32_t address, std::size_t width, std::uint64_t value,
                std::string* error = nullptr);
+    bool read128(std::uint32_t address, std::uint64_t& low, std::uint64_t& high,
+                 std::string* error = nullptr) const;
+    bool write128(std::uint32_t address, std::uint64_t low, std::uint64_t high,
+                  std::string* error = nullptr);
 
 private:
     std::vector<std::uint8_t> ram_;

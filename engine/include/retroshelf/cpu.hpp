@@ -28,6 +28,8 @@ public:
 
     std::uint64_t reg(std::size_t index) const;
     void set_reg(std::size_t index, std::uint64_t value);
+    std::uint64_t reg_high(std::size_t index) const;
+    void set_reg_high(std::size_t index, std::uint64_t value);
     std::uint64_t pc() const;
     void set_pc(std::uint64_t value);
 
@@ -53,6 +55,7 @@ public:
 
 private:
     std::array<std::uint64_t, RegisterCount> gpr_{};
+    std::array<std::uint64_t, RegisterCount> gpr_high_{};
     std::array<std::uint8_t, TestMemorySize> memory_{};
     void raise_exception(std::uint32_t code, std::uint64_t fault_pc, bool in_delay_slot);
     std::vector<std::uint8_t>* active_ram_{nullptr};
