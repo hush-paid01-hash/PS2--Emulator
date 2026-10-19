@@ -17,7 +17,7 @@ bool Ps2EeMemoryMap::resolve_main_ram(std::uint32_t address, std::size_t width,
         if (error) *error = message;
         return false;
     };
-    if (width != 1 && width != 2 && width != 4 && width != 8)
+    if (width != 1 && width != 2 && width != 4 && width != 8 && width != 16)
         return fail("Unsupported memory access width");
     if (alignment == 0 || (alignment & (alignment - 1U)) != 0)
         return fail("Alignment must be a nonzero power of two");
@@ -61,6 +61,32 @@ bool Ps2EeMemoryMap::write(std::uint32_t address, std::size_t width,
     if (!resolve_main_ram(address, width, width, offset, error)) return false;
     for (std::size_t i = 0; i < width; ++i)
         ram_[offset + i] = static_cast<std::uint8_t>((value >> (8U * i)) & 0xFFU);
+    if (error) error->clear();
+    return true;
+}
+
+bool Ps2EeMemoryMap::read128(std::uint32_t address, std::uint64_t& low,
+                             std::uint64_t& high, std::string* error) const {
+    std::size_t offset = 0;
+    if (!resolve_main_ram(address, 16, 16, offset, error)) return false;
+    low = 0;
+    high = 0;
+    for (std::size_t i = 0; i < 8; ++i) {
+        low |= static_cast<std::uint64_t>(ram_[offset + i]) << (8U * i);
+        high |= static_cast<std::uint64_t>(ram_[offset + 8 + i]) << (8U * i);
+    }
+    if (error) error->clear();
+    return true;
+}
+
+bool Ps2EeMemoryMap::write128(std::uint32_t address, std::uint64_t low,
+                              std::uint64_t high, std::string* error) {
+    std::size_t offset = 0;
+    if (!resolve_main_ram(address, 16, 16, offset, error)) return false;
+    for (std::size_t i = 0; i < 8; ++i) {
+        ram_[offset + i] = static_cast<std::uint8_t>((low >> (8U * i)) & 0xFFU);
+        ram_[offset + 8 + i] = static_cast<std::uint8_t>((high >> (8U * i)) & 0xFFU);
+    }
     if (error) error->clear();
     return true;
 }
