@@ -470,5 +470,55 @@ int main() {
           ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
           "unmapped EE fetch enters AdEL exception path and records EPC");
 
+
+    // EE-mapped byte/halfword loads and stores must use little-endian lanes,
+    // extend signed values correctly, and preserve neighboring bytes.
+    const auto run_ee_instruction = [&](std::uint32_t instruction) {
+        std::string write_error;
+        if (!ee_memory.write(0x300, 4, instruction, &write_error)) return false;
+        cpu.set_pc(0x300);
+        return cpu.step_from_ee_memory(ee_memory, &write_error);
+    };
+    check(ee_memory.write(0x200, 4, 0x80FF7F01U, &error),
+          "seed EE RAM for byte and halfword tests");
+    cpu.reset();
+    cpu.set_reg(1, 0x200);
+    check(run_ee_instruction(itype(0x20, 1, 2, 2)) &&
+              cpu.reg(2) == 0xFFFFFFFFFFFFFFFFULL,
+          "LB sign-extends a high-bit byte from EE RAM");
+    check(run_ee_instruction(itype(0x24, 1, 3, 2)) && cpu.reg(3) == 0xFFU,
+          "LBU zero-extends a high-bit byte from EE RAM");
+    check(run_ee_instruction(itype(0x21, 1, 4, 2)) &&
+              cpu.reg(4) == 0xFFFFFFFFFFFF80FFULL,
+          "LH sign-extends a high-bit halfword from EE RAM");
+    check(run_ee_instruction(itype(0x25, 1, 5, 2)) && cpu.reg(5) == 0x80FFU,
+          "LHU zero-extends a high-bit halfword from EE RAM");
+
+    cpu.set_reg(6, 0xAAU);
+    check(run_ee_instruction(itype(0x28, 1, 6, 1)),
+          "SB writes one byte into EE RAM");
+    std::uint64_t memory_value = 0;
+    check(ee_memory.read(0x200, 4, memory_value, &error) &&
+              memory_value == 0x80FFAA01U,
+          "SB preserves adjacent EE RAM bytes");
+    check(ee_memory.write(0x200, 4, 0xAABBCCDDU, &error),
+          "seed EE RAM for halfword store");
+    cpu.set_reg(7, 0x1234U);
+    check(run_ee_instruction(itype(0x29, 1, 7, 2)),
+          "SH writes a halfword into EE RAM");
+    check(ee_memory.read(0x200, 4, memory_value, &error) &&
+              memory_value == 0x1234CCDDU,
+          "SH writes little-endian halfword and preserves adjacent bytes");
+
+    cpu.reset();
+    cpu.set_reg(1, 0x200);
+    error.clear();
+    check(!run_ee_instruction(itype(0x21, 1, 8, 1)) && !error.empty(),
+          "misaligned LH faults on EE RAM");
+    check(cpu.pc() == Cpu::GeneralExceptionVector &&
+              cpu.cop0_epc() == 0x300 &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
+          "misaligned LH raises AdEL with the instruction PC in EPC");
+
     return failures == 0 ? 0 : 1;
 }
