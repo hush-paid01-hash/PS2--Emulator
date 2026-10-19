@@ -429,5 +429,15 @@ int main() {
     check(cpu.step(nop) && cpu.pc() == 0x90000008ULL && cpu.reg(31) == 0x90000004ULL,
           "JAL preserves the high address region and writes PC+8 link");
 
+    // Fetch faults must enter the EE address-error exception path, not just return an error.
+    std::vector<std::uint8_t> fetch_ram(0x200, 0);
+    cpu.reset(); cpu.set_pc(0x101);
+    error.clear();
+    check(!cpu.step_from_ram(fetch_ram, 0, &error) && !error.empty(),
+          "unaligned instruction fetch from RAM is rejected");
+    check(cpu.pc() == Cpu::GeneralExceptionVector && cpu.cop0_epc() == 0x101 &&
+          ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
+          "unaligned RAM fetch raises AdEL and records the faulting PC");
+
     return failures == 0 ? 0 : 1;
 }
