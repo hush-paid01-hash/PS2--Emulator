@@ -40,13 +40,13 @@ int main() {
     const auto biosDir = std::filesystem::temp_directory_path() / "hush_c_api_bios_test";
     std::filesystem::create_directories(biosDir);
     const auto tinyBIOS = biosDir / "tiny-bios.bin";
-    { std::ofstream out(tinyBIOS, std::ios::binary); out.put('\\0'); }
+    { std::ofstream out(tinyBIOS, std::ios::binary); out.put('\0'); }
     biosSize = 0;
     plausibleBIOS = 1;
     assert(retroshelf_engine_inspect_bios_image(tinyBIOS.string().c_str(), &biosSize, &plausibleBIOS) == 1);
     assert(biosSize == 1 && plausibleBIOS == 0);
     const auto plausibleBIOSPath = biosDir / "plausible-bios.bin";
-    { std::ofstream out(plausibleBIOSPath, std::ios::binary); out.seekp(4 * 1024 * 1024 - 1); out.put('\\0'); }
+    { std::ofstream out(plausibleBIOSPath, std::ios::binary); out.seekp(4 * 1024 * 1024 - 1); out.put('\0'); }
     assert(retroshelf_engine_inspect_bios_image(plausibleBIOSPath.string().c_str(), &biosSize, &plausibleBIOS) == 1);
     assert(biosSize == 4ULL * 1024 * 1024 && plausibleBIOS == 1);
     assert(retroshelf_engine_inspect_bios_image((biosDir / "missing.bin").string().c_str(), &biosSize, &plausibleBIOS) == 0);
