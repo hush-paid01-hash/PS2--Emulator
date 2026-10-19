@@ -252,7 +252,7 @@ struct ContentView: View {
             return
         }
         if let report = EngineBridge.runDiscSmokeTest(at: gameURL) {
-            smokeTestMessage = report.summary + "\\n\\n" + report.traceSummary
+            smokeTestMessage = report.summary + "\n\n" + report.traceSummary
         } else {
             smokeTestMessage = "The engine could not load the disc executable for the limited test."
         }
