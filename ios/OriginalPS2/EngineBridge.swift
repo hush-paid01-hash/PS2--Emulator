@@ -48,7 +48,7 @@ struct EngineExecutionReport {
             let word = String(entry.instruction, radix: 16).uppercased().padding(toLength: 8, withPad: "0", startingAt: 0)
             return "PC 0x\(pc)  instruction 0x\(word)\(entry.fetched ? "" : "  [fetch failed]")"
         }
-        return "Instruction trace (first \(lines.count) entries):\\n" + lines.joined(separator: "\\n")
+        return "Instruction trace (first \(lines.count) entries):\n" + lines.joined(separator: "\n")
     }
     var summary: String {
         let reasonText: String
