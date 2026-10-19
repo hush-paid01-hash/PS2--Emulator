@@ -10,6 +10,10 @@ int main() {
     assert(message != nullptr);
     assert(std::strstr(message, "not implemented") != nullptr);
     assert(retroshelf_engine_can_boot_games() == 0);
+    assert(retroshelf_engine_trace_count() == 0U);
+    assert(retroshelf_engine_trace_pc(0U) == 0U);
+    assert(retroshelf_engine_trace_instruction(0U) == 0U);
+    assert(retroshelf_engine_trace_fetched(0U) == -1);
 
     // The exported framebuffer preview should be a bounded RGBA test frame.
     assert(retroshelf_engine_framebuffer_pixels() == nullptr);
@@ -40,6 +44,7 @@ int main() {
     assert(instructions == 0);
     assert(pc == 0);
     assert(reason == -1);
+    assert(retroshelf_engine_trace_count() == 0U);
 
     instructions = 99;
     pc = 99;
