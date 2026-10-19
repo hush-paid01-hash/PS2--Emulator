@@ -360,9 +360,9 @@ int main() {
     nonoverflow_cpu.set_reg(8, 0x7FFFFFFFU);
     nonoverflow_cpu.set_reg(9, 1U);
     assert(nonoverflow_cpu.step((8U << 21U) | (9U << 16U) | (10U << 11U) | 0x21U, &error)); // ADDU wraps
-    assert(nonoverflow_cpu.reg(10) == 0x80000000ULL);
+    assert(nonoverflow_cpu.reg(10) == 0xFFFFFFFF80000000ULL);
     assert(nonoverflow_cpu.step((0x09U << 26U) | (8U << 21U) | (11U << 16U) | 1U, &error)); // ADDIU wraps
-    assert(nonoverflow_cpu.reg(11) == 0x80000000ULL);
+    assert(nonoverflow_cpu.reg(11) == 0xFFFFFFFF80000000ULL);
 
 
     // SYSCALL and BREAK raise their own exception codes and save the fault PC.

@@ -362,8 +362,10 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         set_reg(rt, static_cast<std::uint64_t>(sum));
         return true;
     }
-    case 0x09: // ADDIU
-        set_reg(rt, reg(rs) + static_cast<std::uint64_t>(simm));
+    case 0x09: // ADDIU: 32-bit wrapping addition, result sign-extended to 64 bits
+        set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(
+                        static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rs)) +
+                                                  static_cast<std::uint32_t>(simm)))));
         return true;
     case 0x0A: // SLTI
         set_reg(rt, sreg(rs) < simm ? 1U : 0U);

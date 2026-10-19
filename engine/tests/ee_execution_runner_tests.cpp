@@ -60,6 +60,9 @@ int main() {
     assert(cpu.reg(11) == 9);
     assert(handler.final_pc == exception_vector + 4U);
 
+    // Start a fresh exception context: the prior unsupported-instruction test
+    // intentionally left Status.EXL set while running its handler.
+    cpu.reset();
     cpu.set_pc(0x30000000U);
     const auto fetch_fault = runner.run(1);
     assert(fetch_fault.instructions_executed == 0);
@@ -75,6 +78,8 @@ int main() {
     assert(fetch_handler.final_pc == exception_vector + 4U);
 
     // Trace storage is bounded even when the execution budget is large.
+    // Replace the unsupported instruction with a NOP so the run can continue.
+    assert(memory.write(start + 12U, 4, 0U, &error));
     cpu.set_pc(start);
     const auto bounded = runner.run(retroshelf::EeExecutionRunner::TraceCapacity + 1U);
     assert(bounded.trace.size() == retroshelf::EeExecutionRunner::TraceCapacity);
