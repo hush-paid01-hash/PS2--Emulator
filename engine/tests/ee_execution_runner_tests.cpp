@@ -60,6 +60,9 @@ int main() {
     assert(cpu.reg(11) == 9);
     assert(handler.final_pc == exception_vector + 4U);
 
+    // Start a fresh exception context: the prior unsupported-instruction test
+    // intentionally left Status.EXL set while running its handler.
+    cpu.reset();
     cpu.set_pc(0x30000000U);
     const auto fetch_fault = runner.run(1);
     assert(fetch_fault.instructions_executed == 0);
