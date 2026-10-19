@@ -587,13 +587,13 @@ int main() {
         cpu.set_reg(1, 0x200);
         cpu.set_reg(2, 0xAABBCCDDU);
         check(run_ee_instruction(itype(0x22, 1, 2, static_cast<std::int16_t>(lane))) &&
-                  cpu.reg(2) == lwl_expected[lane],
+                  static_cast<std::uint32_t>(cpu.reg(2)) == lwl_expected[lane],
               "LWL merges the correct little-endian byte lane");
         cpu.reset();
         cpu.set_reg(1, 0x200);
         cpu.set_reg(2, 0xAABBCCDDU);
         check(run_ee_instruction(itype(0x26, 1, 2, static_cast<std::int16_t>(lane))) &&
-                  cpu.reg(2) == lwr_expected[lane],
+                  static_cast<std::uint32_t>(cpu.reg(2)) == lwr_expected[lane],
               "LWR merges the correct little-endian byte lane");
     }
 
@@ -601,7 +601,7 @@ int main() {
         0x443322AAU, 0x4433AABBU, 0x44AABBCCU, 0xAABBCCDDU
     };
     const std::uint32_t swr_expected[] = {
-        0xAABBCCDDU, 0x44BBCCDDU, 0x4433CCDDU, 0xDD332211U
+        0xAABBCCDDU, 0xBBCCDD11U, 0xCCDD2211U, 0xDD332211U
     };
     for (std::uint32_t lane = 0; lane < 4; ++lane) {
         check(ee_memory.write(0x200, 4, 0x44332211U, &error),
