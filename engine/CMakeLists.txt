@@ -10,6 +10,7 @@ set(RETROSHELF_ENGINE_SOURCES
     src/ee_execution_runner.cpp
     src/system_bus.cpp
     src/ee_gif_dma.cpp
+    src/ee_gif_gs_runtime.cpp
     src/gs_packet_processor.cpp
     src/gs_register_decoder.cpp
     src/gs_register_state.cpp
@@ -185,3 +186,12 @@ add_executable(gs-packed-primitive-renderer-tests tests/gs_packed_primitive_rend
 target_include_directories(gs-packed-primitive-renderer-tests PRIVATE include)
 target_compile_options(gs-packed-primitive-renderer-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-packed-primitive-renderer-tests COMMAND gs-packed-primitive-renderer-tests)
+
+add_executable(ee-gif-gs-runtime-tests tests/ee_gif_gs_runtime_tests.cpp
+    src/system_bus.cpp src/ee_gif_dma.cpp src/ee_gif_gs_runtime.cpp
+    src/gs_packet_processor.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp
+    src/gs_framebuffer.cpp src/gs_software_rasterizer.cpp
+    src/gs_packed_primitive_renderer.cpp src/gs_gif_pipeline.cpp)
+target_include_directories(ee-gif-gs-runtime-tests PRIVATE include)
+target_compile_options(ee-gif-gs-runtime-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ee-gif-gs-runtime-tests COMMAND ee-gif-gs-runtime-tests)
