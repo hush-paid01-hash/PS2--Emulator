@@ -20,6 +20,7 @@ class EeGifGsRuntime {
 public:
     explicit EeGifGsRuntime(std::vector<std::uint8_t>& ee_ram,
                             std::size_t width = 640, std::size_t height = 448);
+    ~EeGifGsRuntime();
 
     // Starts the configured DMA transfer, finalizes the GIF stream, and renders
     // completed packets. On failure, error() explains which stage stopped.
