@@ -111,5 +111,22 @@ int main() {
     assert(ee_memory.main_ram() == before_malformed);
     assert(!error.empty());
 
+    // Instruction fetches require word-aligned MIPS entry points.
+    retroshelf::Elf32MipsImage unaligned_entry_image;
+    unaligned_entry_image.entry_point = 0x80004002U;
+    retroshelf::Elf32LoadSegment unaligned_segment;
+    unaligned_segment.virtual_address = 0x80004000U;
+    unaligned_segment.memory_size = 8;
+    unaligned_segment.flags = 5;
+    unaligned_segment.file_bytes = {1, 2, 3, 4, 5, 6, 7, 8};
+    unaligned_entry_image.load_segments.push_back(unaligned_segment);
+    const auto before_unaligned_entry = ee_memory.main_ram();
+    entry = 789;
+    assert(!retroshelf::load_elf32_into_ee_memory(
+        unaligned_entry_image, ee_memory, entry, &error));
+    assert(entry == 0);
+    assert(ee_memory.main_ram() == before_unaligned_entry);
+    assert(!error.empty());
+
     std::cout << "ELF RAM loader tests passed\n";
 }
