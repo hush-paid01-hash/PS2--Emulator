@@ -375,5 +375,12 @@ int main() {
     check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == 0xFFFFFFFFFFFFFFFFULL && cpu.hi() == 123,
           "DDIVU handles division by zero deterministically");
 
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-3LL)); cpu.set_reg(2, static_cast<std::uint64_t>(-7LL));
+    check(cpu.step(rtype(1, 2, 0, 0x1C)) && cpu.lo() == 21 && cpu.hi() == 0,
+          "DMULT produces the correct positive product for two negative operands");
+    cpu.reset(); cpu.set_reg(1, 0x123456789ABCDEF0ULL); cpu.set_reg(2, 0x10);
+    check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == 0x0123456789ABCDEFULL && cpu.hi() == 0,
+          "DDIVU divides a 64-bit dividend without truncating it to 32 bits");
+
     return failures == 0 ? 0 : 1;
 }
