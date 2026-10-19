@@ -1,5 +1,6 @@
 #include "retroshelf/elf_ram_loader.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
