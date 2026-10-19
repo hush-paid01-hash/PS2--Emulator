@@ -8,12 +8,22 @@ EeExecutionRunner::EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory)
 EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget) {
     Result result;
     result.final_pc = cpu_.pc();
+    result.trace.reserve(instruction_budget < TraceCapacity ? instruction_budget : TraceCapacity);
     if (instruction_budget == 0) {
         result.message = "Instruction budget is zero; no instructions executed.";
         return result;
     }
 
     for (std::size_t i = 0; i < instruction_budget; ++i) {
+        const std::uint64_t instruction_pc = cpu_.pc();
+        std::uint64_t raw_instruction = 0;
+        std::string fetch_error;
+        const bool fetched = instruction_pc <= 0xFFFFFFFFULL &&
+            memory_.read(static_cast<std::uint32_t>(instruction_pc), 4, raw_instruction, &fetch_error);
+        if (result.trace.size() < TraceCapacity) {
+            result.trace.push_back({instruction_pc, static_cast<std::uint32_t>(raw_instruction), fetched});
+        }
+
         std::string error;
         if (!cpu_.step_from_ee_memory(memory_, &error)) {
             result.instructions_executed = i;
