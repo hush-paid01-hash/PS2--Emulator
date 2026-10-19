@@ -22,6 +22,8 @@ bool stage_elf32_segments(const Elf32MipsImage& image,
     memory.clear();
     entry_offset = 0;
     if (window_size == 0) return fail(error, "Memory window is empty");
+    if ((image.entry_point & 3U) != 0)
+        return fail(error, "ELF entry point is not 4-byte aligned");
     const std::uint64_t window_end =
         static_cast<std::uint64_t>(window_base) + window_size;
     if (window_end > (std::uint64_t{1} << 32U))
