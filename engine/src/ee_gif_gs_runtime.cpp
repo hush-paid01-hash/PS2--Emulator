@@ -7,7 +7,7 @@ namespace retroshelf {
 
 EeGifGsRuntime::EeGifGsRuntime(std::vector<std::uint8_t>& ee_ram,
                                std::size_t width, std::size_t height)
-    : ee_ram_(ee_ram), bus_(ee_ram),
+    : bus_(ee_ram),
       dma_(bus_,
            [this](const std::vector<std::uint8_t>& payload) {
                if (!parser_.submit(payload)) {
@@ -17,82 +17,6 @@ EeGifGsRuntime::EeGifGsRuntime(std::vector<std::uint8_t>& ee_ram,
     if (!framebuffer_.resize(width, height)) {
         error_ = "Invalid GS framebuffer dimensions";
     }
-}
-
-
-EeGifGsRuntime::~EeGifGsRuntime() {
-    if (attached_memory_ != nullptr) {
-        attached_memory_->set_mmio_handlers({}, {});
-    }
-}
-
-bool EeGifGsRuntime::attach_memory_map(Ps2EeMemoryMap& memory) {
-    if (&memory.main_ram() != &ee_ram_) {
-        error_ = "GIF runtime and EE memory map must share the same RAM vector";
-        return false;
-    }
-    if (attached_memory_ != nullptr && attached_memory_ != &memory) {
-        error_ = "GIF runtime is already attached to another EE memory map";
-        return false;
-    }
-    attached_memory_ = &memory;
-    memory.set_mmio_handlers(
-        [this](std::uint32_t address, std::size_t width, std::uint64_t& value, std::string* error) {
-            return read_mmio(address, width, value, error);
-        },
-        [this](std::uint32_t address, std::size_t width, std::uint64_t value, std::string* error) {
-            return write_mmio(address, width, value, error);
-        });
-    error_.clear();
-    return true;
-}
-
-bool EeGifGsRuntime::read_mmio(std::uint32_t address, std::size_t width,
-                               std::uint64_t& value, std::string* error) {
-    if (width != 4) {
-        if (error) *error = "GIF DMA registers require 32-bit accesses";
-        return false;
-    }
-    switch (address) {
-    case 0x1000A000U: value = dma_.registers.chcr; break;
-    case 0x1000A010U: value = dma_.registers.madr; break;
-    case 0x1000A020U: value = dma_.registers.qwc; break;
-    case 0x1000A030U: value = dma_.registers.tadr; break;
-    case 0x1000A040U: value = dma_.registers.asr0; break;
-    case 0x1000A050U: value = dma_.registers.asr1; break;
-    default:
-        if (error) *error = "Unsupported GIF DMA MMIO register";
-        return false;
-    }
-    if (error) error->clear();
-    return true;
-}
-
-bool EeGifGsRuntime::write_mmio(std::uint32_t address, std::size_t width,
-                                std::uint64_t value, std::string* error) {
-    if (width != 4) {
-        if (error) *error = "GIF DMA registers require 32-bit accesses";
-        return false;
-    }
-    switch (address) {
-    case 0x1000A000U:
-        dma_.registers.chcr = static_cast<std::uint32_t>(value);
-        if ((dma_.registers.chcr & (1U << 8U)) != 0U && !run_frame()) {
-            if (error) *error = error_;
-            return false;
-        }
-        break;
-    case 0x1000A010U: dma_.registers.madr = static_cast<std::uint32_t>(value); break;
-    case 0x1000A020U: dma_.registers.qwc = static_cast<std::uint32_t>(value); break;
-    case 0x1000A030U: dma_.registers.tadr = static_cast<std::uint32_t>(value); break;
-    case 0x1000A040U: dma_.registers.asr0 = static_cast<std::uint32_t>(value); break;
-    case 0x1000A050U: dma_.registers.asr1 = static_cast<std::uint32_t>(value); break;
-    default:
-        if (error) *error = "Unsupported GIF DMA MMIO register";
-        return false;
-    }
-    if (error) error->clear();
-    return true;
 }
 
 bool EeGifGsRuntime::run_frame() {
