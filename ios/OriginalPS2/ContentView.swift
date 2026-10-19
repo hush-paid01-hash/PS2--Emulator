@@ -204,18 +204,20 @@ struct ContentView: View {
                     return
                 }
                 if isBIOS {
-                    // File-level sanity check only: size does not prove that this
-                    // is a genuine or compatible PS2 BIOS image.
-                    let plausibleBIOSSize = (1 * 1024 * 1024)...(16 * 1024 * 1024)
-                    let biosSizeLooksPlausible = plausibleBIOSSize.contains(fileSize)
+                    guard let inspection = EngineBridge.inspectBIOS(at: importedURL) else {
+                        try? FileManager.default.removeItem(at: importedURL)
+                        statusMessage = "BIOS import failed: the native engine could not read the selected file."
+                        return
+                    }
 
                     biosURL = importedURL
                     biosName = sourceURL.lastPathComponent
                     UserDefaults.standard.set(importedURL.lastPathComponent, forKey: "hush.importedBIOS")
                     UserDefaults.standard.set(sourceURL.lastPathComponent, forKey: "hush.importedBIOSDisplayName")
-                    statusMessage = biosSizeLooksPlausible
-                        ? "BIOS file saved and readable — compatibility not verified; boot support is not implemented yet"
-                        : "BIOS file saved, but its size looks unusual — check your own BIOS dump; boot support is not implemented yet"
+                    let sizeMiB = Double(inspection.sizeBytes) / (1024.0 * 1024.0)
+                    statusMessage = inspection.plausibleSize
+                        ? String(format: "BIOS file readable (%.1f MiB). Size is plausible, but authenticity, compatibility, and BIOS boot are not verified.", sizeMiB)
+                        : String(format: "BIOS file readable (%.1f MiB), but size is unusual. Authenticity, compatibility, and BIOS boot are not verified.", sizeMiB)
                 } else {
                     gameURL = importedURL
                     gameName = sourceURL.lastPathComponent
