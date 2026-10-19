@@ -50,5 +50,17 @@ int main() {
     assert(handler.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
     assert(cpu.reg(11) == 9);
     assert(handler.final_pc == exception_vector + 4U);
+    // A fetch from an unmapped address must raise AdEL and route execution
+    // to the exception vector, rather than leave the runner at the bad PC.
+    cpu.set_pc(0x30000000U);
+    const auto fetch_fault = runner.run(1);
+    assert(fetch_fault.instructions_executed == 0);
+    assert(fetch_fault.reason == retroshelf::EeExecutionRunner::StopReason::CpuExceptionOrUnsupportedInstruction);
+    assert(fetch_fault.final_pc == retroshelf::Cpu::GeneralExceptionVector);
+    assert(cpu.cop0_epc() == 0x30000000U);
+    const auto fetch_handler = runner.run(1);
+    assert(fetch_handler.instructions_executed == 1);
+    assert(cpu.reg(11) == 9);
+    assert(fetch_handler.final_pc == exception_vector + 4U);
     return 0;
 }
