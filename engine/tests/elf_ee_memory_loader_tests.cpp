@@ -42,5 +42,23 @@ int main() {
     image.load_segments[0].flags = 4;
     assert(!retroshelf::load_elf32_into_ee_memory(image, memory, entry, &error));
     assert(memory.main_ram() == before);
+    // The EE loader must treat the end of an executable PT_LOAD range as
+    // exclusive and leave physical RAM untouched on rejection.
+    retroshelf::Elf32MipsImage end_entry_image;
+    end_entry_image.entry_point = 0x80100008U;
+    retroshelf::Elf32LoadSegment end_entry_segment;
+    end_entry_segment.virtual_address = 0x80100000U;
+    end_entry_segment.memory_size = 8;
+    end_entry_segment.flags = 5;
+    end_entry_segment.file_bytes = {1, 2, 3, 4, 5, 6, 7, 8};
+    end_entry_image.load_segments.push_back(end_entry_segment);
+    const auto before_end_entry = memory.main_ram();
+    entry = 789;
+    assert(!retroshelf::load_elf32_into_ee_memory(
+        end_entry_image, memory, entry, &error));
+    assert(entry == 0);
+    assert(memory.main_ram() == before_end_entry);
+    assert(!error.empty());
+
     std::cout << "ELF EE memory-map loader tests passed\n";
 }
