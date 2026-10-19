@@ -29,9 +29,11 @@ EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget)
             result.instructions_executed = i;
             result.final_pc = cpu_.pc();
             result.message = error.empty() ? "EE instruction execution stopped." : error;
-            result.reason = (cpu_.pc() == Cpu::GeneralExceptionVector)
-                ? StopReason::CpuExceptionOrUnsupportedInstruction
-                : StopReason::InvalidInstructionFetch;
+            result.reason = !fetched
+                ? StopReason::InvalidInstructionFetch
+                : ((cpu_.pc() == Cpu::GeneralExceptionVector)
+                    ? StopReason::CpuExceptionOrUnsupportedInstruction
+                    : StopReason::InvalidInstructionFetch);
             return result;
         }
     }
