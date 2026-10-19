@@ -474,10 +474,10 @@ int main() {
     // EE-mapped byte/halfword loads and stores must use little-endian lanes,
     // extend signed values correctly, and preserve neighboring bytes.
     const auto run_ee_instruction = [&](std::uint32_t instruction) {
-        std::string write_error;
-        if (!ee_memory.write(0x300, 4, instruction, &write_error)) return false;
+        error.clear();
+        if (!ee_memory.write(0x300, 4, instruction, &error)) return false;
         cpu.set_pc(0x300);
-        return cpu.step_from_ee_memory(ee_memory, &write_error);
+        return cpu.step_from_ee_memory(ee_memory, &error);
     };
     check(ee_memory.write(0x200, 4, 0x80FF7F01U, &error),
           "seed EE RAM for byte and halfword tests");
