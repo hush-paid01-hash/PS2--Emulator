@@ -4,7 +4,6 @@
 #include "retroshelf/gs_framebuffer.hpp"
 #include "retroshelf/gs_gif_pipeline.hpp"
 #include "retroshelf/gs_packet_processor.hpp"
-#include "retroshelf/gs_packet_processor.hpp"
 #include "retroshelf/iso9660_disc.hpp"
 #include "retroshelf/ps2_disc_execution.hpp"
 #include "retroshelf/ps2_ee_memory_map.hpp"
