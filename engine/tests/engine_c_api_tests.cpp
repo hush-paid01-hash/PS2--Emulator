@@ -3,6 +3,8 @@
 #include <cassert>
 #include <cstring>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 
 int main() {
     assert(retroshelf_engine_abi_version() == 1U);
@@ -29,6 +31,27 @@ int main() {
     assert(pixels[sample + 1U] == 220U);
     assert(pixels[sample + 2U] == 255U);
     assert(pixels[sample + 3U] == 255U);
+
+    // BIOS inspection distinguishes readable files from plausible-size files.
+    uint64_t biosSize = 123;
+    int32_t plausibleBIOS = 123;
+    assert(retroshelf_engine_inspect_bios_image(nullptr, &biosSize, &plausibleBIOS) == 0);
+    assert(biosSize == 0 && plausibleBIOS == 0);
+    const auto biosDir = std::filesystem::temp_directory_path() / "hush_c_api_bios_test";
+    std::filesystem::create_directories(biosDir);
+    const auto tinyBIOS = biosDir / "tiny-bios.bin";
+    { std::ofstream out(tinyBIOS, std::ios::binary); out.put('\\0'); }
+    biosSize = 0;
+    plausibleBIOS = 1;
+    assert(retroshelf_engine_inspect_bios_image(tinyBIOS.string().c_str(), &biosSize, &plausibleBIOS) == 1);
+    assert(biosSize == 1 && plausibleBIOS == 0);
+    const auto plausibleBIOSPath = biosDir / "plausible-bios.bin";
+    { std::ofstream out(plausibleBIOSPath, std::ios::binary); out.seekp(4 * 1024 * 1024 - 1); out.put('\\0'); }
+    assert(retroshelf_engine_inspect_bios_image(plausibleBIOSPath.string().c_str(), &biosSize, &plausibleBIOS) == 1);
+    assert(biosSize == 4ULL * 1024 * 1024 && plausibleBIOS == 1);
+    assert(retroshelf_engine_inspect_bios_image((biosDir / "missing.bin").string().c_str(), &biosSize, &plausibleBIOS) == 0);
+    assert(biosSize == 0 && plausibleBIOS == 0);
+    std::filesystem::remove_all(biosDir);
 
     // Preflight must fail safely for missing, empty, or null paths.
     assert(retroshelf_engine_validate_disc_boot_image(nullptr) == 0);
