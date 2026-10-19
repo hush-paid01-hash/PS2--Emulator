@@ -46,6 +46,7 @@ bool Ps2EeMemoryMap::resolve_main_ram(std::uint32_t address, std::size_t width,
 
 bool Ps2EeMemoryMap::read(std::uint32_t address, std::size_t width,
                           std::uint64_t& value, std::string* error) const {
+    if (width == 16) { if (error) *error = "Use read128 for 16-byte accesses"; return false; }
     std::size_t offset = 0;
     if (!resolve_main_ram(address, width, width, offset, error)) return false;
     value = 0;
@@ -57,6 +58,7 @@ bool Ps2EeMemoryMap::read(std::uint32_t address, std::size_t width,
 
 bool Ps2EeMemoryMap::write(std::uint32_t address, std::size_t width,
                            std::uint64_t value, std::string* error) {
+    if (width == 16) { if (error) *error = "Use write128 for 16-byte accesses"; return false; }
     std::size_t offset = 0;
     if (!resolve_main_ram(address, width, width, offset, error)) return false;
     for (std::size_t i = 0; i < width; ++i)
