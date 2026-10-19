@@ -624,5 +624,38 @@ int main() {
               "SWR writes the correct little-endian byte lane");
     }
 
+
+    // LQ/SQ transfer both 64-bit halves of the EE's 128-bit GPR at 16-byte alignment.
+    cpu.reset();
+    check(ee_memory.write128(0x220, 0x0123456789ABCDEFULL, 0xFEDCBA9876543210ULL, &error),
+          "seed aligned 128-bit EE RAM");
+    cpu.set_reg(1, 0x220);
+    check(run_ee_instruction(itype(0x1E, 1, 2, 0)), "LQ executes for aligned EE RAM");
+    check(cpu.reg(2) == 0x0123456789ABCDEFULL &&
+              cpu.reg_high(2) == 0xFEDCBA9876543210ULL,
+          "LQ loads low and high 64-bit GPR halves");
+    cpu.set_reg(3, 0xAABBCCDDEEFF0011ULL);
+    cpu.set_reg_high(3, 0x1122334455667788ULL);
+    check(run_ee_instruction(itype(0x1F, 1, 3, 0)), "SQ executes for aligned EE RAM");
+    std::uint64_t lq_low = 0, lq_high = 0;
+    check(ee_memory.read128(0x220, lq_low, lq_high, &error) &&
+              lq_low == 0xAABBCCDDEEFF0011ULL &&
+              lq_high == 0x1122334455667788ULL,
+          "SQ stores both 64-bit GPR halves in little-endian order");
+    cpu.reset();
+    cpu.set_reg(1, 0x220);
+    error.clear();
+    check(!run_ee_instruction(itype(0x1E, 1, 2, 8)) && !error.empty(),
+          "misaligned LQ raises an address exception");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorLoad,
+          "misaligned LQ records AdEL");
+    cpu.reset();
+    cpu.set_reg(1, 0x220);
+    error.clear();
+    check(!run_ee_instruction(itype(0x1F, 1, 2, 8)) && !error.empty(),
+          "misaligned SQ raises an address exception");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorStore,
+          "misaligned SQ records AdES");
+
     return failures == 0 ? 0 : 1;
 }
