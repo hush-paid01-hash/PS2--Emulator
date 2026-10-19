@@ -351,5 +351,9 @@ int main() {
     check(cpu.step(rtype(2, 1, 5, 0x17)) && cpu.reg(5) == 0xFFFFFFFFFFFFFFFFULL,
           "DSRAV sign-fills a negative value when shifted by 63");
 
+    cpu.reset(); cpu.set_reg(1, 100); cpu.set_reg(2, 9);
+    check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == 11 && cpu.hi() == 1,
+          "DDIVU computes quotient and remainder");
+
     return failures == 0 ? 0 : 1;
 }
