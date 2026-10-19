@@ -8,8 +8,8 @@ int main() {
     retroshelf::Ps2EeMemoryMap memory(1024U * 1024U);
     int failures = 0;
     const auto check = [&failures](bool condition, const char* label) {
-        if (!condition) { std::cerr << "FAIL: " << label << '\\n'; ++failures; }
-        else std::cout << "PASS: " << label << '\\n';
+        if (!condition) { std::cerr << "FAIL: " << label << '\n'; ++failures; }
+        else std::cout << "PASS: " << label << '\n';
     };
     std::string error;
     std::uint64_t value = 0;
