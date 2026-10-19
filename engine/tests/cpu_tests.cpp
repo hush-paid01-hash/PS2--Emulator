@@ -286,6 +286,20 @@ int main() {
     check(cpu.step(itype(0x19, 1, 2, 1)) && cpu.reg(2) == 0,
           "DADDIU wraps around without an overflow exception");
 
+    // HI/LO transfer instructions preserve the full 64-bit EE register values.
+    cpu.reset();
+    cpu.set_reg(1, 0xFEDCBA9876543210ULL);
+    cpu.set_reg(2, 0x8123456789ABCDEFULL);
+    check(cpu.step(rtype(1, 0, 0, 0x11)) && cpu.hi() == 0xFEDCBA9876543210ULL,
+          "MTHI copies all 64 source bits into HI");
+    check(cpu.step(rtype(0, 0, 3, 0x10)) && cpu.reg(3) == 0xFEDCBA9876543210ULL,
+          "MFHI copies the full HI value to a GPR");
+    check(cpu.step(rtype(2, 0, 0, 0x13)) && cpu.lo() == 0x8123456789ABCDEFULL,
+          "MTLO copies all 64 source bits into LO");
+    check(cpu.step(rtype(0, 0, 4, 0x12)) && cpu.reg(4) == 0x8123456789ABCDEFULL,
+          "MFLO copies the full LO value to a GPR");
+    check(cpu.reg(0) == 0, "HI/LO transfers never modify register zero");
+
     // EE signed 64-bit register arithmetic must trap on overflow.
     cpu.reset(); cpu.set_reg(1, 0x7FFFFFFFFFFFFFFFULL); cpu.set_reg(2, 1);
     error.clear();
