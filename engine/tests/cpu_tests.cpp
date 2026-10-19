@@ -286,6 +286,22 @@ int main() {
     check(cpu.step(itype(0x19, 1, 2, 1)) && cpu.reg(2) == 0,
           "DADDIU wraps around without an overflow exception");
 
+    // 32-bit multiply/divide edge cases: overflow guards and zero divisors.
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFF80000000ULL); cpu.set_reg(2, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(rtype(1, 2, 0, 0x1A)) &&
+          cpu.lo() == 0xFFFFFFFF80000000ULL && cpu.hi() == 0,
+          "DIV handles INT32_MIN divided by -1 without host overflow");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFFFFFFF85ULL); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1A)) &&
+          cpu.lo() == 1 && cpu.hi() == 0xFFFFFFFFFFFFFF85ULL,
+          "DIV defines signed divide-by-zero HI/LO values");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
+    check(cpu.step(rtype(1, 2, 0, 0x1B)) && cpu.lo() == 0x7FFFFFFFULL && cpu.hi() == 1,
+          "DIVU uses only the low 32 bits of each operand");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 0xFFFFFFFFU);
+    check(cpu.step(rtype(1, 2, 0, 0x19)) && cpu.lo() == 1 && cpu.hi() == 0xFFFFFFFEULL,
+          "MULTU returns both halves of the 32-bit unsigned product");
+
     // HI/LO transfer instructions preserve the full 64-bit EE register values.
     cpu.reset();
     cpu.set_reg(1, 0xFEDCBA9876543210ULL);
