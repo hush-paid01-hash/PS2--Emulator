@@ -20,6 +20,12 @@ EeGifGsRuntime::EeGifGsRuntime(std::vector<std::uint8_t>& ee_ram,
 }
 
 
+EeGifGsRuntime::~EeGifGsRuntime() {
+    if (attached_memory_ != nullptr) {
+        attached_memory_->set_mmio_handlers({}, {});
+    }
+}
+
 bool EeGifGsRuntime::attach_memory_map(Ps2EeMemoryMap& memory) {
     if (&memory.main_ram() != &ee_ram_) {
         error_ = "GIF runtime and EE memory map must share the same RAM vector";
