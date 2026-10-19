@@ -461,5 +461,18 @@ int main() {
     check(!cpu.step_from_ee_memory(ee_memory, &error) && !error.empty(),
           "EE-memory fetch rejects addresses wider than 32 bits without truncation");
 
+    cpu.reset(); cpu.set_pc(0x100000000ULL); error.clear();
+    check(!cpu.step_from_ee_memory(ee_memory, &error) && !error.empty(),
+          "EE-memory fetch rejects addresses wider than 32 bits without truncation");
+    check(cpu.pc() == Cpu::GeneralExceptionVector && cpu.cop0_epc() == 0x100000000ULL &&
+          ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
+          "wide EE fetch fault enters AdEL exception path without truncating EPC");
+    cpu.reset(); cpu.set_pc(0x30000000ULL); error.clear();
+    check(!cpu.step_from_ee_memory(ee_memory, &error) && !error.empty(),
+          "EE-memory fetch rejects unmapped guest address");
+    check(cpu.pc() == Cpu::GeneralExceptionVector && cpu.cop0_epc() == 0x30000000ULL &&
+          ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
+          "unmapped EE fetch enters AdEL exception path and records EPC");
+
     return failures == 0 ? 0 : 1;
 }
