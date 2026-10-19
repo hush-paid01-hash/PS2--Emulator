@@ -419,5 +419,15 @@ int main() {
     check(cpu.step(rtype(1, 2, 0, 0x1E)) && cpu.lo() == 1 && cpu.hi() == static_cast<std::uint64_t>(-123LL),
           "DDIV handles division by zero without invoking host division");
 
+    // J/JAL take the high address region from PC+4, including the 256 MiB boundary.
+    cpu.reset(); cpu.set_pc(0x0FFFFFFCULL);
+    check(cpu.step((0x02U << 26U) | 0x00000003U), "J at a 256 MiB boundary schedules its delay slot");
+    check(cpu.step(nop) && cpu.pc() == 0x1000000CULL,
+          "J uses the upper address bits of PC+4 across the 256 MiB boundary");
+    cpu.reset(); cpu.set_pc(0x8FFFFFFCULL);
+    check(cpu.step((0x03U << 26U) | 0x00000002U), "JAL at a high-address boundary executes");
+    check(cpu.step(nop) && cpu.pc() == 0x90000008ULL && cpu.reg(31) == 0x90000004ULL,
+          "JAL preserves the high address region and writes PC+8 link");
+
     return failures == 0 ? 0 : 1;
 }
