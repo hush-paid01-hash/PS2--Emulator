@@ -8,6 +8,14 @@ private func retroshelfEngineStatusMessage() -> UnsafePointer<CChar>?
 private func retroshelfEngineCanBootGames() -> Int32
 @_silgen_name("retroshelf_engine_validate_disc_boot_image")
 private func retroshelfEngineValidateDiscBootImage(_ path: UnsafePointer<CChar>?) -> Int32
+@_silgen_name("retroshelf_engine_trace_count")
+private func retroshelfEngineTraceCount() -> UInt64
+@_silgen_name("retroshelf_engine_trace_pc")
+private func retroshelfEngineTracePC(_ index: UInt64) -> UInt64
+@_silgen_name("retroshelf_engine_trace_instruction")
+private func retroshelfEngineTraceInstruction(_ index: UInt64) -> UInt32
+@_silgen_name("retroshelf_engine_trace_fetched")
+private func retroshelfEngineTraceFetched(_ index: UInt64) -> Int32
 @_silgen_name("retroshelf_engine_run_disc_subset")
 private func retroshelfEngineRunDiscSubset(_ path: UnsafePointer<CChar>?, _ budget: UInt64, _ executed: UnsafeMutablePointer<UInt64>?, _ pc: UnsafeMutablePointer<UInt64>?, _ reason: UnsafeMutablePointer<Int32>?) -> Int32
 
@@ -21,10 +29,27 @@ private func retroshelfEngineFramebufferWidth() -> UInt32
 @_silgen_name("retroshelf_engine_framebuffer_height")
 private func retroshelfEngineFramebufferHeight() -> UInt32
 
+struct EngineTraceEntry {
+    let pc: UInt64
+    let instruction: UInt32
+    let fetched: Bool
+}
+
 struct EngineExecutionReport {
     let instructionsExecuted: UInt64
     let finalPC: UInt64
     let stopReason: Int32
+    let trace: [EngineTraceEntry]
+
+    var traceSummary: String {
+        guard !trace.isEmpty else { return "No instruction trace was captured." }
+        let lines = trace.prefix(12).map { entry -> String in
+            let pc = String(entry.pc, radix: 16).uppercased().padding(toLength: 8, withPad: "0", startingAt: 0)
+            let word = String(entry.instruction, radix: 16).uppercased().padding(toLength: 8, withPad: "0", startingAt: 0)
+            return "PC 0x\(pc)  instruction 0x\(word)\(entry.fetched ? "" : "  [fetch failed]")"
+        }
+        return "Instruction trace (first \(lines.count) entries):\n" + lines.joined(separator: "\n")
+    }
     var summary: String {
         let reasonText: String
         switch stopReason {
@@ -63,7 +88,16 @@ enum EngineBridge {
             retroshelfEngineRunDiscSubset($0, instructionBudget, &executed, &pc, &reason)
         }
         guard success != 0 else { return nil }
-        return EngineExecutionReport(instructionsExecuted: executed, finalPC: pc, stopReason: reason)
+        let traceCount = min(Int(retroshelfEngineTraceCount()), 256)
+        let trace = (0..<traceCount).map { index in
+            let i = UInt64(index)
+            return EngineTraceEntry(
+                pc: retroshelfEngineTracePC(i),
+                instruction: retroshelfEngineTraceInstruction(i),
+                fetched: retroshelfEngineTraceFetched(i) == 1
+            )
+        }
+        return EngineExecutionReport(instructionsExecuted: executed, finalPC: pc, stopReason: reason, trace: trace)
     }
     static var readinessMessage: String {
         canBootGames ? "Engine reports game boot support" : "\(statusMessage) (ABI v\(abiVersion))"

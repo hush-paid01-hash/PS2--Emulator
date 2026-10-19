@@ -20,6 +20,7 @@
 namespace {
 retroshelf::GsFramebuffer g_preview_framebuffer;
 bool g_preview_ready = false;
+std::vector<retroshelf::EeExecutionRunner::TraceEntry> g_last_trace;
 
 void write_u64_le(std::vector<std::uint8_t>& bytes, std::size_t offset,
                   std::uint64_t value) {
@@ -128,12 +129,30 @@ extern "C" int32_t retroshelf_engine_validate_disc_boot_image(const char *path) 
     return retroshelf::load_ps2_boot_image(disc, executable_path, image, &error) ? 1 : 0;
 }
 
+extern "C" uint64_t retroshelf_engine_trace_count(void) {
+    return static_cast<uint64_t>(g_last_trace.size());
+}
+
+extern "C" uint64_t retroshelf_engine_trace_pc(uint64_t index) {
+    return index < g_last_trace.size() ? g_last_trace[static_cast<std::size_t>(index)].pc : 0U;
+}
+
+extern "C" uint32_t retroshelf_engine_trace_instruction(uint64_t index) {
+    return index < g_last_trace.size() ? g_last_trace[static_cast<std::size_t>(index)].instruction : 0U;
+}
+
+extern "C" int32_t retroshelf_engine_trace_fetched(uint64_t index) {
+    if (index >= g_last_trace.size()) return -1;
+    return g_last_trace[static_cast<std::size_t>(index)].fetched ? 1 : 0;
+}
+
 extern "C" int32_t retroshelf_engine_run_disc_subset(
     const char *path,
     uint64_t instruction_budget,
     uint64_t *instructions_executed,
     uint64_t *final_pc,
     int32_t *stop_reason) {
+    g_last_trace.clear();
     if (instructions_executed) *instructions_executed = 0;
     if (final_pc) *final_pc = 0;
     if (stop_reason) *stop_reason = -1;
@@ -150,6 +169,7 @@ extern "C" int32_t retroshelf_engine_run_disc_subset(
                            static_cast<uint64_t>(std::numeric_limits<std::size_t>::max())));
     const auto result = retroshelf::load_and_execute_ps2_disc(disc, memory, cpu, budget);
     if (!result.image_loaded) return 0;
+    g_last_trace = result.execution.trace;
 
     if (instructions_executed)
         *instructions_executed = static_cast<uint64_t>(result.execution.instructions_executed);
