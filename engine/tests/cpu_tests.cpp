@@ -572,5 +572,57 @@ int main() {
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorStore,
           "misaligned SD raises AdES and records the instruction PC");
 
+
+    // Little-endian unaligned word merges must preserve unaffected GPR/RAM lanes.
+    const std::uint32_t lwl_expected[] = {
+        0x11BBCCDDU, 0x2211CCDDU, 0x332211DDU, 0x44332211U
+    };
+    const std::uint32_t lwr_expected[] = {
+        0x44332211U, 0xAA443322U, 0xAABB4433U, 0xAABBCC44U
+    };
+    for (std::uint32_t lane = 0; lane < 4; ++lane) {
+        check(ee_memory.write(0x200, 4, 0x44332211U, &error),
+              "seed EE RAM for LWL/LWR lane test");
+        cpu.reset();
+        cpu.set_reg(1, 0x200);
+        cpu.set_reg(2, 0xAABBCCDDU);
+        check(run_ee_instruction(itype(0x22, 1, 2, static_cast<std::int16_t>(lane))) &&
+                  cpu.reg(2) == lwl_expected[lane],
+              "LWL merges the correct little-endian byte lane");
+        cpu.reset();
+        cpu.set_reg(1, 0x200);
+        cpu.set_reg(2, 0xAABBCCDDU);
+        check(run_ee_instruction(itype(0x26, 1, 2, static_cast<std::int16_t>(lane))) &&
+                  cpu.reg(2) == lwr_expected[lane],
+              "LWR merges the correct little-endian byte lane");
+    }
+
+    const std::uint32_t swl_expected[] = {
+        0x443322AAU, 0x4433AABBU, 0x44AABBCCU, 0xAABBCCDDU
+    };
+    const std::uint32_t swr_expected[] = {
+        0xAABBCCDDU, 0x44BBCCDDU, 0x4433CCDDU, 0xDD332211U
+    };
+    for (std::uint32_t lane = 0; lane < 4; ++lane) {
+        check(ee_memory.write(0x200, 4, 0x44332211U, &error),
+              "seed EE RAM for SWL/SWR lane test");
+        cpu.reset();
+        cpu.set_reg(1, 0x200);
+        cpu.set_reg(2, 0xAABBCCDDU);
+        check(run_ee_instruction(itype(0x2A, 1, 2, static_cast<std::int16_t>(lane))) &&
+                  ee_memory.read(0x200, 4, memory_value, &error) &&
+                  memory_value == swl_expected[lane],
+              "SWL writes the correct little-endian byte lane");
+        check(ee_memory.write(0x200, 4, 0x44332211U, &error),
+              "restore EE RAM for SWR lane test");
+        cpu.reset();
+        cpu.set_reg(1, 0x200);
+        cpu.set_reg(2, 0xAABBCCDDU);
+        check(run_ee_instruction(itype(0x2E, 1, 2, static_cast<std::int16_t>(lane))) &&
+                  ee_memory.read(0x200, 4, memory_value, &error) &&
+                  memory_value == swr_expected[lane],
+              "SWR writes the correct little-endian byte lane");
+    }
+
     return failures == 0 ? 0 : 1;
 }
