@@ -7,13 +7,19 @@
 namespace retroshelf {
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
-    gpr_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
+    gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
     delay_slot_pending_ = false; delay_branch_pc_ = 0; status_ = 0; cause_ = 0; epc_ = 0; hi_ = 0; lo_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
 void Cpu::set_reg(std::size_t index, std::uint64_t value) {
     if (index > 0 && index < RegisterCount) gpr_[index] = value;
     gpr_[0] = 0;
+    gpr_high_[0] = 0;
+}
+std::uint64_t Cpu::reg_high(std::size_t index) const { return index < RegisterCount ? gpr_high_[index] : 0; }
+void Cpu::set_reg_high(std::size_t index, std::uint64_t value) {
+    if (index > 0 && index < RegisterCount) gpr_high_[index] = value;
+    gpr_high_[0] = 0;
 }
 std::uint64_t Cpu::pc() const { return pc_; }
 void Cpu::set_pc(std::uint64_t value) { pc_ = value; next_pc_ = value + 4; delay_slot_pending_ = false; }
@@ -432,6 +438,34 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
         if (!active_ee_memory_->write(static_cast<std::uint32_t>(aligned), 4, result, nullptr))
             return fault("Unmapped EE RAM word-merge store");
+        return true;
+    }
+    case 0x1E: case 0x1F: { // LQ/SQ: 128-bit aligned EE GPR transfers
+        const bool store = opcode == 0x1F;
+        const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
+        const auto fault = [&](const char* message) {
+            if (error) *error = message;
+            raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
+            return false;
+        };
+        if (active_ee_memory_ == nullptr)
+            return fault("LQ/SQ require the mapped EE memory interface");
+        if (address > 0xFFFFFFFFULL)
+            return fault("EE LQ/SQ effective address exceeds 32-bit address space");
+        if ((address & 0xFU) != 0U)
+            return fault("Misaligned EE LQ/SQ access");
+        if (store) {
+            if (!active_ee_memory_->write128(static_cast<std::uint32_t>(address),
+                                              reg(rt), reg_high(rt), nullptr))
+                return fault("Unmapped EE LQ/SQ store");
+        } else {
+            std::uint64_t low = 0, high = 0;
+            if (!active_ee_memory_->read128(static_cast<std::uint32_t>(address),
+                                             low, high, nullptr))
+                return fault("Unmapped EE LQ/SQ load");
+            set_reg(rt, low);
+            set_reg_high(rt, high);
+        }
         return true;
     }
     case 0x20: case 0x21: case 0x23: case 0x24: case 0x25: case 0x27:
