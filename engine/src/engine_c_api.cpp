@@ -120,7 +120,7 @@ extern "C" int32_t retroshelf_engine_inspect_bios_image(
     const char *path, uint64_t *size_bytes, int32_t *plausible_size) {
     if (size_bytes) *size_bytes = 0;
     if (plausible_size) *plausible_size = 0;
-    if (path == nullptr || path[0] == '\\0') return 0;
+    if (path == nullptr || path[0] == '\0') return 0;
 
     retroshelf::BiosImageInfo info;
     std::string error;
