@@ -150,6 +150,14 @@ int main() {
     assert(execution_cpu.reg(8) == 7);
     assert(execution_cpu.reg(9) == 5);
     assert(execution_cpu.pc() == 0x00100008U);
+    // The integrated disc-to-CPU path must preserve a useful instruction trace.
+    assert(execution.execution.trace.size() == 2);
+    assert(execution.execution.trace[0].pc == 0x00100000U);
+    assert(execution.execution.trace[0].instruction == 0x24080007U);
+    assert(execution.execution.trace[0].fetched);
+    assert(execution.execution.trace[1].pc == 0x00100004U);
+    assert(execution.execution.trace[1].instruction == 0x24090005U);
+    assert(execution.execution.trace[1].fetched);
     std::filesystem::remove(execution_disc_path);
 
     std::filesystem::remove(disc_path);
