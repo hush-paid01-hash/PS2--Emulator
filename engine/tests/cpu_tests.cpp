@@ -539,5 +539,38 @@ int main() {
               (cpu.cop0_status() & Cpu::StatusExl) == 0U && !cpu.in_delay_slot(),
           "ERET restores EPC and clears EXL");
 
+
+    // EE doubleword loads/stores preserve all 64 bits and enforce alignment.
+    check(ee_memory.write(0x208, 8, 0, &error),
+          "initialize EE RAM for doubleword access tests");
+    cpu.reset();
+    cpu.set_reg(1, 0x200);
+    cpu.set_reg(9, 0x0123456789ABCDEFULL);
+    check(run_ee_instruction(itype(0x3F, 1, 9, 8)),
+          "SD stores a doubleword into EE mapped RAM");
+    check(ee_memory.read(0x208, 8, memory_value, &error) &&
+              memory_value == 0x0123456789ABCDEFULL,
+          "SD preserves the full 64-bit value in little-endian EE RAM");
+    check(run_ee_instruction(itype(0x37, 1, 10, 8)) &&
+              cpu.reg(10) == 0x0123456789ABCDEFULL,
+          "LD reloads all 64 bits from EE mapped RAM");
+    error.clear();
+    check(!run_ee_instruction(itype(0x37, 1, 11, 1)) && !error.empty(),
+          "misaligned LD faults on EE RAM");
+    check(cpu.pc() == Cpu::GeneralExceptionVector &&
+              cpu.cop0_epc() == 0x300 &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
+          "misaligned LD raises AdEL and records the instruction PC");
+    cpu.reset();
+    cpu.set_reg(1, 0x200);
+    cpu.set_reg(12, 0xFEDCBA9876543210ULL);
+    error.clear();
+    check(!run_ee_instruction(itype(0x3F, 1, 12, 1)) && !error.empty(),
+          "misaligned SD faults on EE RAM");
+    check(cpu.pc() == Cpu::GeneralExceptionVector &&
+              cpu.cop0_epc() == 0x300 &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorStore,
+          "misaligned SD raises AdES and records the instruction PC");
+
     return failures == 0 ? 0 : 1;
 }
