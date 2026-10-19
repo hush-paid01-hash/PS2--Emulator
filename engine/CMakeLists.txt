@@ -189,6 +189,7 @@ add_test(NAME gs-packed-primitive-renderer-tests COMMAND gs-packed-primitive-ren
 
 add_executable(ee-gif-gs-runtime-tests tests/ee_gif_gs_runtime_tests.cpp
     src/system_bus.cpp src/ee_gif_dma.cpp src/ee_gif_gs_runtime.cpp
+    src/ps2_ee_memory_map.cpp
     src/gs_packet_processor.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp
     src/gs_framebuffer.cpp src/gs_software_rasterizer.cpp
     src/gs_packed_primitive_renderer.cpp src/gs_gif_pipeline.cpp)
