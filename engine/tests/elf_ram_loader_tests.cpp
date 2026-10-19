@@ -74,5 +74,24 @@ int main() {
     assert(ee_memory.main_ram() == ee_preserved);
     assert(!error.empty());
 
+
+    // Reject an entry point outside all executable PT_LOAD segments without
+    // touching RAM, even when the segment itself fits in memory.
+    retroshelf::Elf32MipsImage invalid_entry_image;
+    invalid_entry_image.entry_point = 0x80002000U;
+    retroshelf::Elf32LoadSegment data_segment;
+    data_segment.virtual_address = 0x80001000U;
+    data_segment.memory_size = 4;
+    data_segment.flags = 4; // readable, not executable
+    data_segment.file_bytes = {9, 8, 7, 6};
+    invalid_entry_image.load_segments.push_back(data_segment);
+    const auto before_invalid_entry = ee_memory.main_ram();
+    entry = 123;
+    assert(!retroshelf::load_elf32_into_ee_memory(
+        invalid_entry_image, ee_memory, entry, &error));
+    assert(entry == 0);
+    assert(ee_memory.main_ram() == before_invalid_entry);
+    assert(!error.empty());
+
     std::cout << "ELF RAM loader tests passed\n";
 }
