@@ -78,5 +78,29 @@ int main() {
     assert(memory.main_ram() == before_alias_crossing);
     assert(!error.empty());
 
+    // Distinct virtual aliases must not permit two PT_LOAD segments to
+    // overwrite the same physical EE RAM bytes.
+    retroshelf::Elf32MipsImage alias_overlap_image;
+    alias_overlap_image.entry_point = 0x80100000U;
+    retroshelf::Elf32LoadSegment cached_alias_segment;
+    cached_alias_segment.virtual_address = 0x80100000U;
+    cached_alias_segment.memory_size = 8;
+    cached_alias_segment.flags = 5;
+    cached_alias_segment.file_bytes = {1, 2, 3, 4, 5, 6, 7, 8};
+    retroshelf::Elf32LoadSegment physical_alias_segment;
+    physical_alias_segment.virtual_address = 0x00100004U;
+    physical_alias_segment.memory_size = 8;
+    physical_alias_segment.flags = 6;
+    physical_alias_segment.file_bytes = {9, 10, 11, 12, 13, 14, 15, 16};
+    alias_overlap_image.load_segments.push_back(cached_alias_segment);
+    alias_overlap_image.load_segments.push_back(physical_alias_segment);
+    const auto before_alias_overlap = memory.main_ram();
+    entry = 987;
+    assert(!retroshelf::load_elf32_into_ee_memory(
+        alias_overlap_image, memory, entry, &error));
+    assert(entry == 0);
+    assert(memory.main_ram() == before_alias_overlap);
+    assert(!error.empty());
+
     std::cout << "ELF EE memory-map loader tests passed\n";
 }
