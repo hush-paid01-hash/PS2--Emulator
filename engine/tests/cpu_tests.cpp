@@ -382,5 +382,12 @@ int main() {
     check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == 0x0123456789ABCDEFULL && cpu.hi() == 0,
           "DDIVU divides a 64-bit dividend without truncating it to 32 bits");
 
+    cpu.reset(); cpu.set_reg(1, 100); cpu.set_reg(2, static_cast<std::uint64_t>(-9LL));
+    check(cpu.step(rtype(1, 2, 0, 0x1E)) && cpu.lo() == static_cast<std::uint64_t>(-11LL) && cpu.hi() == 1,
+          "DDIV returns quotient and remainder with a negative divisor");
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-123LL)); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1E)) && cpu.lo() == 1 && cpu.hi() == static_cast<std::uint64_t>(-123LL),
+          "DDIV handles division by zero without invoking host division");
+
     return failures == 0 ? 0 : 1;
 }
