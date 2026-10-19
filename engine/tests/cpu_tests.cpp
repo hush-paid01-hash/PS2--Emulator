@@ -1,4 +1,5 @@
 #include "retroshelf/cpu.hpp"
+#include "retroshelf/ps2_ee_memory_map.hpp"
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -441,6 +442,24 @@ int main() {
           (cpu.cop0_cause() & Cpu::CauseBd) == 0U &&
           ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
           "non-delay-slot fetch fault records faulting PC, clears Cause.BD, and raises AdEL");
+
+    // Exercise the separate EE-memory instruction-fetch path as well as raw RAM.
+    retroshelf::Ps2EeMemoryMap ee_memory(0x1000);
+    error.clear();
+    check(ee_memory.write(0x100, 4, addiu7, &error), "write instruction into EE mapped RAM");
+    cpu.reset(); cpu.set_pc(0x100);
+    check(cpu.step_from_ee_memory(ee_memory, &error) && cpu.reg(8) == 7,
+          "EE-memory instruction fetch executes a mapped instruction");
+    cpu.reset(); cpu.set_pc(0x101); error.clear();
+    check(!cpu.step_from_ee_memory(ee_memory, &error) && !error.empty(),
+          "EE-memory instruction fetch rejects an unaligned PC");
+    check(cpu.pc() == Cpu::GeneralExceptionVector && cpu.cop0_epc() == 0x101 &&
+          (cpu.cop0_cause() & Cpu::CauseBd) == 0U &&
+          ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
+          "EE-memory unaligned fetch raises AdEL with correct EPC and Cause.BD");
+    cpu.reset(); cpu.set_pc(0x100000000ULL); error.clear();
+    check(!cpu.step_from_ee_memory(ee_memory, &error) && !error.empty(),
+          "EE-memory fetch rejects addresses wider than 32 bits without truncation");
 
     return failures == 0 ? 0 : 1;
 }
