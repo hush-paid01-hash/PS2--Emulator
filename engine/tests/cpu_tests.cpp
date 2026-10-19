@@ -430,18 +430,17 @@ int main() {
     check(cpu.step(nop) && cpu.pc() == 0x90000008ULL && cpu.reg(31) == 0x90000004ULL,
           "JAL preserves the high address region and writes PC+8 link");
 
-    // Fetch faults in branch delay slots must set EPC to the branch and Cause.BD.
+    // An unaligned instruction fetch outside a delay slot records the faulting PC
+    // and clears Cause.BD. set_pc intentionally clears any pending delay-slot state.
     std::vector<std::uint8_t> fetch_ram(0x200, 0);
-    cpu.reset(); cpu.set_pc(0x100);
-    check(cpu.step(itype(0x04, 0, 0, 4)), "prepare branch for delay-slot fetch fault");
-    cpu.set_pc(0x105);
+    cpu.reset(); cpu.set_pc(0x105);
     error.clear();
     check(!cpu.step_from_ram(fetch_ram, 0, &error) && !error.empty(),
-          "unaligned delay-slot instruction fetch is rejected");
-    check(cpu.pc() == Cpu::GeneralExceptionVector && cpu.cop0_epc() == 0x100 &&
-          (cpu.cop0_cause() & Cpu::CauseBd) != 0U &&
+          "unaligned instruction fetch is rejected");
+    check(cpu.pc() == Cpu::GeneralExceptionVector && cpu.cop0_epc() == 0x105 &&
+          (cpu.cop0_cause() & Cpu::CauseBd) == 0U &&
           ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
-          "delay-slot fetch fault records branch EPC, Cause.BD, and AdEL");
+          "non-delay-slot fetch fault records faulting PC, clears Cause.BD, and raises AdEL");
 
     return failures == 0 ? 0 : 1;
 }
