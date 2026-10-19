@@ -49,6 +49,12 @@ int32_t retroshelf_engine_validate_disc_boot_image(const char *path);
  * stop_reason: 0 = instruction budget reached, 1 = CPU exception or unsupported
  * instruction, 2 = invalid instruction fetch.
  */
+/* The most recent smoke-test trace. Indices outside the trace return zero (or -1 for fetched). */
+uint64_t retroshelf_engine_trace_count(void);
+uint64_t retroshelf_engine_trace_pc(uint64_t index);
+uint32_t retroshelf_engine_trace_instruction(uint64_t index);
+int32_t retroshelf_engine_trace_fetched(uint64_t index);
+
 int32_t retroshelf_engine_run_disc_subset(const char *path,
                                           uint64_t instruction_budget,
                                           uint64_t *instructions_executed,
