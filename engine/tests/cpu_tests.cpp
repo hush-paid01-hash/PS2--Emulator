@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <vector>
 
 int main() {
     retroshelf::Cpu cpu;
@@ -429,15 +430,18 @@ int main() {
     check(cpu.step(nop) && cpu.pc() == 0x90000008ULL && cpu.reg(31) == 0x90000004ULL,
           "JAL preserves the high address region and writes PC+8 link");
 
-    // Fetch faults must enter the EE address-error exception path, not just return an error.
+    // Fetch faults in branch delay slots must set EPC to the branch and Cause.BD.
     std::vector<std::uint8_t> fetch_ram(0x200, 0);
-    cpu.reset(); cpu.set_pc(0x101);
+    cpu.reset(); cpu.set_pc(0x100);
+    check(cpu.step(itype(0x04, 0, 0, 4)), "prepare branch for delay-slot fetch fault");
+    cpu.set_pc(0x105);
     error.clear();
     check(!cpu.step_from_ram(fetch_ram, 0, &error) && !error.empty(),
-          "unaligned instruction fetch from RAM is rejected");
-    check(cpu.pc() == Cpu::GeneralExceptionVector && cpu.cop0_epc() == 0x101 &&
+          "unaligned delay-slot instruction fetch is rejected");
+    check(cpu.pc() == Cpu::GeneralExceptionVector && cpu.cop0_epc() == 0x100 &&
+          (cpu.cop0_cause() & Cpu::CauseBd) != 0U &&
           ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
-          "unaligned RAM fetch raises AdEL and records the faulting PC");
+          "delay-slot fetch fault records branch EPC, Cause.BD, and AdEL");
 
     return failures == 0 ? 0 : 1;
 }
