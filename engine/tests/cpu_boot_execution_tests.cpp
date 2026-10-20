@@ -87,7 +87,7 @@ int main() {
     assert(ee.write(0x80002000U, 4,
                     (0x23U << 26U) | (16U << 21U) | (9U << 16U), &error)); // LW t1,0(s0)
     assert(!bad_load_cpu.step_from_ee_memory(ee, &error));
-    assert(bad_load_cpu.cop0_bad_vaddr() == 0x80002000U);
+    assert(bad_load_cpu.cop0_bad_vaddr() == 0x30000000U);
     assert((bad_load_cpu.cop0_cause() & (0x1FU << 2U)) ==
            (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
     assert((bad_load_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
