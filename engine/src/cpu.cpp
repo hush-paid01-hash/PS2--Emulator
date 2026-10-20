@@ -615,12 +615,16 @@ bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
     }
     if (pc_ < ram_base) {
         if (error) *error = "Instruction fetch is outside RAM";
+        bad_vaddr_ = pc_;
+        raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
         return false;
     }
     const std::uint64_t offset = pc_ - ram_base;
     if (offset > ram.size() ||
         ram.size() - static_cast<std::size_t>(offset) < sizeof(std::uint32_t)) {
         if (error) *error = "Instruction fetch is outside RAM";
+        bad_vaddr_ = pc_;
+        raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
         return false;
     }
     const auto index = static_cast<std::size_t>(offset);
