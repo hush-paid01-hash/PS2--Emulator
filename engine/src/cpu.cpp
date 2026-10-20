@@ -8,7 +8,7 @@ namespace retroshelf {
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
     gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
-    delay_slot_pending_ = false; delay_branch_pc_ = 0; status_ = 0; cause_ = 0; epc_ = 0; bad_vaddr_ = 0; hi_ = 0; lo_ = 0;
+    delay_slot_pending_ = false; delay_branch_pc_ = 0; cop0_regs_.fill(0); status_ = 0; cause_ = 0; epc_ = 0; bad_vaddr_ = 0; hi_ = 0; lo_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
 void Cpu::set_reg(std::size_t index, std::uint64_t value) {
@@ -311,6 +311,10 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x10: { // Minimal COP0 support: MFC0, MTC0 and ERET.
         const auto read_cop0 = [this](std::uint32_t index, std::uint64_t& value) {
             switch (index) {
+            case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+            case 9: case 10: case 11: case 15: case 16: case 23: case 24:
+            case 25: case 28: case 29: case 30:
+                value = cop0_regs_[index]; return true;
             case 12: value = status_; return true; // Status
             case 13: value = cause_; return true;  // Cause
             case 8: value = bad_vaddr_; return true; // BadVAddr (read-only)
@@ -326,6 +330,10 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
         if (rs == 0x04) { // MTC0 rt, rd
             switch (rd) {
+            case 0: case 2: case 3: case 4: case 5: case 6: case 7:
+            case 9: case 10: case 11: case 16: case 23: case 24: case 25:
+            case 28: case 29: case 30:
+                cop0_regs_[rd] = static_cast<std::uint32_t>(reg(rt)); return true;
             case 12: status_ = static_cast<std::uint32_t>(reg(rt)); return true;
             case 13: { // Only software interrupt-pending bits IP0/IP1 are writable in Cause.
                 constexpr std::uint32_t SoftwareInterruptPending = 0x00000300U;
