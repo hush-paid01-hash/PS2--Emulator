@@ -594,6 +594,7 @@ bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
 bool Cpu::step_from_ee_memory(Ps2EeMemoryMap& memory, std::string* error) {
     if ((pc_ & 3U) != 0U) {
         if (error) *error = "Unaligned instruction fetch";
+        bad_vaddr_ = pc_;
         raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
         return false;
     }
@@ -601,11 +602,13 @@ bool Cpu::step_from_ee_memory(Ps2EeMemoryMap& memory, std::string* error) {
     // than silently fetching from the address produced by truncation.
     if (pc_ > 0xFFFFFFFFULL) {
         if (error) *error = "Instruction fetch exceeds 32-bit EE address space";
+        bad_vaddr_ = pc_;
         raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
         return false;
     }
     std::uint64_t fetched = 0;
     if (!memory.read(static_cast<std::uint32_t>(pc_), 4, fetched, error)) {
+        bad_vaddr_ = pc_;
         if (error && error->empty()) *error = "Instruction fetch is outside mapped EE RAM";
         // An instruction-fetch bus/address fault must enter the EE exception
         // path just like an unaligned PC; callers can inspect EPC/Cause and

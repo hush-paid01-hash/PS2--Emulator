@@ -69,6 +69,7 @@ int main() {
     assert(fetch_fault.reason == retroshelf::EeExecutionRunner::StopReason::InvalidInstructionFetch);
     assert(fetch_fault.final_pc == retroshelf::Cpu::GeneralExceptionVector);
     assert(cpu.cop0_epc() == 0x30000000U);
+    assert(cpu.cop0_bad_vaddr() == 0x30000000U);
     assert(fetch_fault.trace.size() == 1);
     assert(fetch_fault.trace[0].pc == 0x30000000U);
     assert(!fetch_fault.trace[0].fetched);
