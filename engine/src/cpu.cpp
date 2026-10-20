@@ -58,7 +58,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     const std::uint64_t branch_base = pc_ + 4; // branch/jump targets are relative to the delay slot
 
     const bool is_jr = opcode == 0x00 && (funct == 0x08 || funct == 0x09);
-    const bool is_branch = (opcode >= 0x01 && opcode <= 0x07) || is_jr;
+    const bool is_branch = (opcode >= 0x01 && opcode <= 0x07) || (opcode >= 0x14 && opcode <= 0x17) || is_jr;
     if (is_branch && in_delay) {
         if (error) *error = "Branch or jump inside a branch delay slot is not supported";
         return false;
@@ -83,6 +83,14 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         delay_slot_pending_ = true;
         delay_branch_pc_ = cur_pc;
         if (taken) next_pc_ = target;
+        return true;
+    };
+    // Branch-likely instructions annul the delay slot when the condition is false.
+    const auto branch_likely = [&](bool taken, std::uint64_t target) {
+        if (taken) return branch(true, target);
+        pc_ = cur_pc + 8;
+        next_pc_ = cur_pc + 12;
+        delay_slot_pending_ = false;
         return true;
     };
     const std::uint64_t rel_target = branch_base + static_cast<std::uint64_t>(simm * 4);
@@ -327,11 +335,14 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
         return unsupported();
     }
-    case 0x01: { // REGIMM subset: BLTZ, BGEZ, BLTZAL, BGEZAL
-        if (rt != 0x00 && rt != 0x01 && rt != 0x10 && rt != 0x11) return unsupported();
+    case 0x01: { // REGIMM branches, including branch-likely variants.
+        if (rt != 0x00 && rt != 0x01 && rt != 0x02 && rt != 0x03 &&
+            rt != 0x10 && rt != 0x11 && rt != 0x12 && rt != 0x13) return unsupported();
         const bool taken = (rt & 1U) ? sreg(rs) >= 0 : sreg(rs) < 0;
-        if (rt >= 0x10) set_reg(31, cur_pc + 8); // link is written even when not taken
-        return branch(taken, rel_target);
+        const bool likely = (rt & 0x02U) != 0U;
+        const bool link = (rt & 0x10U) != 0U;
+        if (link && (!likely || taken)) set_reg(31, cur_pc + 8);
+        return likely ? branch_likely(taken, rel_target) : branch(taken, rel_target);
     }
     case 0x02: case 0x03: { // J / JAL
         if (opcode == 0x03) set_reg(31, cur_pc + 8);
@@ -341,6 +352,10 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x05: return branch(reg(rs) != reg(rt), rel_target); // BNE
     case 0x06: return branch(sreg(rs) <= 0, rel_target); // BLEZ
     case 0x07: return branch(sreg(rs) > 0, rel_target); // BGTZ
+    case 0x14: return branch_likely(reg(rs) == reg(rt), rel_target); // BEQL
+    case 0x15: return branch_likely(reg(rs) != reg(rt), rel_target); // BNEL
+    case 0x16: return branch_likely(sreg(rs) <= 0, rel_target); // BLEZL
+    case 0x17: return branch_likely(sreg(rs) > 0, rel_target); // BGTZL
     case 0x18: { // DADDI: signed 64-bit addition with overflow exception
         const std::uint64_t lhs = reg(rs);
         const std::uint64_t rhs = static_cast<std::uint64_t>(simm);
