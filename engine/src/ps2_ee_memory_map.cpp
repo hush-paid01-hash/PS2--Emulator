@@ -83,7 +83,14 @@ bool Ps2EeMemoryMap::resolve_main_ram(std::uint32_t address, std::size_t width,
 
 bool Ps2EeMemoryMap::read(std::uint32_t address, std::size_t width,
                           std::uint64_t& value, std::string* error) const {
-    if (width == 16) { if (error) *error = "Use read128 for 16-byte accesses"; return false; }
+    if (width != 1 && width != 2 && width != 4 && width != 8) {
+        if (error) *error = "Unsupported memory access width";
+        return false;
+    }
+    if ((address & static_cast<std::uint32_t>(width - 1U)) != 0U) {
+        if (error) *error = "Misaligned memory access";
+        return false;
+    }
     std::size_t offset = 0;
     if (resolve_bios_rom(address, width, offset, nullptr)) {
         value = 0;
@@ -103,7 +110,14 @@ bool Ps2EeMemoryMap::read(std::uint32_t address, std::size_t width,
 
 bool Ps2EeMemoryMap::write(std::uint32_t address, std::size_t width,
                            std::uint64_t value, std::string* error) {
-    if (width == 16) { if (error) *error = "Use write128 for 16-byte accesses"; return false; }
+    if (width != 1 && width != 2 && width != 4 && width != 8) {
+        if (error) *error = "Unsupported memory access width";
+        return false;
+    }
+    if ((address & static_cast<std::uint32_t>(width - 1U)) != 0U) {
+        if (error) *error = "Misaligned memory access";
+        return false;
+    }
     std::size_t bios_offset = 0;
     if (resolve_bios_rom(address, width, bios_offset, nullptr)) {
         if (error) *error = "Writes to the EE BIOS ROM are not permitted";
@@ -127,6 +141,10 @@ bool Ps2EeMemoryMap::write(std::uint32_t address, std::size_t width,
 
 bool Ps2EeMemoryMap::read128(std::uint32_t address, std::uint64_t& low,
                              std::uint64_t& high, std::string* error) const {
+    if ((address & 0xFU) != 0U) {
+        if (error) *error = "Misaligned 128-bit memory access";
+        return false;
+    }
     std::size_t offset = 0;
     if (resolve_bios_rom(address, 16, offset, nullptr)) {
         low = 0;
@@ -151,6 +169,10 @@ bool Ps2EeMemoryMap::read128(std::uint32_t address, std::uint64_t& low,
 
 bool Ps2EeMemoryMap::write128(std::uint32_t address, std::uint64_t low,
                               std::uint64_t high, std::string* error) {
+    if ((address & 0xFU) != 0U) {
+        if (error) *error = "Misaligned 128-bit memory access";
+        return false;
+    }
     std::size_t bios_offset = 0;
     if (resolve_bios_rom(address, 16, bios_offset, nullptr)) {
         if (error) *error = "Writes to the EE BIOS ROM are not permitted";
