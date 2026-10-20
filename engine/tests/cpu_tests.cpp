@@ -69,6 +69,13 @@ int main() {
     check(cpu.step(itype(0x0E, 1, 3, 0x00FF)) && cpu.reg(3) == 0x12345687,
           "XORI zero-extends mask and toggles bits");
 
+    // CACHE/PREF are hints in this functional interpreter: no cache hierarchy is modeled.
+    cpu.reset(); cpu.set_reg(1, 0x1000);
+    check(cpu.step(itype(0x2F, 1, 0x1A, 0x20)) && cpu.pc() == 4,
+          "CACHE instruction is accepted as a no-op without a cache model");
+    check(cpu.step(itype(0x33, 1, 0, 0x40)) && cpu.pc() == 8,
+          "PREF hint is accepted as a no-op without a cache model");
+
     // Signed and unsigned comparisons, including a negative sign-extended immediate.
     cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-1));
     check(cpu.step(itype(0x0A, 1, 2, 1)) && cpu.reg(2) == 1,
