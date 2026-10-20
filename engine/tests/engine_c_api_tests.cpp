@@ -74,6 +74,13 @@ int main() {
     assert(biosInstructions == 2);
     assert(biosPC == 0xBFC00008ULL);
     assert(biosReason == 0);
+    assert(retroshelf_engine_trace_count() == 2U);
+    assert(retroshelf_engine_trace_pc(0U) == 0xBFC00000ULL);
+    assert(retroshelf_engine_trace_instruction(0U) == ((0x09U << 26U) | (8U << 16U) | 7U));
+    assert(retroshelf_engine_trace_fetched(0U) == 1);
+    assert(retroshelf_engine_trace_pc(1U) == 0xBFC00004ULL);
+    assert(retroshelf_engine_trace_instruction(1U) == ((0x09U << 26U) | (9U << 16U) | 5U));
+    assert(retroshelf_engine_trace_fetched(1U) == 1);
     biosInstructions = 99;
     biosPC = 99;
     biosReason = 99;
