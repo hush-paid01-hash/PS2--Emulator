@@ -41,12 +41,14 @@ int main() {
            (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
     assert(cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
 
+    cpu.reset();
     cpu.set_pc(0x1000);
     assert(!cpu.step_from_ram(ram, 0, &error));
     assert(cpu.cop0_bad_vaddr() == 0x1000);
     assert(cpu.cop0_epc() == 0x1000);
     assert(cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
 
+    cpu.reset();
     cpu.set_pc(0);
     assert(!cpu.step_from_ram(ram, 4, &error));
     assert(cpu.cop0_bad_vaddr() == 0);
