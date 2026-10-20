@@ -733,5 +733,26 @@ int main() {
     check(cpu.step(mtc0_cause) && cpu.cop0_cause() == (cause_before_write & ~0x00000300U),
           "MTC0 Cause clears software interrupt-pending bits without changing exception code");
 
+
+    // Common EE COP0 setup registers round-trip without weakening the
+    // dedicated Status, Cause, EPC and read-only BadVAddr behavior.
+    retroshelf::Cpu cop0_bank_cpu;
+    cop0_bank_cpu.set_reg(8, 0xC1234000U);
+    check(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (10U << 11U)),
+          "MTC0 EntryHi executes");
+    check(cop0_bank_cpu.step((0x10U << 26U) | (9U << 16U) | (10U << 11U)),
+          "MFC0 EntryHi executes");
+    check(cop0_bank_cpu.reg(9) == 0xFFFFFFFFC1234000ULL,
+          "MFC0 sign-extends the stored EntryHi value");
+    cop0_bank_cpu.set_reg(8, 0x12345678U);
+    check(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (9U << 11U)),
+          "MTC0 Count executes");
+    check(cop0_bank_cpu.step((0x10U << 26U) | (10U << 16U) | (9U << 11U)),
+          "MFC0 Count executes");
+    check(cop0_bank_cpu.reg(10) == 0x12345678U, "Count value round-trips");
+    cop0_bank_cpu.reset();
+    check(cop0_bank_cpu.step((0x10U << 26U) | (10U << 16U) | (9U << 11U)) &&
+          cop0_bank_cpu.reg(10) == 0U, "reset clears stored COP0 setup registers");
+
     return failures == 0 ? 0 : 1;
 }
