@@ -326,6 +326,56 @@ int main() {
     }
 
 
+    // LDL/LDR/SDL/SDR merge all eight byte lanes of a little-endian doubleword.
+    const std::uint64_t dword_merge_memory = 0x8877665544332211ULL;
+    const std::uint64_t dword_merge_register = 0xAABBCCDDEEFF0011ULL;
+    const std::uint64_t ldl_expected[] = {
+        0x11BBCCDDEEFF0011ULL, 0x2211CCDDEEFF0011ULL,
+        0x332211DDEEFF0011ULL, 0x44332211EEFF0011ULL,
+        0x5544332211FF0011ULL, 0x6655443322110011ULL,
+        0x7766554433221111ULL, 0x8877665544332211ULL};
+    const std::uint64_t ldr_expected[] = {
+        0x8877665544332211ULL, 0xAA88776655443322ULL,
+        0xAABB887766554433ULL, 0xAABBCC8877665544ULL,
+        0xAABBCCDD88776655ULL, 0xAABBCCDDEE887766ULL,
+        0xAABBCCDDEEFF8877ULL, 0xAABBCCDDEEFF0088ULL};
+    const std::uint64_t sdl_expected[] = {
+        0x88776655443322AAULL, 0x887766554433AABBULL,
+        0x8877665544AABBCCULL, 0x88776655AABBCCDDULL,
+        0x887766AABBCCDDEEULL, 0x8877AABBCCDDEEFFULL,
+        0x88AABBCCDDEEFF00ULL, 0xAABBCCDDEEFF0011ULL};
+    const std::uint64_t sdr_expected[] = {
+        0xAABBCCDDEEFF0011ULL, 0xBBCCDDEEFF001111ULL,
+        0xCCDDEEFF00112211ULL, 0xDDEEFF0011332211ULL,
+        0xEEFF001144332211ULL, 0xFF00115544332211ULL,
+        0x0011665544332211ULL, 0x1177665544332211ULL};
+    const std::uint32_t dword_merge_opcodes[] = {0x1AU, 0x1BU, 0x2CU, 0x2DU};
+    const std::uint64_t* dword_merge_expected[] = {
+        ldl_expected, ldr_expected, sdl_expected, sdr_expected};
+    for (unsigned op = 0; op < 4; ++op) {
+        for (unsigned lane = 0; lane < 8; ++lane) {
+            const std::uint32_t test_pc = 0x8000D000U + op * 0x40U + lane * 4U;
+            assert(ee.write(merge_base, 8, dword_merge_memory, &error));
+            assert(ee.write(test_pc, 4,
+                            (dword_merge_opcodes[op] << 26U) |
+                            (16U << 21U) | (8U << 16U) | lane, &error));
+            retroshelf::Cpu merge_cpu;
+            merge_cpu.set_pc(test_pc);
+            merge_cpu.set_reg(16, merge_base);
+            merge_cpu.set_reg(8, dword_merge_register);
+            assert(merge_cpu.step_from_ee_memory(ee, &error));
+            std::uint64_t merged = 0;
+            assert(ee.read(merge_base, 8, merged, &error));
+            if (op < 2) {
+                assert(merge_cpu.reg(8) == dword_merge_expected[op][lane]);
+                assert(merged == dword_merge_memory);
+            } else {
+                assert(merged == dword_merge_expected[op][lane]);
+            }
+        }
+    }
+
+
     // Signed ADD, SUB, and ADDI trap on 32-bit overflow; unsigned variants do not.
     retroshelf::Cpu add_overflow_cpu;
     add_overflow_cpu.set_pc(0x8000E000U);
