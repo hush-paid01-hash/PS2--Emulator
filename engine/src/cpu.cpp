@@ -460,6 +460,53 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return fault("Unmapped EE RAM word-merge store");
         return true;
     }
+    case 0x1A: case 0x1B: case 0x2C: case 0x2D: { // LDL/LDR/SDL/SDR (little-endian doubleword merges)
+        const bool store = opcode == 0x2C || opcode == 0x2D;
+        const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
+        const std::uint64_t aligned = address & ~std::uint64_t{7};
+        const unsigned lane = static_cast<unsigned>(address & 7U);
+        const auto fault = [&](const char* message) {
+            if (error) *error = message;
+            bad_vaddr_ = address;
+            raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
+            return false;
+        };
+        if (active_ee_memory_ == nullptr)
+            return fault("LDL/LDR/SDL/SDR require the mapped EE memory interface");
+        if (aligned > 0xFFFFFFFFULL)
+            return fault("EE RAM doubleword-merge address exceeds 32-bit address space");
+        std::uint64_t mem = 0;
+        if (!active_ee_memory_->read(static_cast<std::uint32_t>(aligned), 8, mem, nullptr))
+            return fault("Unmapped EE RAM doubleword-merge access");
+        const std::uint64_t old_rt = reg(rt);
+        std::uint64_t result = old_rt;
+        if (opcode == 0x1A) { // LDL: merge memory toward the most-significant end
+            const unsigned shift = (7U - lane) * 8U;
+            const std::uint64_t mask = UINT64_MAX << shift;
+            result = (old_rt & ~mask) | (mem << shift);
+            set_reg(rt, result);
+            return true;
+        }
+        if (opcode == 0x1B) { // LDR: merge memory toward the least-significant end
+            const unsigned shift = lane * 8U;
+            const std::uint64_t mask = UINT64_MAX >> shift;
+            result = (old_rt & ~mask) | (mem >> shift);
+            set_reg(rt, result);
+            return true;
+        }
+        if (opcode == 0x2C) { // SDL: store most-significant register bytes into low memory lanes
+            const unsigned shift = (7U - lane) * 8U;
+            const std::uint64_t mask = UINT64_MAX >> shift;
+            result = (mem & ~mask) | (old_rt >> shift);
+        } else { // SDR: store least-significant register bytes into high memory lanes
+            const unsigned shift = lane * 8U;
+            const std::uint64_t mask = UINT64_MAX << shift;
+            result = (mem & ~mask) | (old_rt << shift);
+        }
+        if (!active_ee_memory_->write(static_cast<std::uint32_t>(aligned), 8, result, nullptr))
+            return fault("Unmapped EE RAM doubleword-merge store");
+        return true;
+    }
     case 0x1E: case 0x1F: { // LQ/SQ: 128-bit aligned EE GPR transfers
         const bool store = opcode == 0x1F;
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
