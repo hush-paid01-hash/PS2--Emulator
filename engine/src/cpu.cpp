@@ -118,8 +118,12 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             const auto product = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs))) *
                                  static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)));
             const auto bits = static_cast<std::uint64_t>(product);
-            lo_ = static_cast<std::uint32_t>(bits);
-            hi_ = static_cast<std::uint32_t>(bits >> 32U);
+            // The 32-bit MULT instruction sign-extends each 32-bit
+            // half into the EE's 64-bit HI/LO registers.
+            lo_ = static_cast<std::uint64_t>(static_cast<std::int64_t>(
+                static_cast<std::int32_t>(static_cast<std::uint32_t>(bits))));
+            hi_ = static_cast<std::uint64_t>(static_cast<std::int64_t>(
+                static_cast<std::int32_t>(static_cast<std::uint32_t>(bits >> 32U))));
             return true;
         }
         case 0x1A: { // DIV: signed 32-bit quotient in LO, remainder in HI

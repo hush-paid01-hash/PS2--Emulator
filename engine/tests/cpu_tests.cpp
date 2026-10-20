@@ -334,6 +334,13 @@ int main() {
     cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
     check(cpu.step(rtype(1, 2, 0, 0x1B)) && cpu.lo() == 0x7FFFFFFFULL && cpu.hi() == 1,
           "DIVU uses only the low 32 bits of each operand");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
+    check(cpu.step(rtype(1, 2, 0, 0x18)) &&
+          cpu.lo() == 0xFFFFFFFFFFFFFFFEULL && cpu.hi() == 0xFFFFFFFFFFFFFFFFULL,
+          "MULT sign-extends both 32-bit halves of a negative product");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
+    check(cpu.step(rtype(1, 2, 0, 0x19)) && cpu.lo() == 0xFFFFFFFEULL && cpu.hi() == 1,
+          "MULTU zero-extends the low half of the same unsigned product");
     cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 0xFFFFFFFFU);
     check(cpu.step(rtype(1, 2, 0, 0x19)) && cpu.lo() == 1 && cpu.hi() == 0xFFFFFFFEULL,
           "MULTU returns both halves of the 32-bit unsigned product");
