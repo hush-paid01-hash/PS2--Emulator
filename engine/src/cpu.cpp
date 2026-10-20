@@ -465,6 +465,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
         const auto fault = [&](const char* message) {
             if (error) *error = message;
+            bad_vaddr_ = address;
             raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
             return false;
         };
