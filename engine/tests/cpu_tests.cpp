@@ -357,7 +357,7 @@ int main() {
           "DDIVU defines divide-by-zero HI/LO values without losing dividend bits");
     cpu.reset(); cpu.set_reg(1, 0xFEDCBA9876543210ULL); cpu.set_reg(2, 0x100000001ULL);
     check(cpu.step(rtype(1, 2, 0, 0x1F)) &&
-          cpu.lo() == 0xFEDCBA97ULL && cpu.hi() == 0x65432179ULL,
+          cpu.lo() == 0xFEDCBA97ULL && cpu.hi() == 0x77777779ULL,
           "DDIVU divides and returns remainder using full 64-bit operands");
 
     // HI/LO transfer instructions preserve the full 64-bit EE register values.
