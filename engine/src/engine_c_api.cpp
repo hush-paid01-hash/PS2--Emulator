@@ -4,6 +4,7 @@
 #include "retroshelf/cpu.hpp"
 #include "retroshelf/gs_framebuffer.hpp"
 #include "retroshelf/ee_gif_gs_runtime.hpp"
+#include "retroshelf/ee_execution_runner.hpp"
 #include "retroshelf/gs_gif_pipeline.hpp"
 #include "retroshelf/gs_packet_processor.hpp"
 #include "retroshelf/iso9660_disc.hpp"
@@ -147,6 +148,7 @@ extern "C" int32_t retroshelf_engine_validate_disc_boot_image(const char *path) 
 extern "C" int32_t retroshelf_engine_run_bios_reset_vector(
     const char *path, uint64_t instruction_budget,
     uint64_t *instructions_executed, uint64_t *final_pc, int32_t *stop_reason) {
+    g_last_trace.clear();
     if (instructions_executed) *instructions_executed = 0;
     if (final_pc) *final_pc = 0;
     if (stop_reason) *stop_reason = -1;
@@ -170,19 +172,26 @@ extern "C" int32_t retroshelf_engine_run_bios_reset_vector(
     retroshelf::Cpu cpu;
     cpu.set_pc(0xBFC00000ULL);
     const std::uint64_t budget = std::min<std::uint64_t>(instruction_budget, 1000000U);
-    std::uint64_t executed = 0;
-    std::int32_t reason = 0;
-    while (executed < budget) {
-        if (!cpu.step_from_ee_memory(memory, &error)) {
-            reason = (error.find("fetch") != std::string::npos ||
-                      error.find("Fetch") != std::string::npos) ? 2 : 1;
-            break;
+    retroshelf::EeExecutionRunner runner(cpu, memory);
+    const auto result = runner.run(static_cast<std::size_t>(budget));
+    g_last_trace = result.trace;
+
+    if (instructions_executed)
+        *instructions_executed = static_cast<std::uint64_t>(result.instructions_executed);
+    if (final_pc) *final_pc = result.final_pc;
+    if (stop_reason) {
+        switch (result.reason) {
+            case retroshelf::EeExecutionRunner::StopReason::InstructionLimit:
+                *stop_reason = 0;
+                break;
+            case retroshelf::EeExecutionRunner::StopReason::CpuExceptionOrUnsupportedInstruction:
+                *stop_reason = 1;
+                break;
+            case retroshelf::EeExecutionRunner::StopReason::InvalidInstructionFetch:
+                *stop_reason = 2;
+                break;
         }
-        ++executed;
     }
-    if (instructions_executed) *instructions_executed = executed;
-    if (final_pc) *final_pc = cpu.pc();
-    if (stop_reason) *stop_reason = reason;
     return 1;
 }
 

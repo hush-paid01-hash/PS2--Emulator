@@ -120,7 +120,16 @@ enum EngineBridge {
             retroshelfEngineRunBIOSResetVector($0, instructionBudget, &executed, &pc, &reason)
         }
         guard success != 0 else { return nil }
-        return EngineExecutionReport(instructionsExecuted: executed, finalPC: pc, stopReason: reason, trace: [])
+        let traceCount = min(Int(retroshelfEngineTraceCount()), 256)
+        let trace = (0..<traceCount).map { index in
+            let i = UInt64(index)
+            return EngineTraceEntry(
+                pc: retroshelfEngineTracePC(i),
+                instruction: retroshelfEngineTraceInstruction(i),
+                fetched: retroshelfEngineTraceFetched(i) == 1
+            )
+        }
+        return EngineExecutionReport(instructionsExecuted: executed, finalPC: pc, stopReason: reason, trace: trace)
     }
     static var readinessMessage: String {
         canBootGames ? "Engine reports game boot support" : "\(statusMessage) (ABI v\(abiVersion))"

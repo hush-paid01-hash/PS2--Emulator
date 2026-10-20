@@ -269,7 +269,7 @@ struct ContentView: View {
             return
         }
         let pc = String(report.finalPC, radix: 16).uppercased()
-        biosSmokeTestMessage = "BIOS reset-vector test only: \(report.instructionsExecuted) instructions; PC 0x\(pc); \(report.summary). This is not a full BIOS boot."
+        biosSmokeTestMessage = "BIOS reset-vector test only: \(report.instructionsExecuted) instructions; PC 0x\(pc); \(report.summary). This is not a full BIOS boot.\n\n\(report.traceSummary)"
     }
 
     private func runSmokeTest() {
