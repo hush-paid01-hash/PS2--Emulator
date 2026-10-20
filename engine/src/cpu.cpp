@@ -8,7 +8,7 @@ namespace retroshelf {
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
     gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
-    delay_slot_pending_ = false; delay_branch_pc_ = 0; status_ = 0; cause_ = 0; epc_ = 0; hi_ = 0; lo_ = 0;
+    delay_slot_pending_ = false; delay_branch_pc_ = 0; status_ = 0; cause_ = 0; epc_ = 0; bad_vaddr_ = 0; hi_ = 0; lo_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
 void Cpu::set_reg(std::size_t index, std::uint64_t value) {
@@ -26,6 +26,7 @@ void Cpu::set_pc(std::uint64_t value) { pc_ = value; next_pc_ = value + 4; delay
 std::uint32_t Cpu::cop0_status() const { return status_; }
 std::uint32_t Cpu::cop0_cause() const { return cause_; }
 std::uint64_t Cpu::cop0_epc() const { return epc_; }
+std::uint64_t Cpu::cop0_bad_vaddr() const { return bad_vaddr_; }
 bool Cpu::in_delay_slot() const { return delay_slot_pending_; }
 std::uint64_t Cpu::next_pc() const { return next_pc_; }
 std::uint64_t Cpu::hi() const { return hi_; }
@@ -308,6 +309,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             switch (index) {
             case 12: value = status_; return true; // Status
             case 13: value = cause_; return true;  // Cause
+            case 8: value = bad_vaddr_; return true; // BadVAddr (read-only)
             case 14: value = epc_; return true;    // EPC
             default: return false;
             }
@@ -417,6 +419,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         const unsigned lane = static_cast<unsigned>(address & 3U);
         const auto fault = [&](const char* message) {
             if (error) *error = message;
+            bad_vaddr_ = address;
             raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
             return false;
         };
@@ -557,6 +560,7 @@ bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
                         std::string* error) {
     if ((pc_ & 3U) != 0U) {
         if (error) *error = "Unaligned instruction fetch";
+        bad_vaddr_ = pc_;
         raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
         return false;
     }

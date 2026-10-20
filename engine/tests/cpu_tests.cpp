@@ -554,6 +554,13 @@ int main() {
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
           "misaligned LH raises AdEL with the instruction PC in EPC");
 
+    check(cpu.cop0_bad_vaddr() == 0x201,
+          "misaligned LH records its effective address in BadVAddr");
+    const std::uint32_t mfc0_badvaddr =
+        (0x10U << 26U) | (2U << 16U) | (8U << 11U);
+    check(cpu.step(mfc0_badvaddr) && cpu.reg(2) == 0x201,
+          "MFC0 reads BadVAddr after an address exception");
+
     // Minimal COP0 state transfers and ERET allow an exception handler to return.
     cpu.reset();
     cpu.set_pc(0x400);

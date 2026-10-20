@@ -33,7 +33,7 @@ public:
     std::uint64_t pc() const;
     void set_pc(std::uint64_t value);
 
-    // Minimal COP0 subset: only Status.EXL, Cause.ExcCode/BD and EPC are modelled.
+    // Minimal COP0 subset: Status, Cause, EPC and BadVAddr are modelled.
     static constexpr std::uint32_t CauseBd = 1U << 31U;
     static constexpr std::uint32_t StatusExl = 1U << 1U;
     static constexpr std::uint32_t ExcSyscall = 8;
@@ -48,6 +48,7 @@ public:
     std::uint32_t cop0_status() const;
     std::uint32_t cop0_cause() const;
     std::uint64_t cop0_epc() const;
+    std::uint64_t cop0_bad_vaddr() const;
     bool in_delay_slot() const; // true if the next step() runs a branch delay slot
     std::uint64_t next_pc() const;
     std::uint64_t hi() const;
@@ -69,6 +70,7 @@ private:
     std::uint32_t status_{0};
     std::uint32_t cause_{0};
     std::uint64_t epc_{0};
+    std::uint64_t bad_vaddr_{0};
     std::uint64_t hi_{0};
     std::uint64_t lo_{0};
 };
