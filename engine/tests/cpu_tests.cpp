@@ -705,5 +705,18 @@ int main() {
     check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorStore,
           "misaligned SQ records AdES");
 
+    // Cause is mostly read-only: MTC0 may change only software interrupt-pending bits IP0/IP1.
+    cpu.reset();
+    check(!cpu.step(0x0000000CU), "SYSCALL seeds read-only Cause exception-code bits");
+    const std::uint32_t cause_before_write = cpu.cop0_cause();
+    cpu.set_reg(5, 0xFFFFFFFFFFFFFFFFULL);
+    const std::uint32_t mtc0_cause = (0x10U << 26U) | (0x04U << 21U) | (5U << 16U) | (13U << 11U);
+    check(cpu.step(mtc0_cause), "MTC0 Cause executes");
+    check(cpu.cop0_cause() == (cause_before_write | 0x00000300U),
+          "MTC0 Cause changes only writable software interrupt-pending bits");
+    cpu.set_reg(5, 0);
+    check(cpu.step(mtc0_cause) && cpu.cop0_cause() == (cause_before_write & ~0x00000300U),
+          "MTC0 Cause clears software interrupt-pending bits without changing exception code");
+
     return failures == 0 ? 0 : 1;
 }

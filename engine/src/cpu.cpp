@@ -327,7 +327,12 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         if (rs == 0x04) { // MTC0 rt, rd
             switch (rd) {
             case 12: status_ = static_cast<std::uint32_t>(reg(rt)); return true;
-            case 13: cause_ = (cause_ & CauseBd) | (static_cast<std::uint32_t>(reg(rt)) & ~(CauseBd | (0x1FU << 2U))); return true;
+            case 13: { // Only software interrupt-pending bits IP0/IP1 are writable in Cause.
+                constexpr std::uint32_t SoftwareInterruptPending = 0x00000300U;
+                cause_ = (cause_ & ~SoftwareInterruptPending) |
+                         (static_cast<std::uint32_t>(reg(rt)) & SoftwareInterruptPending);
+                return true;
+            }
             case 14: epc_ = reg(rt); return true;
             default: return unsupported();
             }
