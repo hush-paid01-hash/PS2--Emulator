@@ -1,4 +1,5 @@
 #include "retroshelf/engine_c_api.h"
+#include "retroshelf/bios_image_validator.hpp"
 
 #include "retroshelf/cpu.hpp"
 #include "retroshelf/gs_framebuffer.hpp"
@@ -113,6 +114,21 @@ extern "C" const char *retroshelf_engine_status_message(void) {
 
 extern "C" int32_t retroshelf_engine_can_boot_games(void) {
     return 0;
+}
+
+extern "C" int32_t retroshelf_engine_inspect_bios_image(
+    const char *path, uint64_t *size_bytes, int32_t *plausible_size) {
+    if (size_bytes) *size_bytes = 0;
+    if (plausible_size) *plausible_size = 0;
+    if (path == nullptr || path[0] == '\0') return 0;
+
+    retroshelf::BiosImageInfo info;
+    std::string error;
+    if (!retroshelf::BiosImageValidator::inspect(std::filesystem::path(path), info, &error))
+        return 0;
+    if (size_bytes) *size_bytes = info.size_bytes;
+    if (plausible_size) *plausible_size = info.plausible_size ? 1 : 0;
+    return 1;
 }
 
 extern "C" int32_t retroshelf_engine_validate_disc_boot_image(const char *path) {
