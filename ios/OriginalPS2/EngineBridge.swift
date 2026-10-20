@@ -20,6 +20,8 @@ private func retroshelfEngineTraceInstruction(_ index: UInt64) -> UInt32
 private func retroshelfEngineTraceFetched(_ index: UInt64) -> Int32
 @_silgen_name("retroshelf_engine_run_disc_subset")
 private func retroshelfEngineRunDiscSubset(_ path: UnsafePointer<CChar>?, _ budget: UInt64, _ executed: UnsafeMutablePointer<UInt64>?, _ pc: UnsafeMutablePointer<UInt64>?, _ reason: UnsafeMutablePointer<Int32>?) -> Int32
+@_silgen_name("retroshelf_engine_run_bios_reset_vector")
+private func retroshelfEngineRunBIOSResetVector(_ path: UnsafePointer<CChar>?, _ budget: UInt64, _ executed: UnsafeMutablePointer<UInt64>?, _ pc: UnsafeMutablePointer<UInt64>?, _ reason: UnsafeMutablePointer<Int32>?) -> Int32
 
 
 @_silgen_name("retroshelf_engine_render_demo_frame")
@@ -109,6 +111,16 @@ enum EngineBridge {
             )
         }
         return EngineExecutionReport(instructionsExecuted: executed, finalPC: pc, stopReason: reason, trace: trace)
+    }
+    static func runBIOSResetVectorSmokeTest(at url: URL, instructionBudget: UInt64 = 10_000) -> EngineExecutionReport? {
+        var executed: UInt64 = 0
+        var pc: UInt64 = 0
+        var reason: Int32 = -1
+        let success = url.path.withCString {
+            retroshelfEngineRunBIOSResetVector($0, instructionBudget, &executed, &pc, &reason)
+        }
+        guard success != 0 else { return nil }
+        return EngineExecutionReport(instructionsExecuted: executed, finalPC: pc, stopReason: reason, trace: [])
     }
     static var readinessMessage: String {
         canBootGames ? "Engine reports game boot support" : "\(statusMessage) (ABI v\(abiVersion))"
