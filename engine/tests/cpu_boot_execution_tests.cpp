@@ -231,8 +231,8 @@ int main() {
     mult_cpu.set_reg(9, 3U);
     assert(ee.write(0x8000B100U, 4, (8U << 21U) | (9U << 16U) | 0x18U, &error)); // MULT t0,t1
     assert(mult_cpu.step_from_ee_memory(ee, &error));
-    assert(mult_cpu.lo() == 0xFFFFFFFAU);
-    assert(mult_cpu.hi() == 0xFFFFFFFFU);
+    assert(mult_cpu.lo() == 0xFFFFFFFFFFFFFFFAULL);
+    assert(mult_cpu.hi() == 0xFFFFFFFFFFFFFFFFULL);
 
     // DIV/DIVU place quotient in LO and remainder in HI.
     retroshelf::Cpu div_cpu;
