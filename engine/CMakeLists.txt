@@ -196,3 +196,9 @@ add_executable(ee-gif-gs-runtime-tests tests/ee_gif_gs_runtime_tests.cpp
 target_include_directories(ee-gif-gs-runtime-tests PRIVATE include)
 target_compile_options(ee-gif-gs-runtime-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-gif-gs-runtime-tests COMMAND ee-gif-gs-runtime-tests)
+
+
+add_executable(ee-gif-dma-mmio-tests tests/ee_gif_dma_mmio_tests.cpp)
+target_link_libraries(ee-gif-dma-mmio-tests PRIVATE retroshelf_engine)
+target_compile_options(ee-gif-dma-mmio-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ee-gif-dma-mmio-tests COMMAND ee-gif-dma-mmio-tests)
