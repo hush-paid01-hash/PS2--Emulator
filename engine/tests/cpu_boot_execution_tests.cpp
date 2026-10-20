@@ -412,5 +412,24 @@ int main() {
     assert(wide_shift_cpu.step((8U << 16U) | (11U << 11U) | 0x3FU, &error)); // DSRA32 t3,t0,0
     assert(wide_shift_cpu.reg(11) == 0xFFFFFFFFFFFFFFFFULL);
 
+    // The CPU can fetch and execute instructions from the mapped BIOS reset-vector alias.
+    retroshelf::Ps2EeMemoryMap bios_memory(64U * 1024U);
+    std::vector<std::uint8_t> bios_bytes(16U, 0U);
+    const std::uint32_t bios_addiu_t0 = (0x09U << 26U) | (8U << 16U) | 7U;
+    const std::uint32_t bios_addiu_t1 = (0x09U << 26U) | (9U << 16U) | 5U;
+    for (std::size_t i = 0; i < 4; ++i) {
+        bios_bytes[i] = static_cast<std::uint8_t>(bios_addiu_t0 >> (i * 8U));
+        bios_bytes[4U + i] = static_cast<std::uint8_t>(bios_addiu_t1 >> (i * 8U));
+    }
+    assert(bios_memory.load_bios_image(bios_bytes, &error));
+    retroshelf::Cpu bios_cpu;
+    bios_cpu.set_pc(0xBFC00000U);
+    assert(bios_cpu.step_from_ee_memory(bios_memory, &error));
+    assert(bios_cpu.reg(8) == 7U);
+    assert(bios_cpu.pc() == 0xBFC00004U);
+    assert(bios_cpu.step_from_ee_memory(bios_memory, &error));
+    assert(bios_cpu.reg(9) == 5U);
+    assert(bios_cpu.pc() == 0xBFC00008U);
+
     std::cout << "CPU boot execution tests passed\\n";
 }

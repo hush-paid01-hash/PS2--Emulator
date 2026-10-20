@@ -18,6 +18,8 @@ public:
     static constexpr std::uint32_t Kseg0Base = 0x80000000U;
     static constexpr std::uint32_t Kseg1Base = 0xA0000000U;
     static constexpr std::uint32_t SegmentMask = 0x1FFFFFFFU;
+    static constexpr std::uint32_t BiosRomBase = 0x1FC00000U;
+    static constexpr std::size_t BiosRomWindowSize = 4U * 1024U * 1024U;
 
     Ps2EeMemoryMap();
     explicit Ps2EeMemoryMap(std::size_t main_ram_size);
@@ -25,6 +27,12 @@ public:
     std::size_t main_ram_size() const;
     std::vector<std::uint8_t>& main_ram();
     const std::vector<std::uint8_t>& main_ram() const;
+
+    // Install a read-only BIOS image in the EE physical BIOS window. This only
+    // maps bytes; it does not authenticate or execute firmware.
+    bool load_bios_image(const std::vector<std::uint8_t>& image,
+                         std::string* error = nullptr);
+    std::size_t bios_rom_size() const;
 
     // Resolve a virtual EE address to a main-RAM offset. False means the
     // address is not in one of the supported RAM aliases.
@@ -42,7 +50,11 @@ public:
                   std::string* error = nullptr);
 
 private:
+    bool resolve_bios_rom(std::uint32_t address, std::size_t width,
+                          std::size_t& offset, std::string* error) const;
+
     std::vector<std::uint8_t> ram_;
+    std::vector<std::uint8_t> bios_rom_;
 };
 
 } // namespace retroshelf
