@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var statusMessage = "Checking engine bridge…"
     @State private var smokeTestMessage: String?
     @State private var isRunningSmokeTest = false
+    @State private var isRunningBIOSSmokeTest = false
+    @State private var biosSmokeTestMessage: String?
     @State private var previewImage: UIImage?
     @State private var previewMessage = "No preview rendered yet"
 
@@ -56,6 +58,19 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
+                        Button {
+                            runBIOSResetVectorSmokeTest()
+                        } label: {
+                            Label(isRunningBIOSSmokeTest ? "Testing BIOS reset vector…" : "Test BIOS reset vector", systemImage: "cpu")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isRunningBIOSSmokeTest || biosURL == nil)
+                        if let biosSmokeTestMessage {
+                            Text(biosSmokeTestMessage)
+                                .font(.footnote)
+                                .textSelection(.enabled)
+                        }
                     }
                     .padding()
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -240,6 +255,21 @@ struct ContentView: View {
         case .failure(let error):
             statusMessage = "File import failed: \(error.localizedDescription)"
         }
+    }
+
+    private func runBIOSResetVectorSmokeTest() {
+        guard let biosURL else {
+            biosSmokeTestMessage = "Import a BIOS image first."
+            return
+        }
+        isRunningBIOSSmokeTest = true
+        defer { isRunningBIOSSmokeTest = false }
+        guard let report = EngineBridge.runBIOSResetVectorSmokeTest(at: biosURL) else {
+            biosSmokeTestMessage = "The native engine could not map the selected BIOS. Use a readable BIOS image no larger than 4 MiB."
+            return
+        }
+        let pc = String(report.finalPC, radix: 16).uppercased()
+        biosSmokeTestMessage = "BIOS reset-vector test only: \(report.instructionsExecuted) instructions; PC 0x\(pc); \(report.summary). This is not a full BIOS boot."
     }
 
     private func runSmokeTest() {
