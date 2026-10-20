@@ -345,6 +345,21 @@ int main() {
     check(cpu.step(rtype(1, 2, 0, 0x19)) && cpu.lo() == 1 && cpu.hi() == 0xFFFFFFFEULL,
           "MULTU returns both halves of the 32-bit unsigned product");
 
+    // 64-bit division must preserve signed quotient/remainder and unsigned full-width values.
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-100)); cpu.set_reg(2, 9);
+    check(cpu.step(rtype(1, 2, 0, 0x1E)) &&
+          cpu.lo() == static_cast<std::uint64_t>(static_cast<std::int64_t>(-11)) &&
+          cpu.hi() == static_cast<std::uint64_t>(static_cast<std::int64_t>(-1)),
+          "DDIV returns a signed 64-bit quotient and remainder");
+    cpu.reset(); cpu.set_reg(1, 0xFEDCBA9876543210ULL); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == UINT64_MAX &&
+          cpu.hi() == 0xFEDCBA9876543210ULL,
+          "DDIVU defines divide-by-zero HI/LO values without losing dividend bits");
+    cpu.reset(); cpu.set_reg(1, 0xFEDCBA9876543210ULL); cpu.set_reg(2, 0x100000001ULL);
+    check(cpu.step(rtype(1, 2, 0, 0x1F)) &&
+          cpu.lo() == 0xFEDCBA97ULL && cpu.hi() == 0x65432179ULL,
+          "DDIVU divides and returns remainder using full 64-bit operands");
+
     // HI/LO transfer instructions preserve the full 64-bit EE register values.
     cpu.reset();
     cpu.set_reg(1, 0xFEDCBA9876543210ULL);
