@@ -332,7 +332,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
                 cop0_regs_[rd] = static_cast<std::uint32_t>(reg(rt)); return true;
             case 12: status_ = static_cast<std::uint32_t>(reg(rt)); return true;
             case 13: cause_ = (cause_ & CauseBd) | (static_cast<std::uint32_t>(reg(rt)) & ~(CauseBd | (0x1FU << 2U))); return true;
-            case 14: epc_ = static_cast<std::uint32_t>(reg(rt)); return true;
+            case 14: epc_ = reg(rt); return true;
             default: return unsupported();
             }
         }
