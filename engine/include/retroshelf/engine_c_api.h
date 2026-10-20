@@ -54,6 +54,18 @@ int32_t retroshelf_engine_validate_disc_boot_image(const char *path);
  * stop_reason: 0 = instruction budget reached, 1 = CPU exception or unsupported
  * instruction, 2 = invalid instruction fetch.
  */
+/*
+ * Bounded BIOS reset-vector smoke test. Maps a BIOS image and executes a
+ * limited number of instructions from 0xBFC00000. This is not a full BIOS boot.
+ * stop_reason: 0=budget reached, 1=CPU exception/unsupported instruction,
+ * 2=invalid instruction fetch. Output pointers are optional.
+ */
+int32_t retroshelf_engine_run_bios_reset_vector(const char *path,
+                                                 uint64_t instruction_budget,
+                                                 uint64_t *instructions_executed,
+                                                 uint64_t *final_pc,
+                                                 int32_t *stop_reason);
+
 /* The most recent smoke-test trace. Indices outside the trace return zero (or -1 for fetched). */
 uint64_t retroshelf_engine_trace_count(void);
 uint64_t retroshelf_engine_trace_pc(uint64_t index);
