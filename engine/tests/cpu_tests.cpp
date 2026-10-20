@@ -733,5 +733,32 @@ int main() {
     check(cpu.step(mtc0_cause) && cpu.cop0_cause() == (cause_before_write & ~0x00000300U),
           "MTC0 Cause clears software interrupt-pending bits without changing exception code");
 
+    // Common COP0 setup registers can round-trip through MTC0/MFC0.
+    retroshelf::Cpu cop0_bank_cpu;
+    cop0_bank_cpu.set_reg(8, 0xC1234000U);
+    check(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (10U << 11U)),
+          "MTC0 writes EntryHi");
+    check(cop0_bank_cpu.step((0x10U << 26U) | (9U << 16U) | (10U << 11U)) &&
+              cop0_bank_cpu.reg(9) == 0xFFFFFFFFC1234000ULL,
+          "MFC0 reads EntryHi with sign extension");
+    cop0_bank_cpu.set_reg(8, 0x12345678U);
+    check(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (9U << 11U)),
+          "MTC0 writes the placeholder Count register");
+    check(cop0_bank_cpu.step((0x10U << 26U) | (10U << 16U) | (9U << 11U)) &&
+              cop0_bank_cpu.reg(10) == 0x12345678U,
+          "MFC0 reads Count register storage");
+
+    // Cause fields are not generally writable: only software interrupt bits IP0/IP1 are.
+    retroshelf::Cpu cause_cpu;
+    check(!cause_cpu.step(0x0000000CU), "SYSCALL seeds read-only Cause exception-code bits");
+    const std::uint32_t cause_before_write = cause_cpu.cop0_cause();
+    cause_cpu.set_reg(5, 0xFFFFFFFFFFFFFFFFULL);
+    const std::uint32_t mtc0_cause = (0x10U << 26U) | (0x04U << 21U) | (5U << 16U) | (13U << 11U);
+    check(cause_cpu.step(mtc0_cause) && cause_cpu.cop0_cause() == (cause_before_write | 0x00000300U),
+          "MTC0 Cause changes only writable software interrupt-pending bits");
+    cause_cpu.set_reg(5, 0);
+    check(cause_cpu.step(mtc0_cause) && cause_cpu.cop0_cause() == (cause_before_write & ~0x00000300U),
+          "MTC0 Cause clears software interrupt-pending bits without changing exception code");
+
     return failures == 0 ? 0 : 1;
 }
