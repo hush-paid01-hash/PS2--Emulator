@@ -408,6 +408,8 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
         return true;
     }
+    case 0x2F: return true; // CACHE: no data/instruction cache is modeled in this functional interpreter.
+    case 0x33: return true; // PREF: prefetch hint; no effect without a modeled cache hierarchy.
     case 0x22: case 0x26: case 0x2A: case 0x2E: { // LWL/LWR/SWL/SWR (little-endian word merges)
         const bool store = opcode == 0x2A || opcode == 0x2E;
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
