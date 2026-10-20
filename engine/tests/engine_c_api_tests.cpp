@@ -51,6 +51,36 @@ int main() {
     assert(biosSize == 4ULL * 1024 * 1024 && plausibleBIOS == 1);
     assert(retroshelf_engine_inspect_bios_image((biosDir / "missing.bin").string().c_str(), &biosSize, &plausibleBIOS) == 0);
     assert(biosSize == 0 && plausibleBIOS == 0);
+    // Execute two synthetic MIPS instructions from the mapped BIOS reset vector.
+    const auto resetBios = biosDir / "reset-vector-bios.bin";
+    {
+        std::ofstream out(resetBios, std::ios::binary);
+        const std::uint32_t words[] = {
+            (0x09U << 26U) | (8U << 16U) | 7U, // ADDIU t0,zero,7
+            (0x09U << 26U) | (9U << 16U) | 5U  // ADDIU t1,zero,5
+        };
+        for (const std::uint32_t word : words) {
+            out.put(static_cast<char>(word & 0xFFU));
+            out.put(static_cast<char>((word >> 8U) & 0xFFU));
+            out.put(static_cast<char>((word >> 16U) & 0xFFU));
+            out.put(static_cast<char>((word >> 24U) & 0xFFU));
+        }
+    }
+    uint64_t biosInstructions = 99;
+    uint64_t biosPC = 99;
+    int32_t biosReason = 99;
+    assert(retroshelf_engine_run_bios_reset_vector(
+        resetBios.string().c_str(), 2, &biosInstructions, &biosPC, &biosReason) == 1);
+    assert(biosInstructions == 2);
+    assert(biosPC == 0xBFC00008ULL);
+    assert(biosReason == 0);
+    biosInstructions = 99;
+    biosPC = 99;
+    biosReason = 99;
+    assert(retroshelf_engine_run_bios_reset_vector(
+        nullptr, 10, &biosInstructions, &biosPC, &biosReason) == 0);
+    assert(biosInstructions == 0 && biosPC == 0 && biosReason == -1);
+
     std::filesystem::remove_all(biosDir);
 
     // Preflight must fail safely for missing, empty, or null paths.

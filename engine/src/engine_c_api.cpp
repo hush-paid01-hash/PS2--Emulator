@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <limits>
 #include <string>
 #include <vector>
@@ -141,6 +142,48 @@ extern "C" int32_t retroshelf_engine_validate_disc_boot_image(const char *path) 
     std::string executable_path;
     retroshelf::Elf32MipsImage image;
     return retroshelf::load_ps2_boot_image(disc, executable_path, image, &error) ? 1 : 0;
+}
+
+extern "C" int32_t retroshelf_engine_run_bios_reset_vector(
+    const char *path, uint64_t instruction_budget,
+    uint64_t *instructions_executed, uint64_t *final_pc, int32_t *stop_reason) {
+    if (instructions_executed) *instructions_executed = 0;
+    if (final_pc) *final_pc = 0;
+    if (stop_reason) *stop_reason = -1;
+    if (path == nullptr || path[0] == 0) return 0;
+
+    std::ifstream input(std::filesystem::path(path), std::ios::binary);
+    if (!input) return 0;
+    input.seekg(0, std::ios::end);
+    const std::streamoff length = input.tellg();
+    if (length <= 0 || static_cast<std::uint64_t>(length) >
+                            retroshelf::Ps2EeMemoryMap::BiosRomWindowSize)
+        return 0;
+    input.seekg(0, std::ios::beg);
+    std::vector<std::uint8_t> image(static_cast<std::size_t>(length));
+    if (!input.read(reinterpret_cast<char *>(image.data()), length)) return 0;
+
+    retroshelf::Ps2EeMemoryMap memory;
+    std::string error;
+    if (!memory.load_bios_image(image, &error)) return 0;
+
+    retroshelf::Cpu cpu;
+    cpu.set_pc(0xBFC00000ULL);
+    const std::uint64_t budget = std::min<std::uint64_t>(instruction_budget, 1000000U);
+    std::uint64_t executed = 0;
+    std::int32_t reason = 0;
+    while (executed < budget) {
+        if (!cpu.step_from_ee_memory(memory, &error)) {
+            reason = (error.find("fetch") != std::string::npos ||
+                      error.find("Fetch") != std::string::npos) ? 2 : 1;
+            break;
+        }
+        ++executed;
+    }
+    if (instructions_executed) *instructions_executed = executed;
+    if (final_pc) *final_pc = cpu.pc();
+    if (stop_reason) *stop_reason = reason;
+    return 1;
 }
 
 extern "C" uint64_t retroshelf_engine_trace_count(void) {
