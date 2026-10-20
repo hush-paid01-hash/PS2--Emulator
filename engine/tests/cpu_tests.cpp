@@ -748,5 +748,11 @@ int main() {
               cop0_bank_cpu.reg(10) == 0x12345678U,
           "MFC0 reads Count register storage");
 
+    // Reset must clear the newly modelled COP0 bank as well as legacy state.
+    cop0_bank_cpu.reset();
+    check(cop0_bank_cpu.step((0x10U << 26U) | (9U << 16U) | (10U << 11U)) &&
+              cop0_bank_cpu.reg(9) == 0,
+          "CPU reset clears COP0 EntryHi storage");
+
     return failures == 0 ? 0 : 1;
 }
