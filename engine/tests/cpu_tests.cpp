@@ -129,6 +129,33 @@ int main() {
     cpu.step(itype(0x01, 1, 1, 4)); cpu.step(nop);
     check(cpu.pc() == 0x108, "BGEZ not taken on negative");
 
+    // Branch-likely instructions annul their delay slot when not taken.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 6); cpu.set_reg(20, 0);
+    check(cpu.step(itype(0x14, 1, 2, 3)) && !cpu.in_delay_slot() && cpu.pc() == 0x108,
+          "BEQL not taken skips its delay slot");
+    check(cpu.step(set1) && cpu.reg(20) == 1 && cpu.pc() == 0x10C,
+          "BEQL annulled slot is skipped and execution resumes at PC+8");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
+    check(cpu.step(itype(0x14, 1, 2, 3)) && cpu.in_delay_slot(), "BEQL taken schedules delay slot");
+    check(cpu.step(set1) && cpu.reg(20) == 1 && cpu.pc() == 0x110,
+          "BEQL taken executes delay slot then branches");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
+    cpu.step(itype(0x15, 1, 2, 2));
+    check(!cpu.in_delay_slot() && cpu.pc() == 0x108, "BNEL not taken annuls delay slot");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 0);
+    cpu.step(itype(0x16, 1, 0, 2));
+    check(cpu.in_delay_slot(), "BLEZL taken schedules delay slot");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 0);
+    cpu.step(itype(0x17, 1, 0, 2));
+    check(!cpu.in_delay_slot() && cpu.pc() == 0x108, "BGTZL not taken annuls delay slot");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, static_cast<std::uint64_t>(-1));
+    cpu.step(itype(0x01, 1, 0x02, 2));
+    check(cpu.in_delay_slot(), "BLTZL taken schedules delay slot");
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, static_cast<std::uint64_t>(-1)); cpu.set_reg(31, 0xBAD);
+    cpu.step(itype(0x01, 1, 0x13, 2));
+    check(!cpu.in_delay_slot() && cpu.pc() == 0x108 && cpu.reg(31) == 0xBAD,
+          "BGEZALL not taken annuls slot and does not write link");
+
     // BGEZAL links even when untaken; BLTZAL taken links to PC+8.
     cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, static_cast<std::uint64_t>(-1));
     cpu.step(itype(0x01, 1, 0x11, 4)); cpu.step(nop);
