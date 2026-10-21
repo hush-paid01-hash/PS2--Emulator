@@ -207,5 +207,17 @@ int main() {
     assert(boot_entry == 0);
     assert(boot_executable.empty());
     assert(boot_memory.main_ram() == before_failed_boot);
+    // Failed disc loading must not look like a completed instruction-budget run.
+    retroshelf::Cpu failed_execution_cpu;
+    failed_execution_cpu.set_pc(0x00123400U);
+    const auto failed_execution = retroshelf::load_and_execute_ps2_disc(
+        unopened, boot_memory, failed_execution_cpu, 10);
+    assert(!failed_execution.image_loaded);
+    assert(!failed_execution.error.empty());
+    assert(failed_execution.execution.reason ==
+           retroshelf::EeExecutionRunner::StopReason::NotStarted);
+    assert(failed_execution.execution.instructions_executed == 0);
+    assert(failed_execution.execution.final_pc == 0x00123400U);
+    assert(failed_execution_cpu.pc() == 0x00123400U);
     std::cout << "PS2 disc-to-ELF integration tests passed\n";
 }
