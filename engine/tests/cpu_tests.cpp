@@ -583,6 +583,30 @@ int main() {
     check(cpu.step(mfc0_badvaddr) && cpu.reg(2) == 0x201,
           "MFC0 reads BadVAddr after an address exception");
 
+    // A nested exception while EXL is already set updates ExcCode but preserves
+    // the original EPC and Cause.BD until the handler returns with ERET.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
+    check(cpu.step(itype(0x04, 1, 2, 3)), "nested-exception test schedules a branch delay slot");
+    check(!cpu.step(bad_lw, &error), "first exception occurs in the branch delay slot");
+    check(cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0U,
+          "first exception records branch EPC and Cause.BD");
+    cpu.set_pc(0x80000200U);
+    check(!cpu.step(0x0000000CU), "SYSCALL triggers a nested exception while EXL is set");
+    check(cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0U,
+          "nested exception preserves the original EPC and Cause.BD");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcSyscall,
+          "nested exception still updates Cause.ExcCode");
+    cpu.set_reg(3, 0x80000300U);
+    const std::uint32_t nested_mtc0_epc =
+        (0x10U << 26U) | (0x04U << 21U) | (3U << 16U) | (14U << 11U);
+    check(cpu.step(nested_mtc0_epc), "nested handler can update EPC before ERET");
+    check(cpu.step((0x10U << 26U) | (0x10U << 21U) | 0x18U),
+          "ERET returns from the nested exception");
+    cpu.set_pc(0x500);
+    check(!cpu.step(0x0000000CU), "a new exception occurs after ERET clears EXL");
+    check(cpu.cop0_epc() == 0x500 && (cpu.cop0_cause() & Cpu::CauseBd) == 0U,
+          "exception after ERET records a fresh EPC and clears stale Cause.BD");
+
     // Minimal COP0 state transfers and ERET allow an exception handler to return.
     cpu.reset();
     cpu.set_pc(0x400);
