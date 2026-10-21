@@ -62,6 +62,62 @@ int main() {
         return (rs << 21U) | (rt << 16U) | (rd << 11U) | funct;
     };
 
+    // EE trap instructions raise ExcCode 13 only when their comparison matches.
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-2LL)); cpu.set_reg(2, 3);
+    error.clear();
+    check(!cpu.step(rtype(1, 2, 0, 0x32), &error) && !error.empty() &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TLT raises a trap when the signed comparison is true");
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-3LL)); cpu.set_reg(2, static_cast<std::uint64_t>(-2LL));
+    check(cpu.step(rtype(1, 2, 0, 0x30)) && cpu.pc() == 4,
+          "TGE continues when its signed comparison is false");
+    cpu.reset(); cpu.set_reg(1, UINT64_MAX); cpu.set_reg(2, 3);
+    check(!cpu.step(rtype(1, 2, 0, 0x31)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TGEU compares full-width operands as unsigned values");
+    cpu.reset(); cpu.set_reg(1, 0x1234); cpu.set_reg(2, 0x1234);
+    check(!cpu.step(rtype(1, 2, 0, 0x34)),
+          "TEQ raises a trap for equal register operands");
+    cpu.reset(); cpu.set_reg(1, 0x1234); cpu.set_reg(2, 0x5678);
+    check(!cpu.step(rtype(1, 2, 0, 0x36)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TNE raises a trap for unequal register operands");
+
+    cpu.reset(); cpu.set_reg(1, 5);
+    check(!cpu.step(itype(0x01, 1, 0x08, 4)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TGEI traps when the signed register is at least the immediate");
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-2LL));
+    check(!cpu.step(itype(0x01, 1, 0x0A, -1)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TLTI compares against a sign-extended immediate");
+    cpu.reset(); cpu.set_reg(1, 3);
+    check(!cpu.step(itype(0x01, 1, 0x0B, -1)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TLTIU compares unsigned against the sign-extended immediate");
+    cpu.reset(); cpu.set_reg(1, UINT64_MAX);
+    check(!cpu.step(itype(0x01, 1, 0x09, -1)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TGEIU treats the sign-extended immediate as an unsigned value");
+    cpu.reset(); cpu.set_reg(1, 7);
+    check(!cpu.step(itype(0x01, 1, 0x0C, 7)),
+          "TEQI traps when the register equals the immediate");
+    cpu.reset(); cpu.set_reg(1, 7);
+    check(!cpu.step(itype(0x01, 1, 0x0E, 8)),
+          "TNEI traps when the register differs from the immediate");
+    cpu.reset(); cpu.set_reg(1, 7);
+    check(cpu.step(itype(0x01, 1, 0x0E, 7)) && cpu.pc() == 4,
+          "TNEI continues when the register equals the immediate");
+
+    // A trap in a branch delay slot records the branch address and Cause.BD.
+    cpu.reset(); cpu.set_pc(0x100);
+    check(cpu.step(itype(0x04, 0, 0, 2)), "trap-delay test schedules a branch delay slot");
+    error.clear();
+    check(!cpu.step(rtype(1, 2, 0, 0x34), &error) &&
+              cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0U &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "register trap in a delay slot preserves EPC and sets Cause.BD");
+
     // Immediate logical operations zero-extend their 16-bit masks.
     cpu.reset(); cpu.set_reg(1, 0x12345678);
     check(cpu.step(itype(0x0C, 1, 2, 0x00FF)) && cpu.reg(2) == 0x78,

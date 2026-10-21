@@ -305,6 +305,17 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             set_reg(rd, cur_pc + 8);
             return branch(true, target);
         }
+        case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x36: { // TGE/TGEU/TLT/TLTU/TEQ/TNE
+            const bool trap = funct == 0x30 ? sreg(rs) >= sreg(rt) :
+                              funct == 0x31 ? reg(rs) >= reg(rt) :
+                              funct == 0x32 ? sreg(rs) < sreg(rt) :
+                              funct == 0x33 ? reg(rs) < reg(rt) :
+                              funct == 0x34 ? reg(rs) == reg(rt) : reg(rs) != reg(rt);
+            if (!trap) return true;
+            if (error) *error = "EE register trap exception";
+            raise_exception(ExcTrap, cur_pc, in_delay);
+            return false;
+        }
         default: break;
         }
         break;
@@ -356,7 +367,21 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
         return unsupported();
     }
-    case 0x01: { // REGIMM branches, including branch-likely variants.
+    case 0x01: { // REGIMM branches and immediate trap instructions.
+        if (rt == 0x08 || rt == 0x09 || rt == 0x0A ||
+            rt == 0x0B || rt == 0x0C || rt == 0x0E) {
+            const auto immediate_unsigned = static_cast<std::uint64_t>(simm);
+            const bool trap = rt == 0x08 ? sreg(rs) >= simm :
+                              rt == 0x09 ? reg(rs) >= immediate_unsigned :
+                              rt == 0x0A ? sreg(rs) < simm :
+                              rt == 0x0B ? reg(rs) < immediate_unsigned :
+                              rt == 0x0C ? reg(rs) == immediate_unsigned :
+                                           reg(rs) != immediate_unsigned;
+            if (!trap) return true;
+            if (error) *error = "EE immediate trap exception";
+            raise_exception(ExcTrap, cur_pc, in_delay);
+            return false;
+        }
         if (rt != 0x00 && rt != 0x01 && rt != 0x02 && rt != 0x03 &&
             rt != 0x10 && rt != 0x11 && rt != 0x12 && rt != 0x13) return unsupported();
         const bool taken = (rt & 1U) ? sreg(rs) >= 0 : sreg(rs) < 0;
