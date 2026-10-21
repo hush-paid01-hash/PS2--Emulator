@@ -12,6 +12,7 @@ constexpr std::uint32_t DirectionBit = 1U;
 constexpr std::uint32_t ModeMask = 3U << 2U;
 constexpr std::uint32_t AspMask = 3U << 4U;
 constexpr std::uint32_t ChainMode = 1U << 2U;
+constexpr std::uint32_t TagTransferEnable = 1U << 6U;
 constexpr std::uint32_t TagInterruptEnable = 1U << 7U;
 
 enum class TagId : std::uint8_t {
@@ -228,14 +229,30 @@ bool EeGifDma::start() {
             break;
         }
 
+        const bool transfer_tag = (registers.chcr & TagTransferEnable) != 0U;
+        const std::size_t tag_bytes = transfer_tag ? QwordSize : 0U;
+        const std::size_t payload_bytes = static_cast<std::size_t>(qwc) * QwordSize;
         if (bytes_transferred > MaxTransferBytes ||
-            static_cast<std::size_t>(qwc) * QwordSize > MaxTransferBytes - bytes_transferred) {
+            tag_bytes > MaxTransferBytes - bytes_transferred ||
+            payload_bytes > MaxTransferBytes - bytes_transferred - tag_bytes) {
             return fail("GIF DMA chain exceeded the transfer limit");
+        }
+        if (transfer_tag) {
+            if (!payload_handler_) {
+                return fail("GIF DMA has no payload handler for transfer tag");
+            }
+            try {
+                payload_handler_(tag);
+            } catch (const std::exception& exception) {
+                return fail("GIF DMA tag handler failed: " + std::string(exception.what()));
+            } catch (...) {
+                return fail("GIF DMA tag handler failed");
+            }
         }
         if (!transfer(payload_address, qwc)) {
             return false;
         }
-        bytes_transferred += static_cast<std::size_t>(qwc) * QwordSize;
+        bytes_transferred += tag_bytes + payload_bytes;
         registers.tadr = next_tag;
 
         if (tag_irq && (registers.chcr & TagInterruptEnable) != 0U) {
