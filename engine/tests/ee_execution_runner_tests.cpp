@@ -5,6 +5,9 @@
 #include <string>
 
 int main() {
+    retroshelf::EeExecutionRunner::Result not_started;
+    assert(not_started.reason == retroshelf::EeExecutionRunner::StopReason::NotStarted);
+
     retroshelf::Ps2EeMemoryMap memory(64U * 1024U);
     retroshelf::Cpu cpu;
     std::string error;
