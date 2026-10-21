@@ -14,6 +14,7 @@ int main() {
     };
     std::string error;
     std::uint64_t value = 0;
+    std::uint64_t low = 0, high = 0;
 
     check(memory.write(0x100, 4, 0x12345678, &error), "write little-endian word to RAM");
     check(memory.read(0x100, 4, value, &error) && value == 0x12345678,
@@ -62,7 +63,6 @@ int main() {
           "writes to BIOS ROM are rejected");
     check(memory.read(0x1FC00000U, 4, value, &error) && value == 0x13121110U,
           "rejected BIOS write leaves ROM contents unchanged");
-    std::uint64_t low = 0, high = 0;
     check(memory.read128(0xBFC00000U, low, high, &error) &&
           low == 0x1716151413121110ULL && high == 0x1F1E1D1C1B1A1918ULL,
           "read aligned 128-bit BIOS data");
