@@ -18,7 +18,8 @@ public:
         NotStarted,
         InstructionLimit,
         CpuExceptionOrUnsupportedInstruction,
-        InvalidInstructionFetch
+        InvalidInstructionFetch,
+        ExecutionError
     };
 
     struct TraceEntry {
