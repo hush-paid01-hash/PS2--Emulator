@@ -510,9 +510,9 @@ int main() {
         dma.registers.chcr = Start | Direction | Chain | (1U << 6U);
         dma.registers.tadr = 0;
         check(dma.start() && payloads.size() == 3 &&
-                  payloads[0].size() == 16 && payloads[0][12] == 0x10 &&
+                  payloads[0].size() == 16 && payloads[0][3] == 0x10 &&
                   all_bytes(payloads[1], 0xA5) && payloads[2].size() == 16 &&
-                  payloads[2][12] == 0x70,
+                  payloads[2][3] == 0x70,
               "TTE forwards CNT and END tags in order with their payload");
         check(dma.state() == retroshelf::EeGifDma::State::Completed &&
                   (dma.registers.chcr & Start) == 0,
