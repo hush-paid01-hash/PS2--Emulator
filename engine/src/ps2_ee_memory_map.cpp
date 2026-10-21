@@ -3,6 +3,14 @@
 #include <utility>
 
 namespace retroshelf {
+namespace {
+bool is_bios_window_address(std::uint32_t address) {
+    const std::uint32_t physical = address >= Ps2EeMemoryMap::Kseg0Base && address < 0xC0000000U
+        ? address & Ps2EeMemoryMap::SegmentMask : address;
+    return physical >= Ps2EeMemoryMap::BiosRomBase &&
+           physical < Ps2EeMemoryMap::BiosRomBase + Ps2EeMemoryMap::BiosRomWindowSize;
+}
+} // namespace
 
 Ps2EeMemoryMap::Ps2EeMemoryMap() : ram_(MainRamSize, 0) {}
 Ps2EeMemoryMap::Ps2EeMemoryMap(std::size_t main_ram_size) : ram_(main_ram_size, 0) {}
@@ -92,7 +100,8 @@ bool Ps2EeMemoryMap::read(std::uint32_t address, std::size_t width,
         return false;
     }
     std::size_t offset = 0;
-    if (resolve_bios_rom(address, width, offset, nullptr)) {
+    if (is_bios_window_address(address)) {
+        if (!resolve_bios_rom(address, width, offset, error)) return false;
         value = 0;
         for (std::size_t i = 0; i < width; ++i)
             value |= static_cast<std::uint64_t>(bios_rom_[offset + i]) << (8U * i);
@@ -146,7 +155,8 @@ bool Ps2EeMemoryMap::read128(std::uint32_t address, std::uint64_t& low,
         return false;
     }
     std::size_t offset = 0;
-    if (resolve_bios_rom(address, 16, offset, nullptr)) {
+    if (is_bios_window_address(address)) {
+        if (!resolve_bios_rom(address, 16, offset, error)) return false;
         low = 0;
         high = 0;
         for (std::size_t i = 0; i < 8; ++i) {
