@@ -36,6 +36,8 @@ int main() {
 
     const auto zero = runner.run(0);
     assert(zero.instructions_executed == 0);
+    assert(zero.reason == retroshelf::EeExecutionRunner::StopReason::NoInstructionsRequested);
+    assert(!zero.message.empty());
     assert(zero.final_pc == cpu.pc());
     assert(zero.trace.empty());
 
