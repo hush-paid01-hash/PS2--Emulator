@@ -33,7 +33,7 @@ EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget)
                 ? StopReason::InvalidInstructionFetch
                 : ((cpu_.pc() == Cpu::GeneralExceptionVector)
                     ? StopReason::CpuExceptionOrUnsupportedInstruction
-                    : StopReason::InvalidInstructionFetch);
+                    : StopReason::ExecutionError);
             return result;
         }
     }
