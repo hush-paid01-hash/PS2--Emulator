@@ -16,6 +16,7 @@ class EeExecutionRunner {
 public:
     enum class StopReason {
         InstructionLimit,
+        NoInstructionsRequested,
         CpuExceptionOrUnsupportedInstruction,
         InvalidInstructionFetch
     };
