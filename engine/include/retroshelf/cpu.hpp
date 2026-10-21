@@ -42,6 +42,7 @@ public:
     static constexpr std::uint32_t ExcAddressErrorStore = 5;
     static constexpr std::uint32_t ExcReservedInstruction = 10;
     static constexpr std::uint32_t ExcOverflow = 12;
+    static constexpr std::uint32_t ExcTrap = 13;
     // Simplified: always 0x80000180 (no BEV/TLB vector selection).
     static constexpr std::uint64_t GeneralExceptionVector = 0x80000180ULL;
 
