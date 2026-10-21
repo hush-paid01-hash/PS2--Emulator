@@ -499,5 +499,25 @@ int main() {
               "address-wrap rejection raises exactly one DMA error interrupt");
     }
 
+    {
+        // TTE forwards each 16-byte DMA tag to the GIF path before its payload.
+        std::vector<std::uint8_t> ram(128);
+        fill(ram, 16, 0xA5);
+        write_tag(ram, 0, 1, 1);
+        write_tag(ram, 32, 0, 7);
+        std::vector<std::vector<std::uint8_t>> payloads;
+        retroshelf::EeGifDma dma(ram, [&](const auto& payload) { payloads.push_back(payload); });
+        dma.registers.chcr = Start | Direction | Chain | (1U << 6U);
+        dma.registers.tadr = 0;
+        check(dma.start() && payloads.size() == 3 &&
+                  payloads[0].size() == 16 && payloads[0][12] == 0x10 &&
+                  all_bytes(payloads[1], 0xA5) && payloads[2].size() == 16 &&
+                  payloads[2][12] == 0x70,
+              "TTE forwards CNT and END tags in order with their payload");
+        check(dma.state() == retroshelf::EeGifDma::State::Completed &&
+                  (dma.registers.chcr & Start) == 0,
+              "TTE tag forwarding still completes the chain");
+    }
+
     return failures == 0 ? 0 : 1;
 }
