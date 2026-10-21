@@ -15,6 +15,7 @@ namespace retroshelf {
 class EeExecutionRunner {
 public:
     enum class StopReason {
+        NotStarted,
         InstructionLimit,
         CpuExceptionOrUnsupportedInstruction,
         InvalidInstructionFetch
@@ -30,7 +31,7 @@ public:
 
     struct Result {
         std::size_t instructions_executed{0};
-        StopReason reason{StopReason::InstructionLimit};
+        StopReason reason{StopReason::NotStarted};
         std::uint64_t final_pc{0};
         std::string message;
         // First TraceCapacity attempted instructions in this run. Keeping the
