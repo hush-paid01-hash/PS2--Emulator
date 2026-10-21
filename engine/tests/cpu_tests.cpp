@@ -68,7 +68,7 @@ int main() {
     check(!cpu.step(rtype(1, 2, 0, 0x32), &error) && !error.empty() &&
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
           "TLT raises a trap when the signed comparison is true");
-    cpu.reset(); cpu.set_reg(1, 3); cpu.set_reg(2, static_cast<std::uint64_t>(-2LL));
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-3LL)); cpu.set_reg(2, static_cast<std::uint64_t>(-2LL));
     check(cpu.step(rtype(1, 2, 0, 0x30)) && cpu.pc() == 4,
           "TGE continues when its signed comparison is false");
     cpu.reset(); cpu.set_reg(1, UINT64_MAX); cpu.set_reg(2, 3);
@@ -83,6 +83,10 @@ int main() {
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
           "TNE raises a trap for unequal register operands");
 
+    cpu.reset(); cpu.set_reg(1, 5);
+    check(!cpu.step(itype(0x01, 1, 0x08, 4)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TGEI traps when the signed register is at least the immediate");
     cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-2LL));
     check(!cpu.step(itype(0x01, 1, 0x0A, -1)) &&
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
