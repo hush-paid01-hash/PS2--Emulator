@@ -117,8 +117,7 @@ int main() {
     cpu.step(itype(0x05, 1, 0, -2)); cpu.step(nop);
     check(cpu.pc() == 0x104 - 8, "BNE taken with negative offset");
 
-    // BNE untaken.
-    cpu.reset(); cpu.set_pc(0x100);
+    // BNE untaken.    cpu.reset(); cpu.set_pc(0x100);
     cpu.step(itype(0x05, 0, 0, 5)); cpu.step(nop);
     check(cpu.pc() == 0x108, "BNE not taken falls through");
 
@@ -237,8 +236,7 @@ int main() {
     cpu.set_reg(2, 0x80000000U);
     check(cpu.step(shift(0, 2, 4, 1, 0x02)) && cpu.reg(4) == 0x40000000ULL,
           "SRL shifts logically and sign-extends 32-bit result");
-    check(cpu.step(shift(0, 2, 5, 1, 0x03)) && cpu.reg(5) == 0xFFFFFFFFC0000000ULL,
-          "SRA preserves sign while shifting right");
+    check(cpu.step(shift(0, 2, 5, 1, 0x03)) && cpu.reg(5) == 0xFFFFFFFFC0000000ULL,          "SRA preserves sign while shifting right");
     cpu.set_reg(1, 3); cpu.set_reg(2, 0x10);
     check(cpu.step(shift(1, 2, 6, 0, 0x04)) && cpu.reg(6) == 0x80,
           "SLLV uses low five bits of rs as shift amount");
@@ -357,8 +355,7 @@ int main() {
           "DDIVU defines divide-by-zero HI/LO values without losing dividend bits");
     cpu.reset(); cpu.set_reg(1, 0xFEDCBA9876543210ULL); cpu.set_reg(2, 0x100000001ULL);
     check(cpu.step(rtype(1, 2, 0, 0x1F)) &&
-          cpu.lo() == 0xFEDCBA97ULL && cpu.hi() == 0x77777779ULL,
-          "DDIVU divides and returns remainder using full 64-bit operands");
+          cpu.lo() == 0xFEDCBA97ULL && cpu.hi() == 0x77777779ULL,          "DDIVU divides and returns remainder using full 64-bit operands");
 
     // HI/LO transfer instructions preserve the full 64-bit EE register values.
     cpu.reset();
@@ -477,8 +474,7 @@ int main() {
     check(cpu.step(rtype(1, 2, 0, 0x1E)) && cpu.lo() == 1 && cpu.hi() == static_cast<std::uint64_t>(-123LL),
           "DDIV handles division by zero without invoking host division");
 
-    // J/JAL take the high address region from PC+4, including the 256 MiB boundary.
-    cpu.reset(); cpu.set_pc(0x0FFFFFFCULL);
+    // J/JAL take the high address region from PC+4, including the 256 MiB boundary.    cpu.reset(); cpu.set_pc(0x0FFFFFFCULL);
     check(cpu.step((0x02U << 26U) | 0x00000003U), "J at a 256 MiB boundary schedules its delay slot");
     check(cpu.step(nop) && cpu.pc() == 0x1000000CULL,
           "J uses the upper address bits of PC+4 across the 256 MiB boundary");
@@ -583,6 +579,30 @@ int main() {
     check(cpu.step(mfc0_badvaddr) && cpu.reg(2) == 0x201,
           "MFC0 reads BadVAddr after an address exception");
 
+    // A nested exception while EXL is already set updates ExcCode but preserves
+    // the original EPC and Cause.BD until the handler returns with ERET.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
+    check(cpu.step(itype(0x04, 1, 2, 3)), "nested-exception test schedules a branch delay slot");
+    check(!cpu.step(bad_lw, &error), "first exception occurs in the branch delay slot");
+    check(cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0U,
+          "first exception records branch EPC and Cause.BD");
+    cpu.set_pc(0x80000200U);
+    check(!cpu.step(0x0000000CU), "SYSCALL triggers a nested exception while EXL is set");
+    check(cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0U,
+          "nested exception preserves the original EPC and Cause.BD");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcSyscall,
+          "nested exception still updates Cause.ExcCode");
+    cpu.set_reg(3, 0x80000300U);
+    const std::uint32_t nested_mtc0_epc =
+        (0x10U << 26U) | (0x04U << 21U) | (3U << 16U) | (14U << 11U);
+    check(cpu.step(nested_mtc0_epc), "nested handler can update EPC before ERET");
+    check(cpu.step((0x10U << 26U) | (0x10U << 21U) | 0x18U),
+          "ERET returns from the nested exception");
+    cpu.set_pc(0x500);
+    check(!cpu.step(0x0000000CU), "a new exception occurs after ERET clears EXL");
+    check(cpu.cop0_epc() == 0x500 && (cpu.cop0_cause() & Cpu::CauseBd) == 0U,
+          "exception after ERET records a fresh EPC and clears stale Cause.BD");
+
     // Minimal COP0 state transfers and ERET allow an exception handler to return.
     cpu.reset();
     cpu.set_pc(0x400);
@@ -597,8 +617,7 @@ int main() {
           "MTC0 writes Status");
     check(cpu.step(mfc0_status) && cpu.reg(2) == Cpu::StatusExl,
           "MFC0 reads Status");
-    check(cpu.step(eret), "ERET executes");
-    check(cpu.pc() == 0x80000200U && cpu.next_pc() == 0x80000204U &&
+    check(cpu.step(eret), "ERET executes");    check(cpu.pc() == 0x80000200U && cpu.next_pc() == 0x80000204U &&
               (cpu.cop0_status() & Cpu::StatusExl) == 0U && !cpu.in_delay_slot(),
           "ERET restores EPC and clears EXL");
 
@@ -717,8 +736,7 @@ int main() {
     error.clear();
     check(!run_ee_instruction(itype(0x1F, 1, 2, 8)) && !error.empty(),
           "misaligned SQ raises an address exception");
-    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorStore,
-          "misaligned SQ records AdES");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorStore,          "misaligned SQ records AdES");
 
     // Cause is mostly read-only: MTC0 may change only software interrupt-pending bits IP0/IP1.
     cpu.reset();
