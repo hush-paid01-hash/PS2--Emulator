@@ -17,6 +17,7 @@ public:
     enum class StopReason {
         NotStarted,
         InstructionLimit,
+        NoInstructionsRequested,
         CpuExceptionOrUnsupportedInstruction,
         InvalidInstructionFetch,
         ExecutionError
