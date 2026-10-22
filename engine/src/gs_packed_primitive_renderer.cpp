@@ -19,7 +19,6 @@ std::int32_t decode_xyz_coordinate(std::uint16_t raw) {
     return static_cast<std::int32_t>(raw >> 4U);
 }
 }
-}
 
 bool GsPackedPrimitiveRenderer::consume(
     const std::vector<GsRegisterDecoder::Write>& writes, GsFramebuffer& target) {
