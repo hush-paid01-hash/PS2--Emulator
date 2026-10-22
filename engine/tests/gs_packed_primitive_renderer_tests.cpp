@@ -70,6 +70,21 @@ int main() {
     assert(incomplete.r == 0 && incomplete.g == 0 &&
            incomplete.b == 0 && incomplete.a == 0);
 
+    renderer.reset();
+    framebuffer.clear();
+    // A line-list primitive draws two XYZ2 endpoints in the current colour.
+    assert(renderer.consume({{0x0, 0x1}, {0x1, 0xFFFF0000ULL},
+                             {0x5, xyz(1U << 4U, 1U << 4U)},
+                             {0x5, xyz(5U << 4U, 5U << 4U)}}, framebuffer));
+    GsFramebuffer::Rgba8 line_pixel{};
+    assert(framebuffer.get_pixel(3, 3, line_pixel));
+    assert(line_pixel.r == 0 && line_pixel.g == 0 &&
+           line_pixel.b == 255 && line_pixel.a == 255);
+    GsFramebuffer::Rgba8 line_off_path{};
+    assert(framebuffer.get_pixel(3, 2, line_off_path));
+    assert(line_off_path.r == 0 && line_off_path.g == 0 &&
+           line_off_path.b == 0 && line_off_path.a == 0);
+
     std::cout << "GS packed primitive renderer tests passed\n";
     return 0;
 }

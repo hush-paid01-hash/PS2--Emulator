@@ -23,6 +23,7 @@ private:
     GsSoftwareRasterizer rasterizer_;
     std::uint64_t prim_{0};
     GsFramebuffer::Rgba8 color_{};
+    std::vector<GsSoftwareRasterizer::Point> line_vertices_;
     std::vector<GsSoftwareRasterizer::Point> triangle_vertices_;
     std::vector<GsSoftwareRasterizer::Point> sprite_vertices_;
     std::string error_;
