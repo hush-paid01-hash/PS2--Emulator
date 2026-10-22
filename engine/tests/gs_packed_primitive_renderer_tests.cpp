@@ -85,6 +85,23 @@ int main() {
     assert(line_off_path.r == 0 && line_off_path.g == 0 &&
            line_off_path.b == 0 && line_off_path.a == 0);
 
+    renderer.reset();
+    framebuffer.clear();
+    // Signed XYZ2 coordinates allow sprites to begin above/left of the
+    // framebuffer and still render the visible intersection correctly.
+    assert(renderer.consume({{0x0, 0x6}, {0x1, 0xFF0000FFULL},
+                             {0x5, xyz(static_cast<std::uint16_t>(-16),
+                                       static_cast<std::uint16_t>(-16))},
+                             {0x5, xyz(3U << 4U, 3U << 4U)}}, framebuffer));
+    GsFramebuffer::Rgba8 clipped_sprite{};
+    assert(framebuffer.get_pixel(0, 0, clipped_sprite));
+    assert(clipped_sprite.r == 255 && clipped_sprite.g == 0 &&
+           clipped_sprite.b == 0 && clipped_sprite.a == 255);
+    GsFramebuffer::Rgba8 outside_clipped_sprite{};
+    assert(framebuffer.get_pixel(3, 3, outside_clipped_sprite));
+    assert(outside_clipped_sprite.r == 0 && outside_clipped_sprite.g == 0 &&
+           outside_clipped_sprite.b == 0 && outside_clipped_sprite.a == 0);
+
     std::cout << "GS packed primitive renderer tests passed\n";
     return 0;
 }
