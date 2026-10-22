@@ -5,6 +5,19 @@
 #include <vector>
 
 namespace retroshelf {
+namespace {
+// Implement sign-propagating right shift using unsigned operations so the
+// interpreter does not depend on implementation-defined signed shifts.
+std::uint64_t arithmetic_shift_right(std::uint64_t value, unsigned amount) {
+    amount &= 0x3FU;
+    if (amount == 0U) return value;
+    std::uint64_t result = value >> amount;
+    if ((value & (std::uint64_t{1} << 63U)) != 0U)
+        result |= (~std::uint64_t{0}) << (64U - amount);
+    return result;
+}
+} // namespace
+
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
     gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
@@ -286,19 +299,19 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         case 0x2B: set_reg(rd, reg(rs) < reg(rt) ? 1U : 0U); return true; // SLTU
         case 0x00: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt) << ((instruction >> 6U) & 0x1FU)))))); return true; // SLL/NOP
         case 0x02: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU))))); return true; // SRL
-        case 0x03: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt))) >> ((instruction >> 6U) & 0x1FU))); return true; // SRA
+        case 0x03: set_reg(rd, arithmetic_shift_right(static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)))), (instruction >> 6U) & 0x1FU)); return true; // SRA
         case 0x14: set_reg(rd, reg(rt) << (reg(rs) & 0x3FU)); return true; // DSLLV
         case 0x16: set_reg(rd, reg(rt) >> (reg(rs) & 0x3FU)); return true; // DSRLV
-        case 0x17: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> (reg(rs) & 0x3FU))); return true; // DSRAV
+        case 0x17: set_reg(rd, arithmetic_shift_right(reg(rt), static_cast<unsigned>(reg(rs) & 0x3FU))); return true; // DSRAV
         case 0x38: set_reg(rd, reg(rt) << ((instruction >> 6U) & 0x1FU)); return true; // DSLL
         case 0x3A: set_reg(rd, reg(rt) >> ((instruction >> 6U) & 0x1FU)); return true; // DSRL
-        case 0x3B: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU))); return true; // DSRA
+        case 0x3B: set_reg(rd, arithmetic_shift_right(reg(rt), (instruction >> 6U) & 0x1FU)); return true; // DSRA
         case 0x3C: set_reg(rd, reg(rt) << (((instruction >> 6U) & 0x1FU) + 32U)); return true; // DSLL32
         case 0x3E: set_reg(rd, reg(rt) >> (((instruction >> 6U) & 0x1FU) + 32U)); return true; // DSRL32
-        case 0x3F: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> (((instruction >> 6U) & 0x1FU) + 32U))); return true; // DSRA32
+        case 0x3F: set_reg(rd, arithmetic_shift_right(reg(rt), ((instruction >> 6U) & 0x1FU) + 32U)); return true; // DSRA32
         case 0x04: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt) << (reg(rs) & 0x1FU)))))); return true; // SLLV
         case 0x06: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt)) >> (reg(rs) & 0x1FU))))); return true; // SRLV
-        case 0x07: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt))) >> (reg(rs) & 0x1FU))); return true; // SRAV
+        case 0x07: set_reg(rd, arithmetic_shift_right(static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)))), static_cast<unsigned>(reg(rs) & 0x1FU))); return true; // SRAV
         case 0x08: return branch(true, reg(rs)); // JR
         case 0x09: { // JALR
             const auto target = reg(rs); // read before writing rd (rd may equal rs)
