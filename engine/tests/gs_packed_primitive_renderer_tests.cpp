@@ -87,20 +87,16 @@ int main() {
 
     renderer.reset();
     framebuffer.clear();
-    // Signed XYZ2 coordinates allow sprites to begin above/left of the
-    // framebuffer and still render the visible intersection correctly.
+    // High-bit XYZ2 coordinates remain unsigned positions. A sprite from
+    // (0,0) to (4095,4095) covers this small target; interpreting 0xFFF0 as
+    // -1 would incorrectly collapse the visible region to its top-left pixel.
     assert(renderer.consume({{0x0, 0x6}, {0x1, 0xFF0000FFULL},
-                             {0x5, xyz(static_cast<std::uint16_t>(-16),
-                                       static_cast<std::uint16_t>(-16))},
-                             {0x5, xyz(3U << 4U, 3U << 4U)}}, framebuffer));
-    GsFramebuffer::Rgba8 clipped_sprite{};
-    assert(framebuffer.get_pixel(0, 0, clipped_sprite));
-    assert(clipped_sprite.r == 255 && clipped_sprite.g == 0 &&
-           clipped_sprite.b == 0 && clipped_sprite.a == 255);
-    GsFramebuffer::Rgba8 outside_clipped_sprite{};
-    assert(framebuffer.get_pixel(3, 3, outside_clipped_sprite));
-    assert(outside_clipped_sprite.r == 0 && outside_clipped_sprite.g == 0 &&
-           outside_clipped_sprite.b == 0 && outside_clipped_sprite.a == 0);
+                             {0x5, xyz(0U, 0U)},
+                             {0x5, xyz(0xFFF0U, 0xFFF0U)}}, framebuffer));
+    GsFramebuffer::Rgba8 unsigned_coordinate_pixel{};
+    assert(framebuffer.get_pixel(3, 3, unsigned_coordinate_pixel));
+    assert(unsigned_coordinate_pixel.r == 255 && unsigned_coordinate_pixel.g == 0 &&
+           unsigned_coordinate_pixel.b == 0 && unsigned_coordinate_pixel.a == 255);
 
     std::cout << "GS packed primitive renderer tests passed\n";
     return 0;
