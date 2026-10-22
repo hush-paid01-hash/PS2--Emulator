@@ -8,6 +8,7 @@ constexpr std::uint8_t PrimRegister = 0x0;
 constexpr std::uint8_t RgbaqRegister = 0x1;
 constexpr std::uint8_t Xyz2Register = 0x5;
 constexpr std::uint64_t PrimitiveMask = 0x7U;
+constexpr std::uint64_t LinePrimitive = 0x1U;
 constexpr std::uint64_t TrianglePrimitive = 0x3U;
 constexpr std::uint64_t SpritePrimitive = 0x6U;
 constexpr std::int32_t MaxCoordinate = 1000000;
@@ -20,6 +21,8 @@ bool GsPackedPrimitiveRenderer::consume(
         switch (write.address) {
         case PrimRegister:
             prim_ = write.value;
+            if ((prim_ & PrimitiveMask) != LinePrimitive)
+                line_vertices_.clear();
             if ((prim_ & PrimitiveMask) != TrianglePrimitive)
                 triangle_vertices_.clear();
             if ((prim_ & PrimitiveMask) != SpritePrimitive)
@@ -32,7 +35,8 @@ bool GsPackedPrimitiveRenderer::consume(
             color_.a = static_cast<std::uint8_t>((write.value >> 24U) & 0xFFU);
             break;
         case Xyz2Register:
-            if ((prim_ & PrimitiveMask) != TrianglePrimitive &&
+            if ((prim_ & PrimitiveMask) != LinePrimitive &&
+                (prim_ & PrimitiveMask) != TrianglePrimitive &&
                 (prim_ & PrimitiveMask) != SpritePrimitive)
                 break;
             {
@@ -45,7 +49,17 @@ bool GsPackedPrimitiveRenderer::consume(
                     error_ = "GS XYZ2 coordinate exceeds supported range";
                     return false;
                 }
-                if ((prim_ & PrimitiveMask) == SpritePrimitive) {
+                if ((prim_ & PrimitiveMask) == LinePrimitive) {
+                    line_vertices_.push_back({x, y});
+                    if (line_vertices_.size() == 2U) {
+                        if (!rasterizer_.draw_line(target, line_vertices_[0],
+                                                   line_vertices_[1], color_)) {
+                            error_ = "GS line could not be drawn to framebuffer";
+                            return false;
+                        }
+                        line_vertices_.clear();
+                    }
+                } else if ((prim_ & PrimitiveMask) == SpritePrimitive) {
                     sprite_vertices_.push_back({x, y});
                     if (sprite_vertices_.size() == 2U) {
                         const auto left = std::max<std::int32_t>(
@@ -92,6 +106,7 @@ const std::string& GsPackedPrimitiveRenderer::error() const { return error_; }
 void GsPackedPrimitiveRenderer::reset() {
     prim_ = 0;
     color_ = {};
+    line_vertices_.clear();
     triangle_vertices_.clear();
     sprite_vertices_.clear();
     error_.clear();
