@@ -12,6 +12,15 @@ constexpr std::uint64_t LinePrimitive = 0x1U;
 constexpr std::uint64_t TrianglePrimitive = 0x3U;
 constexpr std::uint64_t SpritePrimitive = 0x6U;
 constexpr std::int32_t MaxCoordinate = 1000000;
+
+// XYZ fields are signed 16-bit 12.4 fixed-point screen coordinates. Convert
+// to integer pixels using floor division so negative fractional coordinates
+// remain outside the origin rather than being truncated toward zero.
+std::int32_t decode_xyz_coordinate(std::uint16_t raw) {
+    const auto signed_raw = static_cast<std::int32_t>(static_cast<std::int16_t>(raw));
+    if (signed_raw >= 0) return signed_raw / 16;
+    return -((-signed_raw + 15) / 16);
+}
 }
 
 bool GsPackedPrimitiveRenderer::consume(
@@ -40,11 +49,11 @@ bool GsPackedPrimitiveRenderer::consume(
                 (prim_ & PrimitiveMask) != SpritePrimitive)
                 break;
             {
-                // GS XYZ2 coordinates are unsigned 12.4 fixed-point values.
-                const auto raw_x = static_cast<std::uint32_t>(write.value & 0xFFFFU);
-                const auto raw_y = static_cast<std::uint32_t>((write.value >> 16U) & 0xFFFFU);
-                const auto x = static_cast<std::int32_t>(raw_x >> 4U);
-                const auto y = static_cast<std::int32_t>(raw_y >> 4U);
+                // GS XYZ2 coordinates are signed 16-bit 12.4 fixed-point values.
+                const auto raw_x = static_cast<std::uint16_t>(write.value & 0xFFFFU);
+                const auto raw_y = static_cast<std::uint16_t>((write.value >> 16U) & 0xFFFFU);
+                const auto x = decode_xyz_coordinate(raw_x);
+                const auto y = decode_xyz_coordinate(raw_y);
                 if (x > MaxCoordinate || y > MaxCoordinate) {
                     error_ = "GS XYZ2 coordinate exceeds supported range";
                     return false;
