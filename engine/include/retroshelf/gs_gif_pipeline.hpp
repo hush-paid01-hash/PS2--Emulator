@@ -11,12 +11,12 @@
 
 namespace retroshelf {
 
-// Connects complete GIF packets to the current GS PACKED-tag register model.
-// REGLIST and IMAGE payloads remain explicitly unsupported by this first pipeline.
+// Connects complete PACKED/REGLIST GIF packets to the current GS register model.
+// IMAGE and IMAGE2 payloads remain unsupported by the decoder.
 class GsGifPipeline {
 public:
     bool consume(const std::vector<GifPacket>& packets);
-    // Consumes supported PACKED writes and draws supported line, triangle, and sprite primitives.
+    // Consumes decoded writes and draws supported line, triangle, and sprite primitives.
     // Unsupported GS primitive types remain ignored by the bring-up renderer.
     bool consume_and_render(const std::vector<GifPacket>& packets, GsFramebuffer& target);
     const GsRegisterState& registers() const;
