@@ -156,6 +156,29 @@ int main() {
     check(cpu.step(rtype(1, 2, 8, 0x2A)) && cpu.reg(8) == 1, "SLT treats high-bit values as negative");
     check(cpu.step(rtype(1, 2, 9, 0x2B)) && cpu.reg(9) == 0, "SLTU compares register values unsigned");
 
+    // Arithmetic shifts must propagate the sign bit without relying on the
+    // implementation-defined behavior of right-shifting signed integers.
+    cpu.reset(); cpu.set_reg(1, 0x80000000U);
+    check(cpu.step((1U << 16U) | (2U << 11U) | (1U << 6U) | 0x03U) &&
+              cpu.reg(2) == 0xFFFFFFFFC0000000ULL,
+          "SRA sign-extends the 32-bit operand and propagates its sign bit");
+    cpu.reset(); cpu.set_reg(1, 0x80000000U); cpu.set_reg(3, 1);
+    check(cpu.step((3U << 21U) | (1U << 16U) | (4U << 11U) | 0x07U) &&
+              cpu.reg(4) == 0xFFFFFFFFC0000000ULL,
+          "SRAV sign-extends the 32-bit operand for variable arithmetic shift");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | (1U << 6U) | 0x3BU) &&
+              cpu.reg(2) == 0xC000000000000000ULL,
+          "DSRA propagates the 64-bit sign bit");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL); cpu.set_reg(3, 1);
+    check(cpu.step((3U << 21U) | (1U << 16U) | (4U << 11U) | 0x17U) &&
+              cpu.reg(4) == 0xC000000000000000ULL,
+          "DSRAV propagates the sign bit for variable 64-bit shifts");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | 0x3FU) &&
+              cpu.reg(2) == 0xFFFFFFFF80000000ULL,
+          "DSRA32 propagates the sign bit for shifts of 32 through 63");
+
     // BEQ taken: delay slot runs, then target.
     cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
     check(cpu.step(itype(0x04, 1, 2, 3)), "BEQ taken executes");
