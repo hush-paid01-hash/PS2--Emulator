@@ -17,7 +17,8 @@ constexpr std::int32_t MaxCoordinate = 1000000;
 // to integer pixels using floor division so negative fractional coordinates
 // remain outside the origin rather than being truncated toward zero.
 std::int32_t decode_xyz_coordinate(std::uint16_t raw) {
-    const auto signed_raw = static_cast<std::int32_t>(static_cast<std::int16_t>(raw));
+    const auto unsigned_raw = static_cast<std::int32_t>(raw);
+    const auto signed_raw = (raw & 0x8000U) != 0U ? unsigned_raw - 0x10000 : unsigned_raw;
     if (signed_raw >= 0) return signed_raw / 16;
     return -((-signed_raw + 15) / 16);
 }
