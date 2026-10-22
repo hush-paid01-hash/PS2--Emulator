@@ -1,5 +1,7 @@
 #include "retroshelf/gs_packed_primitive_renderer.hpp"
 
+#include <algorithm>
+
 namespace retroshelf {
 namespace {
 constexpr std::uint8_t PrimRegister = 0x0;
@@ -7,6 +9,7 @@ constexpr std::uint8_t RgbaqRegister = 0x1;
 constexpr std::uint8_t Xyz2Register = 0x5;
 constexpr std::uint64_t PrimitiveMask = 0x7U;
 constexpr std::uint64_t TrianglePrimitive = 0x3U;
+constexpr std::uint64_t SpritePrimitive = 0x6U;
 constexpr std::int32_t MaxCoordinate = 1000000;
 }
 
@@ -19,6 +22,8 @@ bool GsPackedPrimitiveRenderer::consume(
             prim_ = write.value;
             if ((prim_ & PrimitiveMask) != TrianglePrimitive)
                 triangle_vertices_.clear();
+            if ((prim_ & PrimitiveMask) != SpritePrimitive)
+                sprite_vertices_.clear();
             break;
         case RgbaqRegister:
             color_.r = static_cast<std::uint8_t>(write.value & 0xFFU);
@@ -27,7 +32,8 @@ bool GsPackedPrimitiveRenderer::consume(
             color_.a = static_cast<std::uint8_t>((write.value >> 24U) & 0xFFU);
             break;
         case Xyz2Register:
-            if ((prim_ & PrimitiveMask) != TrianglePrimitive)
+            if ((prim_ & PrimitiveMask) != TrianglePrimitive &&
+                (prim_ & PrimitiveMask) != SpritePrimitive)
                 break;
             {
                 // GS XYZ2 coordinates are unsigned 12.4 fixed-point values.
@@ -39,15 +45,38 @@ bool GsPackedPrimitiveRenderer::consume(
                     error_ = "GS XYZ2 coordinate exceeds supported range";
                     return false;
                 }
-                triangle_vertices_.push_back({x, y});
-                if (triangle_vertices_.size() == 3U) {
-                    if (!rasterizer_.draw_triangle(target, triangle_vertices_[0],
-                                                   triangle_vertices_[1],
-                                                   triangle_vertices_[2], color_)) {
-                        error_ = "GS triangle could not be drawn to framebuffer";
-                        return false;
+                if ((prim_ & PrimitiveMask) == SpritePrimitive) {
+                    sprite_vertices_.push_back({x, y});
+                    if (sprite_vertices_.size() == 2U) {
+                        const auto left = std::max<std::int32_t>(
+                            std::min(sprite_vertices_[0].x, sprite_vertices_[1].x), 0);
+                        const auto top = std::max<std::int32_t>(
+                            std::min(sprite_vertices_[0].y, sprite_vertices_[1].y), 0);
+                        const auto right = std::min<std::int32_t>(
+                            std::max(sprite_vertices_[0].x, sprite_vertices_[1].x),
+                            static_cast<std::int32_t>(target.width()));
+                        const auto bottom = std::min<std::int32_t>(
+                            std::max(sprite_vertices_[0].y, sprite_vertices_[1].y),
+                            static_cast<std::int32_t>(target.height()));
+                        for (auto py = top; py < bottom; ++py) {
+                            for (auto px = left; px < right; ++px) {
+                                target.set_pixel(static_cast<std::size_t>(px),
+                                                 static_cast<std::size_t>(py), color_);
+                            }
+                        }
+                        sprite_vertices_.clear();
                     }
-                    triangle_vertices_.clear();
+                } else {
+                    triangle_vertices_.push_back({x, y});
+                    if (triangle_vertices_.size() == 3U) {
+                        if (!rasterizer_.draw_triangle(target, triangle_vertices_[0],
+                                                       triangle_vertices_[1],
+                                                       triangle_vertices_[2], color_)) {
+                            error_ = "GS triangle could not be drawn to framebuffer";
+                            return false;
+                        }
+                        triangle_vertices_.clear();
+                    }
                 }
             }
             break;
@@ -64,6 +93,7 @@ void GsPackedPrimitiveRenderer::reset() {
     prim_ = 0;
     color_ = {};
     triangle_vertices_.clear();
+    sprite_vertices_.clear();
     error_.clear();
 }
 
