@@ -14,6 +14,7 @@ set(RETROSHELF_ENGINE_SOURCES
     src/gs_packet_processor.cpp
     src/gs_register_decoder.cpp
     src/gs_register_state.cpp
+    src/gs_local_memory.cpp
     src/gs_framebuffer.cpp
     src/gs_software_rasterizer.cpp
     src/gs_packed_primitive_renderer.cpp
@@ -196,3 +197,9 @@ add_executable(ee-gif-gs-runtime-tests tests/ee_gif_gs_runtime_tests.cpp
 target_include_directories(ee-gif-gs-runtime-tests PRIVATE include)
 target_compile_options(ee-gif-gs-runtime-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-gif-gs-runtime-tests COMMAND ee-gif-gs-runtime-tests)
+
+
+add_executable(gs-local-memory-tests tests/gs_local_memory_tests.cpp src/gs_local_memory.cpp)
+target_include_directories(gs-local-memory-tests PRIVATE include)
+target_compile_options(gs-local-memory-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-local-memory-tests COMMAND gs-local-memory-tests)
