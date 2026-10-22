@@ -5,11 +5,13 @@
 
 namespace retroshelf {
 
-// Converts PACKED GIF payloads into ordered GS register writes.
-// This is a decoder foundation, not yet a graphics renderer.
+// Converts PACKED and REGLIST GIF payloads into ordered GS register writes.
+// IMAGE and IMAGE2 payloads are not decoded by this bring-up implementation.
 class GsRegisterDecoder {
 public:
     struct Write { std::uint8_t address; std::uint64_t value; };
+    bool decode_gif(const std::vector<std::uint8_t>& packet);
+    // Backward-compatible entry point; now accepts PACKED and REGLIST tags.
     bool decode_packed(const std::vector<std::uint8_t>& packet);
     const std::vector<Write>& writes() const;
     const std::string& error() const;
