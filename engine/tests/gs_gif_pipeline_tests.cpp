@@ -42,6 +42,32 @@ int main() {
     }
 
     {
+        // PACKED A+D must address actual GS registers rather than register-list slot E.
+        std::vector<std::uint8_t> bytes(32, 0);
+        const std::uint64_t tag = 1ULL | (1ULL << 15U) | (1ULL << 60U);
+        write_u64(bytes, 0, tag);
+        write_u64(bytes, 8, 0xEULL);
+        write_u64(bytes, 16, 0xAABBCCDDEEFF0011ULL);
+        write_u64(bytes, 24, 0x50ULL); // BITBLTBUF address
+        retroshelf::GsGifPipeline pipeline;
+        check(pipeline.consume({retroshelf::GifPacket{bytes, 1}}),
+              "pipeline consumes PACKED A+D register write");
+        std::uint64_t value = 0;
+        check(pipeline.registers().read(0x50U, value) &&
+                  value == 0xAABBCCDDEEFF0011ULL,
+              "A+D value reaches the addressed GS register");
+        check(pipeline.local_memory().bytes().size() ==
+                  retroshelf::GsLocalMemory::SizeBytes,
+              "GIF pipeline owns a 4 MiB GS local-memory store");
+        pipeline.local_memory().write_byte(0x1234U, 0xA5U);
+        check(pipeline.local_memory().read_byte(0x1234U) == 0xA5U,
+              "GS local memory is accessible through the GIF pipeline");
+        pipeline.reset();
+        check(pipeline.local_memory().read_byte(0x1234U) == 0,
+              "pipeline reset clears GS local memory");
+    }
+
+    {
         // REGLIST carries two 64-bit register values in each qword.
         std::vector<std::uint8_t> bytes(32, 0);
         const std::uint64_t tag = 1ULL | (1ULL << 15U) | (1ULL << 58U) |

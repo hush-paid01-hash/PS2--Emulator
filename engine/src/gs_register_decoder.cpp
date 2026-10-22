@@ -6,6 +6,7 @@ namespace retroshelf {
 namespace {
 constexpr std::size_t QwordSize = 16;
 constexpr std::size_t MaxWrites = 4 * 1024 * 1024;
+constexpr std::uint8_t AdRegister = 0xE;
 
 std::uint64_t read_u64(const std::vector<std::uint8_t>& bytes, std::size_t offset) {
     std::uint64_t value = 0;
@@ -59,12 +60,23 @@ bool GsRegisterDecoder::decode_gif(const std::vector<std::uint8_t>& packet) {
 
         for (std::size_t i = 0; i < values; ++i) {
             const std::size_t slot = i % nreg;
-            const auto address = static_cast<std::uint8_t>(
+            const auto register_id = static_cast<std::uint8_t>(
                 (register_list >> (slot * 4U)) & 0xFU);
-            const std::size_t qword_offset = offset + (format == 0U ? i : i / 2U) * QwordSize;
+            const std::size_t qword_offset =
+                offset + (format == 0U ? i : i / 2U) * QwordSize;
             const std::size_t value_offset =
                 qword_offset + (format == 1U && (i & 1U) != 0U ? 8U : 0U);
-            writes_.push_back({address, read_u64(packet, value_offset)});
+            const std::uint64_t value = read_u64(packet, value_offset);
+
+            // PACKED A+D stores the actual GS register address in the high
+            // 64-bit half of the qword and the register value in the low half.
+            // Keep the existing 0..15 shorthand for other GIF register IDs.
+            std::uint8_t address = register_id;
+            if (format == 0U && register_id == AdRegister) {
+                address = static_cast<std::uint8_t>(
+                    read_u64(packet, qword_offset + 8U) & 0xFFU);
+            }
+            writes_.push_back({address, value});
         }
         offset += payload_qwords * QwordSize;
 

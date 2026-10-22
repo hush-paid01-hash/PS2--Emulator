@@ -8,6 +8,7 @@
 #include "retroshelf/gs_packed_primitive_renderer.hpp"
 #include "retroshelf/gs_register_decoder.hpp"
 #include "retroshelf/gs_register_state.hpp"
+#include "retroshelf/gs_local_memory.hpp"
 
 namespace retroshelf {
 
@@ -21,12 +22,15 @@ public:
     bool consume_and_render(const std::vector<GifPacket>& packets, GsFramebuffer& target);
     const GsRegisterState& registers() const;
     GsRegisterState& registers();
+    const GsLocalMemory& local_memory() const;
+    GsLocalMemory& local_memory();
     const std::string& error() const;
     void reset();
 
 private:
     GsRegisterDecoder decoder_;
     GsRegisterState registers_;
+    GsLocalMemory local_memory_;
     GsPackedPrimitiveRenderer renderer_;
     std::string error_;
 };

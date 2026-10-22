@@ -29,6 +29,16 @@ int main() {
         check(decoder.writes()[2].value == 0x9ABCU, "preserves ordered packed payload values");
     }
 
+    std::vector<std::uint8_t> ad_packet;
+    // PACKED A+D uses GIF register ID 0xE, value in the low half,
+    // and the actual GS register address in the high half.
+    append_qword(ad_packet, 1U | (1ULL << 15U) | (1ULL << 60U), 0xEULL);
+    append_qword(ad_packet, 0x123456789ABCDEF0ULL, 0x50ULL); // BITBLTBUF
+    check(decoder.decode_gif(ad_packet), "decodes PACKED A+D GIF tag");
+    check(decoder.writes().size() == 1 && decoder.writes()[0].address == 0x50U &&
+              decoder.writes()[0].value == 0x123456789ABCDEF0ULL,
+          "A+D emits actual GS register address and low-half value");
+
     std::vector<std::uint8_t> reglist;
     // NLOOP=1, EOP=1, REGLIST, NREG=3, register list {0,1,2}.
     // Three 64-bit values occupy two qwords; the last high half is padding.
