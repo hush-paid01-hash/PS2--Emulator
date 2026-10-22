@@ -42,12 +42,35 @@ int main() {
     }
 
     {
+        // REGLIST carries two 64-bit register values in each qword.
+        std::vector<std::uint8_t> bytes(32, 0);
+        const std::uint64_t tag = 1ULL | (1ULL << 15U) | (1ULL << 58U) |
+                                  (2ULL << 60U);
+        write_u64(bytes, 0, tag);
+        write_u64(bytes, 8, 0x21ULL); // Register list {1,2}.
+        write_u64(bytes, 16, 0xCAFEULL);
+        write_u64(bytes, 24, 0xBABEULL);
+
+        retroshelf::GsGifPipeline pipeline;
+        check(pipeline.consume({retroshelf::GifPacket{bytes, 1}}),
+              "REGLIST GIF packet is decoded and consumed");
+        std::uint64_t first = 0;
+        std::uint64_t second = 0;
+        check(pipeline.registers().read(1, first) && first == 0xCAFEULL,
+              "first REGLIST value reaches the correct GS register");
+        check(pipeline.registers().read(2, second) && second == 0xBABEULL,
+              "second REGLIST value reaches the correct GS register");
+        check(pipeline.registers().write_count() == 2,
+              "REGLIST emits two ordered register writes");
+    }
+
+    {
         std::vector<std::uint8_t> bytes(16, 0);
         const std::uint64_t image_tag = 1ULL | (1ULL << 15U) | (2ULL << 58U);
         write_u64(bytes, 0, image_tag);
         retroshelf::GsGifPipeline pipeline;
         check(!pipeline.consume({retroshelf::GifPacket{bytes, 1}}) &&
-                  pipeline.error().find("PACKED GIF tags only") != std::string::npos,
+                  pipeline.error().find("PACKED and REGLIST GIF tags only") != std::string::npos,
               "unsupported IMAGE tags fail clearly instead of pretending to render");
     }
 
@@ -66,7 +89,6 @@ int main() {
                   pipeline.registers().write_count() == 0 && pipeline.error().empty(),
               "reset clears register state and pipeline error");
     }
-
 
     {
         // Five one-register PACKED tags exercise the complete path from GIF
@@ -99,7 +121,6 @@ int main() {
                   pixel.g == 0 && pixel.b == 0 && pixel.a == 255,
               "pipeline output contains the expected opaque red triangle pixel");
     }
-
 
     {
         // Verify sprites reach the renderer through real packed GIF decoding.
