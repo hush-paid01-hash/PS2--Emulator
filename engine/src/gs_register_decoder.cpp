@@ -21,6 +21,10 @@ bool GsRegisterDecoder::fail(const std::string& message) {
 }
 
 bool GsRegisterDecoder::decode_packed(const std::vector<std::uint8_t>& packet) {
+    return decode_gif(packet);
+}
+
+bool GsRegisterDecoder::decode_gif(const std::vector<std::uint8_t>& packet) {
     clear();
     if (packet.size() % QwordSize != 0U)
         return fail("GS packet is not qword-aligned");
@@ -38,24 +42,32 @@ bool GsRegisterDecoder::decode_packed(const std::vector<std::uint8_t>& packet) {
         const std::size_t raw_nreg = static_cast<std::size_t>((tag >> 60U) & 0xFU);
         const std::size_t nreg = raw_nreg == 0U ? 16U : raw_nreg;
 
-        if (format != 0U)
-            return fail("GS register decoder currently supports PACKED GIF tags only");
+        if (format != 0U && format != 1U)
+            return fail("GS register decoder supports PACKED and REGLIST GIF tags only");
         offset += QwordSize;
 
         if (loops != 0U && nreg > std::numeric_limits<std::size_t>::max() / loops)
-            return fail("GIF packed register count overflows");
+            return fail("GIF register count overflows");
         const std::size_t values = loops * nreg;
-        if (values > (packet.size() - offset) / QwordSize)
-            return fail("GIF packed tag payload is truncated");
+        const std::size_t payload_qwords =
+            format == 0U ? values : values / 2U + values % 2U;
+        if (payload_qwords > (packet.size() - offset) / QwordSize)
+            return fail(format == 0U ? "GIF packed tag payload is truncated"
+                                     : "GIF REGLIST tag payload is truncated");
         if (values > MaxWrites - writes_.size())
             return fail("GS register write limit exceeded");
 
         for (std::size_t i = 0; i < values; ++i) {
             const std::size_t slot = i % nreg;
-            const auto address = static_cast<std::uint8_t>((register_list >> (slot * 4U)) & 0xFU);
-            writes_.push_back({address, read_u64(packet, offset)});
-            offset += QwordSize;
+            const auto address = static_cast<std::uint8_t>(
+                (register_list >> (slot * 4U)) & 0xFU);
+            const std::size_t qword_offset = offset + (format == 0U ? i : i / 2U) * QwordSize;
+            const std::size_t value_offset =
+                qword_offset + (format == 1U && (i & 1U) != 0U ? 8U : 0U);
+            writes_.push_back({address, read_u64(packet, value_offset)});
         }
+        offset += payload_qwords * QwordSize;
+
         if (eop && offset != packet.size())
             return fail("GIF EOP occurs before the end of the supplied packet");
     }
