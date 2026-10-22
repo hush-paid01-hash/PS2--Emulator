@@ -16,7 +16,7 @@ namespace retroshelf {
 class GsGifPipeline {
 public:
     bool consume(const std::vector<GifPacket>& packets);
-    // Consumes supported PACKED writes and draws supported triangle lists.
+    // Consumes supported PACKED writes and draws supported line, triangle, and sprite primitives.
     // Unsupported GS primitive types remain ignored by the bring-up renderer.
     bool consume_and_render(const std::vector<GifPacket>& packets, GsFramebuffer& target);
     const GsRegisterState& registers() const;
