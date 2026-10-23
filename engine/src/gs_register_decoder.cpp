@@ -1,6 +1,7 @@
 #include "retroshelf/gs_register_decoder.hpp"
 
 #include <limits>
+#include <utility>
 
 namespace retroshelf {
 namespace {
