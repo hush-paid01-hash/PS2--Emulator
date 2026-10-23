@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 
 namespace retroshelf {
 namespace {
@@ -21,6 +22,31 @@ bool safe_point(GsSoftwareRasterizer::Point p) {
 }
 
 } // namespace
+
+bool GsSoftwareRasterizer::draw_line(GsFramebuffer& target, Point a, Point b,
+                                     GsFramebuffer::Rgba8 color) const {
+    if (target.empty() || !safe_point(a) || !safe_point(b)) return false;
+
+    std::int64_t x = a.x;
+    std::int64_t y = a.y;
+    const std::int64_t dx = std::abs(static_cast<std::int64_t>(b.x) - a.x);
+    const std::int64_t dy = std::abs(static_cast<std::int64_t>(b.y) - a.y);
+    const std::int64_t sx = a.x < b.x ? 1 : -1;
+    const std::int64_t sy = a.y < b.y ? 1 : -1;
+    std::int64_t error = dx - dy;
+
+    for (;;) {
+        if (x >= 0 && y >= 0 && x < static_cast<std::int64_t>(target.width()) &&
+            y < static_cast<std::int64_t>(target.height())) {
+            target.set_pixel(static_cast<std::size_t>(x), static_cast<std::size_t>(y), color);
+        }
+        if (x == b.x && y == b.y) break;
+        const std::int64_t doubled_error = 2 * error;
+        if (doubled_error > -dy) { error -= dy; x += sx; }
+        if (doubled_error < dx) { error += dx; y += sy; }
+    }
+    return true;
+}
 
 bool GsSoftwareRasterizer::draw_triangle(GsFramebuffer& target, Point a, Point b,
                                          Point c, GsFramebuffer::Rgba8 color) const {

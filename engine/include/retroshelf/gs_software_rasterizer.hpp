@@ -15,6 +15,11 @@ public:
         std::int32_t y{0};
     };
 
+    // Draws a flat-colour line, clipped to the target surface. Returns false for
+    // an empty target or coordinates outside the supported safe range.
+    bool draw_line(GsFramebuffer& target, Point a, Point b,
+                   GsFramebuffer::Rgba8 color) const;
+
     // Draws a filled triangle, clipped to the target surface. Returns false for
     // an empty target or coordinates outside the supported safe range.
     bool draw_triangle(GsFramebuffer& target, Point a, Point b, Point c,

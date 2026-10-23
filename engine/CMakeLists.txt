@@ -14,6 +14,7 @@ set(RETROSHELF_ENGINE_SOURCES
     src/gs_packet_processor.cpp
     src/gs_register_decoder.cpp
     src/gs_register_state.cpp
+    src/gs_local_memory.cpp
     src/gs_framebuffer.cpp
     src/gs_software_rasterizer.cpp
     src/gs_packed_primitive_renderer.cpp
@@ -55,7 +56,7 @@ add_test(NAME cpu-tests COMMAND cpu-tests)
 
 add_executable(ee-gif-dma-tests tests/ee_gif_dma_tests.cpp src/system_bus.cpp
     src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_gif_pipeline.cpp
-    src/gs_register_decoder.cpp src/gs_register_state.cpp
+    src/gs_register_decoder.cpp src/gs_register_state.cpp src/gs_local_memory.cpp
     src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp
     src/gs_framebuffer.cpp)
 target_include_directories(ee-gif-dma-tests PRIVATE include)
@@ -86,7 +87,7 @@ target_compile_options(gs-register-state-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-register-state-tests COMMAND gs-register-state-tests)
 
 add_executable(gs-gif-pipeline-tests tests/gs_gif_pipeline_tests.cpp
-    src/gs_gif_pipeline.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp
+    src/gs_gif_pipeline.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp src/gs_local_memory.cpp
     src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp src/gs_framebuffer.cpp)
 target_include_directories(gs-gif-pipeline-tests PRIVATE include)
 target_compile_options(gs-gif-pipeline-tests PRIVATE -Wall -Wextra -Wpedantic)
@@ -192,7 +193,13 @@ add_executable(ee-gif-gs-runtime-tests tests/ee_gif_gs_runtime_tests.cpp
     src/ps2_ee_memory_map.cpp
     src/gs_packet_processor.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp
     src/gs_framebuffer.cpp src/gs_software_rasterizer.cpp
-    src/gs_packed_primitive_renderer.cpp src/gs_gif_pipeline.cpp)
+    src/gs_packed_primitive_renderer.cpp src/gs_gif_pipeline.cpp src/gs_local_memory.cpp)
 target_include_directories(ee-gif-gs-runtime-tests PRIVATE include)
 target_compile_options(ee-gif-gs-runtime-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-gif-gs-runtime-tests COMMAND ee-gif-gs-runtime-tests)
+
+
+add_executable(gs-local-memory-tests tests/gs_local_memory_tests.cpp src/gs_local_memory.cpp)
+target_include_directories(gs-local-memory-tests PRIVATE include)
+target_compile_options(gs-local-memory-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-local-memory-tests COMMAND gs-local-memory-tests)

@@ -5,7 +5,7 @@ namespace retroshelf {
 bool GsGifPipeline::consume(const std::vector<GifPacket>& packets) {
     error_.clear();
     for (const auto& packet : packets) {
-        if (!decoder_.decode_packed(packet.bytes)) {
+        if (!decoder_.decode_gif(packet.bytes)) {
             error_ = decoder_.error();
             return false;
         }
@@ -22,7 +22,7 @@ bool GsGifPipeline::consume(const std::vector<GifPacket>& packets) {
 bool GsGifPipeline::consume_and_render(const std::vector<GifPacket>& packets, GsFramebuffer& target) {
     error_.clear();
     for (const auto& packet : packets) {
-        if (!decoder_.decode_packed(packet.bytes)) {
+        if (!decoder_.decode_gif(packet.bytes)) {
             error_ = decoder_.error();
             return false;
         }
@@ -42,11 +42,14 @@ bool GsGifPipeline::consume_and_render(const std::vector<GifPacket>& packets, Gs
 
 const GsRegisterState& GsGifPipeline::registers() const { return registers_; }
 GsRegisterState& GsGifPipeline::registers() { return registers_; }
+const GsLocalMemory& GsGifPipeline::local_memory() const { return local_memory_; }
+GsLocalMemory& GsGifPipeline::local_memory() { return local_memory_; }
 const std::string& GsGifPipeline::error() const { return error_; }
 
 void GsGifPipeline::reset() {
     decoder_.clear();
     registers_.reset();
+    local_memory_.reset();
     renderer_.reset();
     error_.clear();
 }

@@ -42,6 +42,7 @@ public:
     static constexpr std::uint32_t ExcAddressErrorStore = 5;
     static constexpr std::uint32_t ExcReservedInstruction = 10;
     static constexpr std::uint32_t ExcOverflow = 12;
+    static constexpr std::uint32_t ExcTrap = 13;
     // Simplified: always 0x80000180 (no BEV/TLB vector selection).
     static constexpr std::uint64_t GeneralExceptionVector = 0x80000180ULL;
 
@@ -67,7 +68,6 @@ private:
     std::uint64_t next_pc_{4};
     bool delay_slot_pending_{false};
     std::uint64_t delay_branch_pc_{0};
-    // Minimal storage for otherwise-unmodelled EE COP0 setup registers.
     std::array<std::uint32_t, RegisterCount> cop0_regs_{};
     std::uint32_t status_{0};
     std::uint32_t cause_{0};
