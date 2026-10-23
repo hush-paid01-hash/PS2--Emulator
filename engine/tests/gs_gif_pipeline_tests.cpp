@@ -91,13 +91,18 @@ int main() {
     }
 
     {
-        std::vector<std::uint8_t> bytes(16, 0);
+        // IMAGE packets are preserved by the decoder but do not become
+        // register writes; pixel upload into GS local memory is a later stage.
+        std::vector<std::uint8_t> bytes(32, 0);
         const std::uint64_t image_tag = 1ULL | (1ULL << 15U) | (2ULL << 58U);
         write_u64(bytes, 0, image_tag);
+        write_u64(bytes, 16, 0x0123456789ABCDEFULL);
+        write_u64(bytes, 24, 0xFEDCBA9876543210ULL);
         retroshelf::GsGifPipeline pipeline;
-        check(!pipeline.consume({retroshelf::GifPacket{bytes, 1}}) &&
-                  pipeline.error().find("PACKED and REGLIST GIF tags only") != std::string::npos,
-              "unsupported IMAGE tags fail clearly instead of pretending to render");
+        check(pipeline.consume({retroshelf::GifPacket{bytes, 1}}),
+              "pipeline accepts a complete IMAGE payload");
+        check(pipeline.registers().write_count() == 0,
+              "IMAGE payload does not create bogus GS register writes");
     }
 
     {
