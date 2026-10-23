@@ -17,7 +17,6 @@ int main() {
     };
     retroshelf::GsRegisterDecoder decoder;
     std::vector<std::uint8_t> packet;
-    // NLOOP=2, EOP=1, PACKED, NREG=2, register list {0,1}.
     append_qword(packet, 2U | (1ULL << 15U) | (2ULL << 60U), 0x10U);
     append_qword(packet, 0x1234U); append_qword(packet, 0x5678U);
     append_qword(packet, 0x9ABCU); append_qword(packet, 0xDEF0U);
@@ -30,18 +29,14 @@ int main() {
     }
 
     std::vector<std::uint8_t> ad_packet;
-    // PACKED A+D uses GIF register ID 0xE, value in the low half,
-    // and the actual GS register address in the high half.
     append_qword(ad_packet, 1U | (1ULL << 15U) | (1ULL << 60U), 0xEULL);
-    append_qword(ad_packet, 0x123456789ABCDEF0ULL, 0x50ULL); // BITBLTBUF
+    append_qword(ad_packet, 0x123456789ABCDEF0ULL, 0x50ULL);
     check(decoder.decode_gif(ad_packet), "decodes PACKED A+D GIF tag");
     check(decoder.writes().size() == 1 && decoder.writes()[0].address == 0x50U &&
               decoder.writes()[0].value == 0x123456789ABCDEF0ULL,
           "A+D emits actual GS register address and low-half value");
 
     std::vector<std::uint8_t> reglist;
-    // NLOOP=1, EOP=1, REGLIST, NREG=3, register list {0,1,2}.
-    // Three 64-bit values occupy two qwords; the last high half is padding.
     append_qword(reglist, 1U | (1ULL << 15U) | (1ULL << 58U) | (3ULL << 60U), 0x210U);
     append_qword(reglist, 0x111U, 0x222U);
     append_qword(reglist, 0x333U, 0xDEADU);
@@ -56,6 +51,32 @@ int main() {
               "decodes third REGLIST register/value");
     }
 
+    std::vector<std::uint8_t> image;
+    append_qword(image, 2U | (1ULL << 15U) | (2ULL << 58U), 0);
+    append_qword(image, 0x0706050403020100ULL, 0x0F0E0D0C0B0A0908ULL);
+    append_qword(image, 0x1716151413121110ULL, 0x1F1E1D1C1B1A1918ULL);
+    check(decoder.decode_gif(image), "accepts IMAGE payload");
+    check(decoder.writes().empty(), "IMAGE payload is not misread as GS register writes");
+    check(decoder.image_transfers().size() == 1 &&
+              decoder.image_transfers()[0].format == 2U &&
+              decoder.image_transfers()[0].data.size() == 32U,
+          "preserves IMAGE payload as two exact qwords");
+    if (decoder.image_transfers().size() == 1 && decoder.image_transfers()[0].data.size() == 32U) {
+        check(decoder.image_transfers()[0].data[0] == 0U &&
+                  decoder.image_transfers()[0].data[31] == 31U,
+              "IMAGE payload bytes remain in original order");
+    }
+
+    std::vector<std::uint8_t> image2;
+    append_qword(image2, 1U | (1ULL << 15U) | (3ULL << 58U), 0);
+    append_qword(image2, 0xAABBCCDDU, 0x11223344U);
+    check(decoder.decode_gif(image2), "accepts IMAGE2 payload");
+    check(decoder.image_transfers().size() == 1 &&
+              decoder.image_transfers()[0].format == 3U &&
+              decoder.image_transfers()[0].data.size() == 16U,
+          "preserves IMAGE2 payload and format");
+    check(decoder.writes().empty(), "IMAGE2 payload is not decoded as register writes");
+
     std::vector<std::uint8_t> truncated;
     append_qword(truncated, 1U | (1ULL << 15U) | (1ULL << 60U), 0);
     check(!decoder.decode_gif(truncated), "rejects truncated packed payload");
@@ -66,8 +87,9 @@ int main() {
     append_qword(truncated_reglist, 0x111U, 0x222U);
     check(!decoder.decode_gif(truncated_reglist), "rejects truncated REGLIST payload");
 
-    std::vector<std::uint8_t> unsupported;
-    append_qword(unsupported, 1U | (1ULL << 15U) | (2ULL << 58U) | (1ULL << 60U), 0);
-    check(!decoder.decode_gif(unsupported), "rejects unsupported image GIF format");
+    std::vector<std::uint8_t> truncated_image;
+    append_qword(truncated_image, 2U | (1ULL << 15U) | (2ULL << 58U), 0);
+    append_qword(truncated_image, 0x1234U, 0x5678U);
+    check(!decoder.decode_gif(truncated_image), "rejects truncated IMAGE payload");
     return failures == 0 ? 0 : 1;
 }
