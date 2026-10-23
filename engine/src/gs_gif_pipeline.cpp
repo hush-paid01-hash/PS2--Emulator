@@ -21,6 +21,7 @@ bool GsGifPipeline::consume(const std::vector<GifPacket>& packets) {
 
 bool GsGifPipeline::consume_and_render(const std::vector<GifPacket>& packets, GsFramebuffer& target) {
     error_.clear();
+    image_transfers_.clear();
     for (const auto& packet : packets) {
         if (!decoder_.decode_gif(packet.bytes)) {
             error_ = decoder_.error();
@@ -32,6 +33,9 @@ bool GsGifPipeline::consume_and_render(const std::vector<GifPacket>& packets, Gs
                 return false;
             }
         }
+        image_transfers_.insert(image_transfers_.end(),
+                                decoder_.image_transfers().begin(),
+                                decoder_.image_transfers().end());
         if (!renderer_.consume(decoder_.writes(), target)) {
             error_ = renderer_.error();
             return false;

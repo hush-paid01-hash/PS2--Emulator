@@ -103,6 +103,15 @@ int main() {
               "pipeline accepts a complete IMAGE payload");
         check(pipeline.registers().write_count() == 0,
               "IMAGE payload does not create bogus GS register writes");
+        check(pipeline.image_transfers().size() == 1 &&
+                  pipeline.image_transfers()[0].format == 2U &&
+                  pipeline.image_transfers()[0].data.size() == 16U,
+              "pipeline exposes IMAGE bytes to the GS transfer stage");
+        check(pipeline.image_transfers()[0].data[0] == 0xEFU &&
+                  pipeline.image_transfers()[0].data[15] == 0xFEU,
+              "pipeline preserves the original IMAGE payload byte order");
+        check(pipeline.local_memory().read_byte(0) == 0,
+              "raw IMAGE bytes are not incorrectly written as linear VRAM");
     }
 
     {
@@ -115,6 +124,8 @@ int main() {
         check(pipeline.consume({retroshelf::GifPacket{bytes, 1}}),
               "pipeline accepts a valid packet before reset");
         pipeline.reset();
+        check(pipeline.image_transfers().empty(),
+              "pipeline reset clears queued IMAGE transfer payloads");
         std::uint64_t value = 99;
         check(pipeline.registers().read(1, value) && value == 0 &&
                   pipeline.registers().write_count() == 0 && pipeline.error().empty(),

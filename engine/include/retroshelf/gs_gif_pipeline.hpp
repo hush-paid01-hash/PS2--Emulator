@@ -12,8 +12,8 @@
 
 namespace retroshelf {
 
-// Connects complete PACKED/REGLIST GIF packets to the current GS register model.
-// IMAGE and IMAGE2 payloads remain unsupported by the decoder.
+// Connects GIF register writes to the GS model and exposes IMAGE/IMAGE2 payloads.
+// Pixel-format-aware transfer into swizzled GS local memory is a separate stage.
 class GsGifPipeline {
 public:
     bool consume(const std::vector<GifPacket>& packets);
@@ -22,6 +22,8 @@ public:
     bool consume_and_render(const std::vector<GifPacket>& packets, GsFramebuffer& target);
     const GsRegisterState& registers() const;
     GsRegisterState& registers();
+    // IMAGE/IMAGE2 payloads from the most recent consume call, in packet order.
+    const std::vector<GsRegisterDecoder::ImageTransfer>& image_transfers() const;
     const GsLocalMemory& local_memory() const;
     GsLocalMemory& local_memory();
     const std::string& error() const;
@@ -31,6 +33,7 @@ private:
     GsRegisterDecoder decoder_;
     GsRegisterState registers_;
     GsLocalMemory local_memory_;
+    std::vector<GsRegisterDecoder::ImageTransfer> image_transfers_;
     GsPackedPrimitiveRenderer renderer_;
     std::string error_;
 };
