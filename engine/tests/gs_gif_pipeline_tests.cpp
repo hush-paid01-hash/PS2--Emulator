@@ -114,6 +114,30 @@ int main() {
               "raw IMAGE bytes are not incorrectly written as linear VRAM");
     }
 
+
+    {
+        std::vector<std::uint8_t> setup(16U + 4U * 16U, 0);
+        write_u64(setup, 0, 4ULL | (1ULL << 15U) | (1ULL << 60U));
+        write_u64(setup, 8, 0xEULL);
+        write_u64(setup, 16, (1ULL << 48U)); write_u64(setup, 24, 0x50ULL);
+        write_u64(setup, 32, 0ULL); write_u64(setup, 40, 0x51ULL);
+        write_u64(setup, 48, 1ULL | (1ULL << 32U)); write_u64(setup, 56, 0x52ULL);
+        write_u64(setup, 64, 0ULL); write_u64(setup, 72, 0x53ULL);
+        std::vector<std::uint8_t> image(32U, 0);
+        write_u64(image, 0, 1ULL | (1ULL << 15U) | (2ULL << 58U));
+        image[16] = 0x11; image[17] = 0x22; image[18] = 0x33; image[19] = 0x44;
+        retroshelf::GsGifPipeline pipeline;
+        check(pipeline.consume({retroshelf::GifPacket{setup, 1}, retroshelf::GifPacket{image, 1}}),
+              "pipeline decodes transfer setup and IMAGE payload");
+        std::string upload_error;
+        check(pipeline.upload_image(upload_error), "PSMCT32 IMAGE upload applies to swizzled GS memory");
+        check(pipeline.local_memory().read_byte(0) == 0x11 &&
+                  pipeline.local_memory().read_byte(1) == 0x22 &&
+                  pipeline.local_memory().read_byte(2) == 0x33 &&
+                  pipeline.local_memory().read_byte(3) == 0x44,
+              "PSMCT32 origin pixel writes the expected four bytes");
+    }
+
     {
         retroshelf::GsGifPipeline pipeline;
         std::vector<std::uint8_t> bytes(32, 0);
