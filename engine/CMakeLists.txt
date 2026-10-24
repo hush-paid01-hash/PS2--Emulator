@@ -60,7 +60,7 @@ add_executable(ee-gif-dma-tests tests/ee_gif_dma_tests.cpp src/system_bus.cpp
     src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_gif_pipeline.cpp
     src/gs_register_decoder.cpp src/gs_register_state.cpp src/gs_local_memory.cpp
     src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp
-    src/gs_framebuffer.cpp)
+    src/gs_framebuffer.cpp src/gs_transfer_state.cpp src/gs_image_upload_stager.cpp)
 target_include_directories(ee-gif-dma-tests PRIVATE include)
 target_compile_options(ee-gif-dma-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-gif-dma-tests COMMAND ee-gif-dma-tests)
@@ -102,7 +102,8 @@ add_test(NAME gs-image-upload-stager-tests COMMAND gs-image-upload-stager-tests)
 
 add_executable(gs-gif-pipeline-tests tests/gs_gif_pipeline_tests.cpp
     src/gs_gif_pipeline.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp src/gs_local_memory.cpp
-    src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp src/gs_framebuffer.cpp)
+    src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp src/gs_framebuffer.cpp
+    src/gs_transfer_state.cpp src/gs_image_upload_stager.cpp)
 target_include_directories(gs-gif-pipeline-tests PRIVATE include)
 target_compile_options(gs-gif-pipeline-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-gif-pipeline-tests COMMAND gs-gif-pipeline-tests)

@@ -1,4 +1,5 @@
 #include "retroshelf/gs_gif_pipeline.hpp"
+#include "retroshelf/gs_image_upload_stager.hpp"
 
 namespace retroshelf {
 
@@ -14,6 +15,7 @@ bool GsGifPipeline::consume(const std::vector<GifPacket>& packets) {
                                 decoder_.image_transfers().begin(),
                                 decoder_.image_transfers().end());
         for (const auto& write : decoder_.writes()) {
+            transfer_state_.write_register(write.address, write.value);
             if (!registers_.write(write.address, write.value)) {
                 error_ = "GS register address is outside the register file";
                 return false;
@@ -35,6 +37,7 @@ bool GsGifPipeline::consume_and_render(const std::vector<GifPacket>& packets, Gs
                                 decoder_.image_transfers().begin(),
                                 decoder_.image_transfers().end());
         for (const auto& write : decoder_.writes()) {
+            transfer_state_.write_register(write.address, write.value);
             if (!registers_.write(write.address, write.value)) {
                 error_ = "GS register address is outside the register file";
                 return false;
@@ -53,6 +56,11 @@ GsRegisterState& GsGifPipeline::registers() { return registers_; }
 const std::vector<GsRegisterDecoder::ImageTransfer>& GsGifPipeline::image_transfers() const {
     return image_transfers_;
 }
+bool GsGifPipeline::stage_image_upload(std::vector<std::uint8_t>& packed_bytes, std::string& error) const {
+    GsImageUploadStager stager;
+    return stager.stage(transfer_state_, image_transfers_, packed_bytes, error);
+}
+
 const GsLocalMemory& GsGifPipeline::local_memory() const { return local_memory_; }
 GsLocalMemory& GsGifPipeline::local_memory() { return local_memory_; }
 const std::string& GsGifPipeline::error() const { return error_; }
@@ -61,6 +69,7 @@ void GsGifPipeline::reset() {
     decoder_.clear();
     registers_.reset();
     local_memory_.reset();
+    transfer_state_.reset();
     image_transfers_.clear();
     renderer_.reset();
     error_.clear();
