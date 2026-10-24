@@ -16,6 +16,7 @@ set(RETROSHELF_ENGINE_SOURCES
     src/gs_register_state.cpp
     src/gs_local_memory.cpp
     src/gs_transfer_state.cpp
+    src/gs_image_upload_stager.cpp
     src/gs_framebuffer.cpp
     src/gs_software_rasterizer.cpp
     src/gs_packed_primitive_renderer.cpp
@@ -92,6 +93,12 @@ add_executable(gs-transfer-state-tests tests/gs_transfer_state_tests.cpp
 target_include_directories(gs-transfer-state-tests PRIVATE include)
 target_compile_options(gs-transfer-state-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME gs-transfer-state-tests COMMAND gs-transfer-state-tests)
+
+add_executable(gs-image-upload-stager-tests tests/gs_image_upload_stager_tests.cpp
+    src/gs_image_upload_stager.cpp src/gs_transfer_state.cpp)
+target_include_directories(gs-image-upload-stager-tests PRIVATE include)
+target_compile_options(gs-image-upload-stager-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME gs-image-upload-stager-tests COMMAND gs-image-upload-stager-tests)
 
 add_executable(gs-gif-pipeline-tests tests/gs_gif_pipeline_tests.cpp
     src/gs_gif_pipeline.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp src/gs_local_memory.cpp
