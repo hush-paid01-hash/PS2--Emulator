@@ -208,7 +208,8 @@ add_executable(ee-gif-gs-runtime-tests tests/ee_gif_gs_runtime_tests.cpp
     src/ps2_ee_memory_map.cpp
     src/gs_packet_processor.cpp src/gs_register_decoder.cpp src/gs_register_state.cpp
     src/gs_framebuffer.cpp src/gs_software_rasterizer.cpp
-    src/gs_packed_primitive_renderer.cpp src/gs_gif_pipeline.cpp src/gs_local_memory.cpp)
+    src/gs_packed_primitive_renderer.cpp src/gs_gif_pipeline.cpp src/gs_local_memory.cpp
+    src/gs_transfer_state.cpp src/gs_image_upload_stager.cpp)
 target_include_directories(ee-gif-gs-runtime-tests PRIVATE include)
 target_compile_options(ee-gif-gs-runtime-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-gif-gs-runtime-tests COMMAND ee-gif-gs-runtime-tests)
