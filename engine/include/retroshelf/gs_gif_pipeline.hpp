@@ -28,6 +28,8 @@ public:
     // Validates the most recent IMAGE/IMAGE2 payloads against the current transfer registers.
     // Output contains packed bytes only; it is not yet written to swizzled GS local memory.
     bool stage_image_upload(std::vector<std::uint8_t>& packed_bytes, std::string& error) const;
+    // Applies a validated PSMCT32 host-to-local IMAGE upload using GS page/block swizzling.
+    bool upload_image(std::string& error);
     const GsLocalMemory& local_memory() const;
     GsLocalMemory& local_memory();
     const std::string& error() const;
