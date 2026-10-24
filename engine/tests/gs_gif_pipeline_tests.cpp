@@ -116,7 +116,7 @@ int main() {
 
 
     {
-        std::vector<std::uint8_t> setup(32U + 4U * 16U, 0);
+        std::vector<std::uint8_t> setup(16U + 4U * 16U, 0);
         write_u64(setup, 0, 4ULL | (1ULL << 15U) | (1ULL << 60U));
         write_u64(setup, 8, 0xEULL);
         write_u64(setup, 16, (1ULL << 48U)); write_u64(setup, 24, 0x50ULL);
