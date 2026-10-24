@@ -220,5 +220,39 @@ int main() {
               "pipeline output contains the expected opaque blue line pixel");
     }
 
+
+    {
+        // Configure a 1x1 PSMCT32 upload, then stage its qword-padded IMAGE data.
+        const auto make_ad = [](std::uint8_t address, std::uint64_t value) {
+            std::vector<std::uint8_t> bytes(32, 0);
+            const std::uint64_t tag = 1ULL | (1ULL << 15U) | (1ULL << 60U);
+            write_u64(bytes, 0, tag);
+            write_u64(bytes, 8, 0xEULL);
+            write_u64(bytes, 16, value);
+            write_u64(bytes, 24, address);
+            return retroshelf::GifPacket{bytes, 1};
+        };
+        std::vector<std::uint8_t> image_bytes(32, 0);
+        write_u64(image_bytes, 0, 1ULL | (1ULL << 15U) | (2ULL << 58U));
+        image_bytes[16] = 0x11; image_bytes[17] = 0x22;
+        image_bytes[18] = 0x33; image_bytes[19] = 0x44;
+
+        retroshelf::GsGifPipeline pipeline;
+        const std::vector<retroshelf::GifPacket> packets{
+            make_ad(0x50, 0), // destination PSMCT32
+            make_ad(0x52, 1ULL | (1ULL << 32U)), // 1x1
+            make_ad(0x53, 0), // host-to-local
+            retroshelf::GifPacket{image_bytes, 1}
+        };
+        check(pipeline.consume(packets), "pipeline accepts configured IMAGE upload");
+        std::vector<std::uint8_t> packed{0xFE};
+        std::string error;
+        check(pipeline.stage_image_upload(packed, error), "pipeline stages upload against live GS registers");
+        check(packed == std::vector<std::uint8_t>({0x11, 0x22, 0x33, 0x44}),
+              "pipeline staging strips only final GIF qword padding");
+        check(pipeline.local_memory().read_byte(0) == 0,
+              "staging does not perform an unsafe linear VRAM write");
+    }
+
     return failures == 0 ? 0 : 1;
 }

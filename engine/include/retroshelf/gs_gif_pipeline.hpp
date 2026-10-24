@@ -9,6 +9,7 @@
 #include "retroshelf/gs_register_decoder.hpp"
 #include "retroshelf/gs_register_state.hpp"
 #include "retroshelf/gs_local_memory.hpp"
+#include "retroshelf/gs_transfer_state.hpp"
 
 namespace retroshelf {
 
@@ -24,6 +25,9 @@ public:
     GsRegisterState& registers();
     // IMAGE/IMAGE2 payloads from the most recent consume call, in packet order.
     const std::vector<GsRegisterDecoder::ImageTransfer>& image_transfers() const;
+    // Validates the most recent IMAGE/IMAGE2 payloads against the current transfer registers.
+    // Output contains packed bytes only; it is not yet written to swizzled GS local memory.
+    bool stage_image_upload(std::vector<std::uint8_t>& packed_bytes, std::string& error) const;
     const GsLocalMemory& local_memory() const;
     GsLocalMemory& local_memory();
     const std::string& error() const;
@@ -33,6 +37,7 @@ private:
     GsRegisterDecoder decoder_;
     GsRegisterState registers_;
     GsLocalMemory local_memory_;
+    GsTransferState transfer_state_;
     std::vector<GsRegisterDecoder::ImageTransfer> image_transfers_;
     GsPackedPrimitiveRenderer renderer_;
     std::string error_;
