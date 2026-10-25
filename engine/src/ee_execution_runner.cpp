@@ -5,6 +5,12 @@ namespace retroshelf {
 EeExecutionRunner::EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory)
     : cpu_(cpu), memory_(memory) {}
 
+EeExecutionRunner::Result EeExecutionRunner::run_from_bios_reset_vector(std::size_t instruction_budget) {
+    cpu_.reset();
+    cpu_.set_pc(BiosResetVector);
+    return run(instruction_budget);
+}
+
 EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget) {
     Result result;
     result.final_pc = cpu_.pc();
