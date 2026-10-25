@@ -10,6 +10,8 @@ constexpr std::uint8_t Xyz2Register = 0x5;
 constexpr std::uint64_t PrimitiveMask = 0x7U;
 constexpr std::uint64_t LinePrimitive = 0x1U;
 constexpr std::uint64_t TrianglePrimitive = 0x3U;
+constexpr std::uint64_t TriangleStripPrimitive = 0x4U;
+constexpr std::uint64_t TriangleFanPrimitive = 0x5U;
 constexpr std::uint64_t SpritePrimitive = 0x6U;
 constexpr std::int32_t MaxCoordinate = 1000000;
 
@@ -29,7 +31,9 @@ bool GsPackedPrimitiveRenderer::consume(
             prim_ = write.value;
             if ((prim_ & PrimitiveMask) != LinePrimitive)
                 line_vertices_.clear();
-            if ((prim_ & PrimitiveMask) != TrianglePrimitive)
+            if ((prim_ & PrimitiveMask) != TrianglePrimitive &&
+                (prim_ & PrimitiveMask) != TriangleStripPrimitive &&
+                (prim_ & PrimitiveMask) != TriangleFanPrimitive)
                 triangle_vertices_.clear();
             if ((prim_ & PrimitiveMask) != SpritePrimitive)
                 sprite_vertices_.clear();
@@ -43,6 +47,8 @@ bool GsPackedPrimitiveRenderer::consume(
         case Xyz2Register:
             if ((prim_ & PrimitiveMask) != LinePrimitive &&
                 (prim_ & PrimitiveMask) != TrianglePrimitive &&
+                (prim_ & PrimitiveMask) != TriangleStripPrimitive &&
+                (prim_ & PrimitiveMask) != TriangleFanPrimitive &&
                 (prim_ & PrimitiveMask) != SpritePrimitive)
                 break;
             {
@@ -88,7 +94,8 @@ bool GsPackedPrimitiveRenderer::consume(
                     }
                 } else {
                     triangle_vertices_.push_back({x, y});
-                    if (triangle_vertices_.size() == 3U) {
+                    const auto primitive = prim_ & PrimitiveMask;
+                    if (primitive == TrianglePrimitive && triangle_vertices_.size() == 3U) {
                         if (!rasterizer_.draw_triangle(target, triangle_vertices_[0],
                                                        triangle_vertices_[1],
                                                        triangle_vertices_[2], color_)) {
@@ -96,6 +103,21 @@ bool GsPackedPrimitiveRenderer::consume(
                             return false;
                         }
                         triangle_vertices_.clear();
+                    } else if ((primitive == TriangleStripPrimitive ||
+                                primitive == TriangleFanPrimitive) &&
+                               triangle_vertices_.size() >= 3U) {
+                        const std::size_t last = triangle_vertices_.size() - 1U;
+                        const std::size_t second = last - 1U;
+                        const std::size_t first = primitive == TriangleFanPrimitive
+                            ? 0U : (last % 2U == 0U ? last - 2U : second);
+                        const std::size_t middle = primitive == TriangleFanPrimitive
+                            ? second : (last % 2U == 0U ? second : last - 2U);
+                        if (!rasterizer_.draw_triangle(target, triangle_vertices_[first],
+                                                       triangle_vertices_[middle],
+                                                       triangle_vertices_[last], color_)) {
+                            error_ = "GS triangle strip/fan could not be drawn to framebuffer";
+                            return false;
+                        }
                     }
                 }
             }
