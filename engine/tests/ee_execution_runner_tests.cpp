@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 int main() {
     retroshelf::EeExecutionRunner::Result not_started;
@@ -104,6 +105,34 @@ int main() {
     assert(delay_slot_branch.final_pc == start + 4U);
     assert(delay_slot_branch.message.find("delay slot") != std::string::npos);
     assert(delay_slot_branch.trace.size() == 1 && delay_slot_branch.trace[0].fetched);
+
+
+    // Exercise the complete runner + memory-map path from the real EE BIOS
+    // reset-vector alias, rather than testing BIOS reads only through Cpu.
+    retroshelf::Ps2EeMemoryMap bios_memory(64U * 1024U);
+    std::vector<std::uint8_t> bios_image(8U, 0U);
+    constexpr std::uint32_t bios_addiu_t0 = (0x09U << 26U) | (8U << 16U) | 7U;
+    constexpr std::uint32_t bios_addiu_t1 = (0x09U << 26U) | (9U << 16U) | 5U;
+    for (unsigned i = 0; i < 4U; ++i) {
+        bios_image[i] = static_cast<std::uint8_t>(bios_addiu_t0 >> (i * 8U));
+        bios_image[4U + i] = static_cast<std::uint8_t>(bios_addiu_t1 >> (i * 8U));
+    }
+    assert(bios_memory.load_bios_image(bios_image, &error));
+    retroshelf::Cpu bios_cpu;
+    bios_cpu.set_pc(0xBFC00000U);
+    retroshelf::EeExecutionRunner bios_runner(bios_cpu, bios_memory);
+    const auto bios_run = bios_runner.run(2);
+    assert(bios_run.instructions_executed == 2);
+    assert(bios_run.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(bios_cpu.reg(8) == 7U && bios_cpu.reg(9) == 5U);
+    assert(bios_run.trace.size() == 2U);
+    assert(bios_run.trace[0].pc == 0xBFC00000U && bios_run.trace[0].fetched);
+    assert(bios_run.trace[1].pc == 0xBFC00004U && bios_run.trace[1].fetched);
+    assert(bios_run.final_pc == 0xBFC00008U);
+
+    // The BIOS mapping must stay read-only even when accessed through KSEG1.
+    assert(!bios_memory.write(0xBFC00000U, 4, 0U, &error));
+    assert(!error.empty());
 
     return 0;
 }
