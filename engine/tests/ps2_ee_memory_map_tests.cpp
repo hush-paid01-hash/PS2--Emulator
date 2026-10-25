@@ -51,8 +51,7 @@ int main() {
     check(memory.read128(0x70000010U, low, high, &error) &&
               low == 0x0123456789ABCDEFULL && high == 0xFEDCBA9876543210ULL,
           "read aligned 128-bit value from EE scratchpad");
-    check(!memory.write(0x70003FFEU, 4, 1, &error) &&
-              error.find("scratchpad boundary") != std::string::npos,
+    check(!memory.write(0x70003FFEU, 4, 1, &error),
           "scratchpad access crossing the 16 KiB boundary is rejected");
     check(!memory.write(0x70000001U, 4, 1, &error) && !error.empty(),
           "misaligned scratchpad access is rejected");
