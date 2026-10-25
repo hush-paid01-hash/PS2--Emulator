@@ -82,23 +82,34 @@ int main() {
     assert(syscall_handler.trace[1].pc == exception_vector && syscall_handler.trace[1].fetched);
     assert(syscall_handler.final_pc == exception_vector + 4U);
 
-    // Start a fresh exception context: the prior unsupported-instruction test
-    // intentionally left Status.EXL set while running its handler.
+    // An instruction-fetch fault should enter the mapped general exception
+    // handler automatically, without requiring a second runner invocation.
     cpu.reset();
     cpu.set_pc(0x30000000U);
-    const auto fetch_fault = runner.run(1);
-    assert(fetch_fault.instructions_executed == 0);
-    assert(fetch_fault.reason == retroshelf::EeExecutionRunner::StopReason::InvalidInstructionFetch);
-    assert(fetch_fault.final_pc == retroshelf::Cpu::GeneralExceptionVector);
+    const auto fetch_fault = runner.run(2);
+    assert(fetch_fault.instructions_executed == 2);
+    assert(fetch_fault.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(fetch_fault.final_pc == exception_vector + 4U);
     assert(cpu.cop0_epc() == 0x30000000U);
     assert(cpu.cop0_bad_vaddr() == 0x30000000U);
-    assert(fetch_fault.trace.size() == 1);
+    assert(cpu.reg(11) == 9U);
+    assert(fetch_fault.trace.size() == 2U);
     assert(fetch_fault.trace[0].pc == 0x30000000U);
     assert(!fetch_fault.trace[0].fetched);
-    const auto fetch_handler = runner.run(1);
-    assert(fetch_handler.instructions_executed == 1);
-    assert(cpu.reg(11) == 9);
-    assert(fetch_handler.final_pc == exception_vector + 4U);
+    assert(fetch_fault.trace[1].pc == exception_vector && fetch_fault.trace[1].fetched);
+
+    // If the exception vector itself is unmapped, stop instead of repeatedly
+    // faulting at the same vector until the instruction budget is exhausted.
+    retroshelf::Ps2EeMemoryMap no_handler_memory(64U * 1024U);
+    retroshelf::Cpu no_handler_cpu;
+    no_handler_cpu.set_pc(0x30000000U);
+    retroshelf::EeExecutionRunner no_handler_runner(no_handler_cpu, no_handler_memory);
+    const auto unhandled_fetch_fault = no_handler_runner.run(3);
+    assert(unhandled_fetch_fault.reason == retroshelf::EeExecutionRunner::StopReason::InvalidInstructionFetch);
+    assert(unhandled_fetch_fault.final_pc == retroshelf::Cpu::GeneralExceptionVector);
+    assert(unhandled_fetch_fault.trace.size() == 2U);
+    assert(!unhandled_fetch_fault.trace[0].fetched);
+    assert(!unhandled_fetch_fault.trace[1].fetched);
 
     // Trace storage is bounded even when the execution budget is large.
     // Replace the unsupported instruction with a NOP so the run can continue.
