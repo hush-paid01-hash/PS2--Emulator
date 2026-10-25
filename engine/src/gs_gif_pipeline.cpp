@@ -101,8 +101,10 @@ bool GsGifPipeline::upload_image(std::string& error) {
     const std::size_t pages_per_row = std::max<std::size_t>(state.destination_buffer_width_64, 1U);
     for (std::size_t row = 0; row < state.height; ++row) {
         for (std::size_t col = 0; col < state.width; ++col) {
-            const std::size_t x = static_cast<std::size_t>(state.destination_x) + col;
-            const std::size_t y = static_cast<std::size_t>(state.destination_y) + row;
+            const std::size_t x = static_cast<std::size_t>(state.destination_x) +
+                (state.reverse_x ? static_cast<std::size_t>(state.width) - 1U - col : col);
+            const std::size_t y = static_cast<std::size_t>(state.destination_y) +
+                (state.reverse_y ? static_cast<std::size_t>(state.height) - 1U - row : row);
             const std::size_t page_x = x / 64U, page_y = y / 32U;
             const std::size_t page = page_y * pages_per_row + page_x;
             const std::size_t block_x = (x % 64U) / 8U, block_y = (y % 32U) / 8U;

@@ -286,5 +286,40 @@ int main() {
               "automatic PSMCT32 upload updates GS memory while staging remains inspectable");
     }
 
+
+    {
+        // TRXPOS reverse flags control the destination traversal direction;
+        // source IMAGE bytes remain in transfer order.
+        const auto make_ad = [](std::uint8_t address, std::uint64_t value) {
+            std::vector<std::uint8_t> bytes(32, 0);
+            write_u64(bytes, 0, 1ULL | (1ULL << 15U) | (1ULL << 60U));
+            write_u64(bytes, 8, 0xEULL);
+            write_u64(bytes, 16, value);
+            write_u64(bytes, 24, address);
+            return retroshelf::GifPacket{bytes, 1};
+        };
+        std::vector<std::uint8_t> image(32, 0);
+        write_u64(image, 0, 1ULL | (1ULL << 15U) | (2ULL << 58U));
+        for (std::size_t pixel = 0; pixel < 4; ++pixel) {
+            image[16U + pixel * 4U] = static_cast<std::uint8_t>(0x10U + pixel);
+            image[17U + pixel * 4U] = static_cast<std::uint8_t>(0x20U + pixel);
+            image[18U + pixel * 4U] = static_cast<std::uint8_t>(0x30U + pixel);
+            image[19U + pixel * 4U] = static_cast<std::uint8_t>(0x40U + pixel);
+        }
+        retroshelf::GsGifPipeline pipeline;
+        const std::vector<retroshelf::GifPacket> packets{
+            make_ad(0x50, 0ULL),
+            make_ad(0x51, (1ULL << 59U) | (1ULL << 60U)), // reverse X and Y
+            make_ad(0x52, 2ULL | (2ULL << 32U)), // 2x2 transfer
+            make_ad(0x53, 0ULL),
+            retroshelf::GifPacket{image, 1}
+        };
+        check(pipeline.consume(packets), "pipeline consumes reversed 2x2 PSMCT32 transfer");
+        const auto& memory = pipeline.local_memory();
+        check(memory.read_byte(0) == 0x13U && memory.read_byte(4) == 0x12U &&
+                  memory.read_byte(8) == 0x11U && memory.read_byte(12) == 0x10U,
+              "TRXPOS reverse X/Y map source pixels to reversed GS destination coordinates");
+    }
+
     return failures == 0 ? 0 : 1;
 }
