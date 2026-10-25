@@ -62,6 +62,62 @@ int main() {
         return (rs << 21U) | (rt << 16U) | (rd << 11U) | funct;
     };
 
+    // EE trap instructions raise ExcCode 13 only when their comparison matches.
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-2LL)); cpu.set_reg(2, 3);
+    error.clear();
+    check(!cpu.step(rtype(1, 2, 0, 0x32), &error) && !error.empty() &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TLT raises a trap when the signed comparison is true");
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-3LL)); cpu.set_reg(2, static_cast<std::uint64_t>(-2LL));
+    check(cpu.step(rtype(1, 2, 0, 0x30)) && cpu.pc() == 4,
+          "TGE continues when its signed comparison is false");
+    cpu.reset(); cpu.set_reg(1, UINT64_MAX); cpu.set_reg(2, 3);
+    check(!cpu.step(rtype(1, 2, 0, 0x31)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TGEU compares full-width operands as unsigned values");
+    cpu.reset(); cpu.set_reg(1, 0x1234); cpu.set_reg(2, 0x1234);
+    check(!cpu.step(rtype(1, 2, 0, 0x34)),
+          "TEQ raises a trap for equal register operands");
+    cpu.reset(); cpu.set_reg(1, 0x1234); cpu.set_reg(2, 0x5678);
+    check(!cpu.step(rtype(1, 2, 0, 0x36)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TNE raises a trap for unequal register operands");
+
+    cpu.reset(); cpu.set_reg(1, 5);
+    check(!cpu.step(itype(0x01, 1, 0x08, 4)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TGEI traps when the signed register is at least the immediate");
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-2LL));
+    check(!cpu.step(itype(0x01, 1, 0x0A, -1)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TLTI compares against a sign-extended immediate");
+    cpu.reset(); cpu.set_reg(1, 3);
+    check(!cpu.step(itype(0x01, 1, 0x0B, -1)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TLTIU compares unsigned against the sign-extended immediate");
+    cpu.reset(); cpu.set_reg(1, UINT64_MAX);
+    check(!cpu.step(itype(0x01, 1, 0x09, -1)) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TGEIU treats the sign-extended immediate as an unsigned value");
+    cpu.reset(); cpu.set_reg(1, 7);
+    check(!cpu.step(itype(0x01, 1, 0x0C, 7)),
+          "TEQI traps when the register equals the immediate");
+    cpu.reset(); cpu.set_reg(1, 7);
+    check(!cpu.step(itype(0x01, 1, 0x0E, 8)),
+          "TNEI traps when the register differs from the immediate");
+    cpu.reset(); cpu.set_reg(1, 7);
+    check(cpu.step(itype(0x01, 1, 0x0E, 7)) && cpu.pc() == 4,
+          "TNEI continues when the register equals the immediate");
+
+    // A trap in a branch delay slot records the branch address and Cause.BD.
+    cpu.reset(); cpu.set_pc(0x100);
+    check(cpu.step(itype(0x04, 0, 0, 2)), "trap-delay test schedules a branch delay slot");
+    error.clear();
+    check(!cpu.step(rtype(1, 2, 0, 0x34), &error) &&
+              cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0U &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "register trap in a delay slot preserves EPC and sets Cause.BD");
+
     // Immediate logical operations zero-extend their 16-bit masks.
     cpu.reset(); cpu.set_reg(1, 0x12345678);
     check(cpu.step(itype(0x0C, 1, 2, 0x00FF)) && cpu.reg(2) == 0x78,
@@ -99,6 +155,29 @@ int main() {
     cpu.set_reg(1, static_cast<std::uint64_t>(-1)); cpu.set_reg(2, 1);
     check(cpu.step(rtype(1, 2, 8, 0x2A)) && cpu.reg(8) == 1, "SLT treats high-bit values as negative");
     check(cpu.step(rtype(1, 2, 9, 0x2B)) && cpu.reg(9) == 0, "SLTU compares register values unsigned");
+
+    // Arithmetic shifts must propagate the sign bit without relying on the
+    // implementation-defined behavior of right-shifting signed integers.
+    cpu.reset(); cpu.set_reg(1, 0x80000000U);
+    check(cpu.step((1U << 16U) | (2U << 11U) | (1U << 6U) | 0x03U) &&
+              cpu.reg(2) == 0xFFFFFFFFC0000000ULL,
+          "SRA sign-extends the 32-bit operand and propagates its sign bit");
+    cpu.reset(); cpu.set_reg(1, 0x80000000U); cpu.set_reg(3, 1);
+    check(cpu.step((3U << 21U) | (1U << 16U) | (4U << 11U) | 0x07U) &&
+              cpu.reg(4) == 0xFFFFFFFFC0000000ULL,
+          "SRAV sign-extends the 32-bit operand for variable arithmetic shift");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | (1U << 6U) | 0x3BU) &&
+              cpu.reg(2) == 0xC000000000000000ULL,
+          "DSRA propagates the 64-bit sign bit");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL); cpu.set_reg(3, 1);
+    check(cpu.step((3U << 21U) | (1U << 16U) | (4U << 11U) | 0x17U) &&
+              cpu.reg(4) == 0xC000000000000000ULL,
+          "DSRAV propagates the sign bit for variable 64-bit shifts");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | 0x3FU) &&
+              cpu.reg(2) == 0xFFFFFFFF80000000ULL,
+          "DSRA32 propagates the sign bit for shifts of 32 through 63");
 
     // BEQ taken: delay slot runs, then target.
     cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
@@ -334,9 +413,31 @@ int main() {
     cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
     check(cpu.step(rtype(1, 2, 0, 0x1B)) && cpu.lo() == 0x7FFFFFFFULL && cpu.hi() == 1,
           "DIVU uses only the low 32 bits of each operand");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
+    check(cpu.step(rtype(1, 2, 0, 0x18)) &&
+          cpu.lo() == 0xFFFFFFFFFFFFFFFEULL && cpu.hi() == 0xFFFFFFFFFFFFFFFFULL,
+          "MULT sign-extends both 32-bit halves of a negative product");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
+    check(cpu.step(rtype(1, 2, 0, 0x19)) && cpu.lo() == 0xFFFFFFFEULL && cpu.hi() == 1,
+          "MULTU zero-extends the low half of the same unsigned product");
     cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 0xFFFFFFFFU);
     check(cpu.step(rtype(1, 2, 0, 0x19)) && cpu.lo() == 1 && cpu.hi() == 0xFFFFFFFEULL,
           "MULTU returns both halves of the 32-bit unsigned product");
+
+    // 64-bit division must preserve signed quotient/remainder and unsigned full-width values.
+    cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-100)); cpu.set_reg(2, 9);
+    check(cpu.step(rtype(1, 2, 0, 0x1E)) &&
+          cpu.lo() == static_cast<std::uint64_t>(static_cast<std::int64_t>(-11)) &&
+          cpu.hi() == static_cast<std::uint64_t>(static_cast<std::int64_t>(-1)),
+          "DDIV returns a signed 64-bit quotient and remainder");
+    cpu.reset(); cpu.set_reg(1, 0xFEDCBA9876543210ULL); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == UINT64_MAX &&
+          cpu.hi() == 0xFEDCBA9876543210ULL,
+          "DDIVU defines divide-by-zero HI/LO values without losing dividend bits");
+    cpu.reset(); cpu.set_reg(1, 0xFEDCBA9876543210ULL); cpu.set_reg(2, 0x100000001ULL);
+    check(cpu.step(rtype(1, 2, 0, 0x1F)) &&
+          cpu.lo() == 0xFEDCBA97ULL && cpu.hi() == 0x77777779ULL,
+          "DDIVU divides and returns remainder using full 64-bit operands");
 
     // HI/LO transfer instructions preserve the full 64-bit EE register values.
     cpu.reset();
@@ -561,6 +662,30 @@ int main() {
     check(cpu.step(mfc0_badvaddr) && cpu.reg(2) == 0x201,
           "MFC0 reads BadVAddr after an address exception");
 
+    // A nested exception while EXL is already set updates ExcCode but preserves
+    // the original EPC and Cause.BD until the handler returns with ERET.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5); cpu.set_reg(2, 5);
+    check(cpu.step(itype(0x04, 1, 2, 3)), "nested-exception test schedules a branch delay slot");
+    check(!cpu.step(bad_lw, &error), "first exception occurs in the branch delay slot");
+    check(cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0U,
+          "first exception records branch EPC and Cause.BD");
+    cpu.set_pc(0x80000200U);
+    check(!cpu.step(0x0000000CU), "SYSCALL triggers a nested exception while EXL is set");
+    check(cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0U,
+          "nested exception preserves the original EPC and Cause.BD");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcSyscall,
+          "nested exception still updates Cause.ExcCode");
+    cpu.set_reg(3, 0x80000300U);
+    const std::uint32_t nested_mtc0_epc =
+        (0x10U << 26U) | (0x04U << 21U) | (3U << 16U) | (14U << 11U);
+    check(cpu.step(nested_mtc0_epc), "nested handler can update EPC before ERET");
+    check(cpu.step((0x10U << 26U) | (0x10U << 21U) | 0x18U),
+          "ERET returns from the nested exception");
+    cpu.set_pc(0x500);
+    check(!cpu.step(0x0000000CU), "a new exception occurs after ERET clears EXL");
+    check(cpu.cop0_epc() == 0x500 && (cpu.cop0_cause() & Cpu::CauseBd) == 0U,
+          "exception after ERET records a fresh EPC and clears stale Cause.BD");
+
     // Minimal COP0 state transfers and ERET allow an exception handler to return.
     cpu.reset();
     cpu.set_pc(0x400);
@@ -698,17 +823,39 @@ int main() {
     check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorStore,
           "misaligned SQ records AdES");
 
-    // MTC0 Cause only changes the two writable software interrupt-pending bits.
+    // Cause is mostly read-only: MTC0 may change only software interrupt-pending bits IP0/IP1.
     retroshelf::Cpu cause_cpu;
     check(!cause_cpu.step(0x0000000CU), "SYSCALL seeds read-only Cause exception-code bits");
     const std::uint32_t cause_before_write = cause_cpu.cop0_cause();
     cause_cpu.set_reg(5, 0xFFFFFFFFFFFFFFFFULL);
     const std::uint32_t mtc0_cause = (0x10U << 26U) | (0x04U << 21U) | (5U << 16U) | (13U << 11U);
-    check(cause_cpu.step(mtc0_cause) && cause_cpu.cop0_cause() == (cause_before_write | 0x00000300U),
+    check(cause_cpu.step(mtc0_cause), "MTC0 Cause executes");
+    check(cause_cpu.cop0_cause() == (cause_before_write | 0x00000300U),
           "MTC0 Cause changes only writable software interrupt-pending bits");
     cause_cpu.set_reg(5, 0);
     check(cause_cpu.step(mtc0_cause) && cause_cpu.cop0_cause() == (cause_before_write & ~0x00000300U),
           "MTC0 Cause clears software interrupt-pending bits without changing exception code");
+
+    // Common COP0 setup registers can round-trip through MTC0/MFC0.
+    retroshelf::Cpu cop0_bank_cpu;
+    cop0_bank_cpu.set_reg(8, 0xC1234000U);
+    check(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (10U << 11U)),
+          "MTC0 writes EntryHi");
+    check(cop0_bank_cpu.step((0x10U << 26U) | (9U << 16U) | (10U << 11U)) &&
+              cop0_bank_cpu.reg(9) == 0xFFFFFFFFC1234000ULL,
+          "MFC0 reads EntryHi with sign extension");
+    cop0_bank_cpu.set_reg(8, 0x12345678U);
+    check(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (9U << 11U)),
+          "MTC0 writes the placeholder Count register");
+    check(cop0_bank_cpu.step((0x10U << 26U) | (10U << 16U) | (9U << 11U)) &&
+              cop0_bank_cpu.reg(10) == 0x12345678U,
+          "MFC0 reads Count register storage");
+
+    // Reset must clear the newly modelled COP0 bank as well as legacy state.
+    cop0_bank_cpu.reset();
+    check(cop0_bank_cpu.step((0x10U << 26U) | (9U << 16U) | (10U << 11U)) &&
+              cop0_bank_cpu.reg(9) == 0,
+          "CPU reset clears COP0 EntryHi storage");
 
     return failures == 0 ? 0 : 1;
 }

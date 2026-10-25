@@ -10,6 +10,7 @@ EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget)
     result.final_pc = cpu_.pc();
     result.trace.reserve(instruction_budget < TraceCapacity ? instruction_budget : TraceCapacity);
     if (instruction_budget == 0) {
+        result.reason = StopReason::NoInstructionsRequested;
         result.message = "Instruction budget is zero; no instructions executed.";
         return result;
     }
@@ -33,7 +34,7 @@ EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget)
                 ? StopReason::InvalidInstructionFetch
                 : ((cpu_.pc() == Cpu::GeneralExceptionVector)
                     ? StopReason::CpuExceptionOrUnsupportedInstruction
-                    : StopReason::InvalidInstructionFetch);
+                    : StopReason::ExecutionError);
             return result;
         }
     }

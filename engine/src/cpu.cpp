@@ -5,6 +5,19 @@
 #include <vector>
 
 namespace retroshelf {
+namespace {
+// Implement sign-propagating right shift using unsigned operations so the
+// interpreter does not depend on implementation-defined signed shifts.
+std::uint64_t arithmetic_shift_right(std::uint64_t value, unsigned amount) {
+    amount &= 0x3FU;
+    if (amount == 0U) return value;
+    std::uint64_t result = value >> amount;
+    if ((value & (std::uint64_t{1} << 63U)) != 0U)
+        result |= (~std::uint64_t{0}) << (64U - amount);
+    return result;
+}
+} // namespace
+
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
     gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
@@ -118,8 +131,12 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             const auto product = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs))) *
                                  static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)));
             const auto bits = static_cast<std::uint64_t>(product);
-            lo_ = static_cast<std::uint32_t>(bits);
-            hi_ = static_cast<std::uint32_t>(bits >> 32U);
+            // The 32-bit MULT instruction sign-extends each 32-bit
+            // half into the EE's 64-bit HI/LO registers.
+            lo_ = static_cast<std::uint64_t>(static_cast<std::int64_t>(
+                static_cast<std::int32_t>(static_cast<std::uint32_t>(bits))));
+            hi_ = static_cast<std::uint64_t>(static_cast<std::int64_t>(
+                static_cast<std::int32_t>(static_cast<std::uint32_t>(bits >> 32U))));
             return true;
         }
         case 0x1A: { // DIV: signed 32-bit quotient in LO, remainder in HI
@@ -282,24 +299,35 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         case 0x2B: set_reg(rd, reg(rs) < reg(rt) ? 1U : 0U); return true; // SLTU
         case 0x00: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt) << ((instruction >> 6U) & 0x1FU)))))); return true; // SLL/NOP
         case 0x02: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU))))); return true; // SRL
-        case 0x03: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt))) >> ((instruction >> 6U) & 0x1FU))); return true; // SRA
+        case 0x03: set_reg(rd, arithmetic_shift_right(static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)))), (instruction >> 6U) & 0x1FU)); return true; // SRA
         case 0x14: set_reg(rd, reg(rt) << (reg(rs) & 0x3FU)); return true; // DSLLV
         case 0x16: set_reg(rd, reg(rt) >> (reg(rs) & 0x3FU)); return true; // DSRLV
-        case 0x17: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> (reg(rs) & 0x3FU))); return true; // DSRAV
+        case 0x17: set_reg(rd, arithmetic_shift_right(reg(rt), static_cast<unsigned>(reg(rs) & 0x3FU))); return true; // DSRAV
         case 0x38: set_reg(rd, reg(rt) << ((instruction >> 6U) & 0x1FU)); return true; // DSLL
         case 0x3A: set_reg(rd, reg(rt) >> ((instruction >> 6U) & 0x1FU)); return true; // DSRL
-        case 0x3B: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> ((instruction >> 6U) & 0x1FU))); return true; // DSRA
+        case 0x3B: set_reg(rd, arithmetic_shift_right(reg(rt), (instruction >> 6U) & 0x1FU)); return true; // DSRA
         case 0x3C: set_reg(rd, reg(rt) << (((instruction >> 6U) & 0x1FU) + 32U)); return true; // DSLL32
         case 0x3E: set_reg(rd, reg(rt) >> (((instruction >> 6U) & 0x1FU) + 32U)); return true; // DSRL32
-        case 0x3F: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(reg(rt)) >> (((instruction >> 6U) & 0x1FU) + 32U))); return true; // DSRA32
+        case 0x3F: set_reg(rd, arithmetic_shift_right(reg(rt), ((instruction >> 6U) & 0x1FU) + 32U)); return true; // DSRA32
         case 0x04: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt) << (reg(rs) & 0x1FU)))))); return true; // SLLV
         case 0x06: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(static_cast<std::uint32_t>(reg(rt)) >> (reg(rs) & 0x1FU))))); return true; // SRLV
-        case 0x07: set_reg(rd, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt))) >> (reg(rs) & 0x1FU))); return true; // SRAV
+        case 0x07: set_reg(rd, arithmetic_shift_right(static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)))), static_cast<unsigned>(reg(rs) & 0x1FU))); return true; // SRAV
         case 0x08: return branch(true, reg(rs)); // JR
         case 0x09: { // JALR
             const auto target = reg(rs); // read before writing rd (rd may equal rs)
             set_reg(rd, cur_pc + 8);
             return branch(true, target);
+        }
+        case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x36: { // TGE/TGEU/TLT/TLTU/TEQ/TNE
+            const bool trap = funct == 0x30 ? sreg(rs) >= sreg(rt) :
+                              funct == 0x31 ? reg(rs) >= reg(rt) :
+                              funct == 0x32 ? sreg(rs) < sreg(rt) :
+                              funct == 0x33 ? reg(rs) < reg(rt) :
+                              funct == 0x34 ? reg(rs) == reg(rt) : reg(rs) != reg(rt);
+            if (!trap) return true;
+            if (error) *error = "EE register trap exception";
+            raise_exception(ExcTrap, cur_pc, in_delay);
+            return false;
         }
         default: break;
         }
@@ -307,10 +335,12 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x10: { // Minimal COP0 support: MFC0, MTC0 and ERET.
         const auto read_cop0 = [this](std::uint32_t index, std::uint64_t& value) {
             switch (index) {
-            case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
-            case 9: case 10: case 11: case 15: case 16: case 23: case 24:
+            case 0: case 2: case 3: case 4: case 5: case 6: case 7:
+            case 9: case 10: case 11: case 16: case 23: case 24:
             case 25: case 28: case 29: case 30:
                 value = cop0_regs_[index]; return true;
+            case 1: value = cop0_regs_[index]; return true; // Random is a placeholder until cycle timing is modelled.
+            case 15: value = cop0_regs_[index]; return true; // PRId placeholder
             case 12: value = status_; return true; // Status
             case 13: value = cause_; return true;  // Cause
             case 8: value = bad_vaddr_; return true; // BadVAddr (read-only)
@@ -326,9 +356,9 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
         if (rs == 0x04) { // MTC0 rt, rd
             switch (rd) {
-            case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
-            case 9: case 10: case 11: case 16: case 23: case 24: case 25:
-            case 28: case 29: case 30:
+            case 0: case 2: case 3: case 4: case 5: case 6: case 7:
+            case 9: case 10: case 11: case 16: case 23: case 24:
+            case 25: case 28: case 29: case 30:
                 cop0_regs_[rd] = static_cast<std::uint32_t>(reg(rt)); return true;
             case 12: status_ = static_cast<std::uint32_t>(reg(rt)); return true;
             case 13: { // Only software interrupt-pending bits IP0/IP1 are writable in Cause.
@@ -350,7 +380,21 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
         return unsupported();
     }
-    case 0x01: { // REGIMM branches, including branch-likely variants.
+    case 0x01: { // REGIMM branches and immediate trap instructions.
+        if (rt == 0x08 || rt == 0x09 || rt == 0x0A ||
+            rt == 0x0B || rt == 0x0C || rt == 0x0E) {
+            const auto immediate_unsigned = static_cast<std::uint64_t>(simm);
+            const bool trap = rt == 0x08 ? sreg(rs) >= simm :
+                              rt == 0x09 ? reg(rs) >= immediate_unsigned :
+                              rt == 0x0A ? sreg(rs) < simm :
+                              rt == 0x0B ? reg(rs) < immediate_unsigned :
+                              rt == 0x0C ? reg(rs) == immediate_unsigned :
+                                           reg(rs) != immediate_unsigned;
+            if (!trap) return true;
+            if (error) *error = "EE immediate trap exception";
+            raise_exception(ExcTrap, cur_pc, in_delay);
+            return false;
+        }
         if (rt != 0x00 && rt != 0x01 && rt != 0x02 && rt != 0x03 &&
             rt != 0x10 && rt != 0x11 && rt != 0x12 && rt != 0x13) return unsupported();
         const bool taken = (rt & 1U) ? sreg(rs) >= 0 : sreg(rs) < 0;
@@ -628,12 +672,16 @@ bool Cpu::step_from_ram(std::vector<std::uint8_t>& ram,
     }
     if (pc_ < ram_base) {
         if (error) *error = "Instruction fetch is outside RAM";
+        bad_vaddr_ = pc_;
+        raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
         return false;
     }
     const std::uint64_t offset = pc_ - ram_base;
     if (offset > ram.size() ||
         ram.size() - static_cast<std::size_t>(offset) < sizeof(std::uint32_t)) {
         if (error) *error = "Instruction fetch is outside RAM";
+        bad_vaddr_ = pc_;
+        raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
         return false;
     }
     const auto index = static_cast<std::size_t>(offset);

@@ -14,6 +14,7 @@ int main() {
     };
     std::string error;
     std::uint64_t value = 0;
+    std::uint64_t low = 0, high = 0;
 
     check(memory.write(0x100, 4, 0x12345678, &error), "write little-endian word to RAM");
     check(memory.read(0x100, 4, value, &error) && value == 0x12345678,
@@ -37,6 +38,9 @@ int main() {
 
     retroshelf::Ps2EeMemoryMap small(256);
     check(!small.read(0x100, 8, value, &error), "access beyond configured RAM is rejected");
+    check(!small.read(0xBFC00000U, 4, value, &error) &&
+              error.find("No BIOS image is mapped") != std::string::npos,
+          "BIOS-window read without a loaded ROM reports a BIOS-specific error");
     // BIOS bytes are mapped read-only through physical, KSEG0 and KSEG1 aliases.
     std::vector<std::uint8_t> bios(16);
     for (std::size_t i = 0; i < bios.size(); ++i)
@@ -49,11 +53,16 @@ int main() {
           "read BIOS bytes through KSEG0 alias");
     check(memory.read(0xBFC00000U, 4, value, &error) && value == 0x13121110U,
           "read BIOS bytes through KSEG1 reset-vector alias");
+    check(!memory.read(0xBFC00010U, 4, value, &error) &&
+              error.find("BIOS read exceeds the loaded ROM image") != std::string::npos,
+          "read beyond loaded BIOS image reports a ROM-boundary error");
+    check(!memory.read128(0xBFC00000U + 0x10U, low, high, &error) &&
+              error.find("BIOS read exceeds the loaded ROM image") != std::string::npos,
+          "128-bit read beyond loaded BIOS image reports a ROM-boundary error");
     check(!memory.write(0xBFC00000U, 4, 0xDEADBEEFU, &error) && !error.empty(),
           "writes to BIOS ROM are rejected");
     check(memory.read(0x1FC00000U, 4, value, &error) && value == 0x13121110U,
           "rejected BIOS write leaves ROM contents unchanged");
-    std::uint64_t low = 0, high = 0;
     check(memory.read128(0xBFC00000U, low, high, &error) &&
           low == 0x1716151413121110ULL && high == 0x1F1E1D1C1B1A1918ULL,
           "read aligned 128-bit BIOS data");

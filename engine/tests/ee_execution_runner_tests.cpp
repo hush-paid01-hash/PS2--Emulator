@@ -5,6 +5,9 @@
 #include <string>
 
 int main() {
+    retroshelf::EeExecutionRunner::Result not_started;
+    assert(not_started.reason == retroshelf::EeExecutionRunner::StopReason::NotStarted);
+
     retroshelf::Ps2EeMemoryMap memory(64U * 1024U);
     retroshelf::Cpu cpu;
     std::string error;
@@ -36,6 +39,8 @@ int main() {
 
     const auto zero = runner.run(0);
     assert(zero.instructions_executed == 0);
+    assert(zero.reason == retroshelf::EeExecutionRunner::StopReason::NoInstructionsRequested);
+    assert(!zero.message.empty());
     assert(zero.final_pc == cpu.pc());
     assert(zero.trace.empty());
 
@@ -84,5 +89,21 @@ int main() {
     cpu.set_pc(start);
     const auto bounded = runner.run(retroshelf::EeExecutionRunner::TraceCapacity + 1U);
     assert(bounded.trace.size() == retroshelf::EeExecutionRunner::TraceCapacity);
+    // A branch in a branch delay slot currently fails without entering the
+    // exception vector. Report this as an execution error, not a fetch fault.
+    cpu.reset();
+    cpu.set_pc(start);
+    constexpr std::uint32_t beq_zero_zero_one = (0x04U << 26U) | 1U;
+    assert(memory.write(start, 4, beq_zero_zero_one, &error));
+    assert(memory.write(start + 4U, 4, beq_zero_zero_one, &error));
+    const auto branch = runner.run(1);
+    assert(branch.instructions_executed == 1);
+    const auto delay_slot_branch = runner.run(1);
+    assert(delay_slot_branch.instructions_executed == 0);
+    assert(delay_slot_branch.reason == retroshelf::EeExecutionRunner::StopReason::ExecutionError);
+    assert(delay_slot_branch.final_pc == start + 4U);
+    assert(delay_slot_branch.message.find("delay slot") != std::string::npos);
+    assert(delay_slot_branch.trace.size() == 1 && delay_slot_branch.trace[0].fetched);
+
     return 0;
 }

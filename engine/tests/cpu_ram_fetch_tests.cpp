@@ -31,19 +31,29 @@ int main() {
     assert(cpu.reg(9) == 5);
     assert(cpu.pc() == 8);
 
-    // Failed fetch must not advance PC or alter registers.
+    // Failed fetches record BadVAddr and enter the EE address exception path.
     const auto pc_before = cpu.pc();
     assert(!cpu.step_from_ram(ram, 0, &error));
-    assert(cpu.pc() == pc_before);
     assert(!error.empty());
+    assert(cpu.cop0_bad_vaddr() == pc_before);
+    assert(cpu.cop0_epc() == pc_before);
+    assert((cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
+    assert(cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
 
+    cpu.reset();
     cpu.set_pc(0x1000);
     assert(!cpu.step_from_ram(ram, 0, &error));
-    assert(cpu.pc() == 0x1000);
+    assert(cpu.cop0_bad_vaddr() == 0x1000);
+    assert(cpu.cop0_epc() == 0x1000);
+    assert(cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
 
+    cpu.reset();
     cpu.set_pc(0);
     assert(!cpu.step_from_ram(ram, 4, &error));
-    assert(cpu.pc() == 0);
+    assert(cpu.cop0_bad_vaddr() == 0);
+    assert(cpu.cop0_epc() == 0);
+    assert(cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
 
     // LW/SW through step_from_ram use caller-owned RAM for data accesses too.
     std::vector<std::uint8_t> data_ram(64, 0);

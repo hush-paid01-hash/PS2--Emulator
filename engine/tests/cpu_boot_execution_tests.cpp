@@ -231,8 +231,8 @@ int main() {
     mult_cpu.set_reg(9, 3U);
     assert(ee.write(0x8000B100U, 4, (8U << 21U) | (9U << 16U) | 0x18U, &error)); // MULT t0,t1
     assert(mult_cpu.step_from_ee_memory(ee, &error));
-    assert(mult_cpu.lo() == 0xFFFFFFFAU);
-    assert(mult_cpu.hi() == 0xFFFFFFFFU);
+    assert(mult_cpu.lo() == 0xFFFFFFFFFFFFFFFAULL);
+    assert(mult_cpu.hi() == 0xFFFFFFFFFFFFFFFFULL);
 
     // DIV/DIVU place quotient in LO and remainder in HI.
     retroshelf::Cpu div_cpu;
@@ -497,6 +497,27 @@ int main() {
     assert(bios_cpu.step_from_ee_memory(bios_memory, &error));
     assert(bios_cpu.reg(9) == 5U);
     assert(bios_cpu.pc() == 0xBFC00008U);
+
+    // Out-of-range fetches through the legacy RAM adapter must enter the
+    // same address-exception path as fetches from the mapped EE memory.
+    std::vector<std::uint8_t> short_ram(16U, 0U);
+    retroshelf::Cpu ram_fetch_oob_cpu;
+    ram_fetch_oob_cpu.set_pc(0x1020U);
+    assert(!ram_fetch_oob_cpu.step_from_ram(short_ram, 0x1000U, &error));
+    assert(ram_fetch_oob_cpu.cop0_bad_vaddr() == 0x1020U);
+    assert(ram_fetch_oob_cpu.cop0_epc() == 0x1020U);
+    assert((ram_fetch_oob_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
+    assert(ram_fetch_oob_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
+
+    retroshelf::Cpu ram_fetch_below_cpu;
+    ram_fetch_below_cpu.set_pc(0x0FFCU);
+    assert(!ram_fetch_below_cpu.step_from_ram(short_ram, 0x1000U, &error));
+    assert(ram_fetch_below_cpu.cop0_bad_vaddr() == 0x0FFCU);
+    assert(ram_fetch_below_cpu.cop0_epc() == 0x0FFCU);
+    assert((ram_fetch_below_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
+    assert(ram_fetch_below_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
 
     std::cout << "CPU boot execution tests passed\\n";
 }
