@@ -26,6 +26,8 @@ public:
     EeGifDma& dma();
     const GsFramebuffer& framebuffer() const;
     GsFramebuffer& framebuffer();
+    // Exposes GS state for diagnostics and integration tests.
+    const GsGifPipeline& pipeline() const;
     const std::string& error() const;
 
 private:
