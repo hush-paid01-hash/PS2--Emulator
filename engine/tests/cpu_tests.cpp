@@ -123,19 +123,19 @@ int main() {
     cpu.reset();
     cpu.set_reg(1, 0x80001234ULL);
     cpu.set_reg(2, Cpu::StatusExl);
-    constexpr std::uint32_t mtc0_epc = (0x10U << 26U) | (0x04U << 21U) |
+    constexpr std::uint32_t cop0_test_mtc0_epc = (0x10U << 26U) | (0x04U << 21U) |
                                        (1U << 16U) | (14U << 11U);
-    constexpr std::uint32_t mtc0_status = (0x10U << 26U) | (0x04U << 21U) |
+    constexpr std::uint32_t cop0_test_mtc0_status = (0x10U << 26U) | (0x04U << 21U) |
                                           (2U << 16U) | (12U << 11U);
-    constexpr std::uint32_t mfc0_epc = (0x10U << 26U) | (14U << 11U) |
+    constexpr std::uint32_t cop0_test_mfc0_epc = (0x10U << 26U) | (14U << 11U) |
                                        (3U << 16U);
-    constexpr std::uint32_t eret = (0x10U << 26U) | (0x10U << 21U) | 0x18U;
-    check(cpu.step(mtc0_epc), "MTC0 writes the exception program counter");
-    check(cpu.step(mtc0_status) && cpu.cop0_status() == Cpu::StatusExl,
+    constexpr std::uint32_t cop0_test_eret = (0x10U << 26U) | (0x10U << 21U) | 0x18U;
+    check(cpu.step(cop0_test_mtc0_epc), "MTC0 writes the exception program counter");
+    check(cpu.step(cop0_test_mtc0_status) && cpu.cop0_status() == Cpu::StatusExl,
           "MTC0 writes Status.EXL");
-    check(cpu.step(mfc0_epc) && cpu.reg(3) == 0x80001234ULL,
+    check(cpu.step(cop0_test_mfc0_epc) && cpu.reg(3) == 0x80001234ULL,
           "MFC0 reads the exception program counter");
-    check(cpu.step(eret) && cpu.pc() == 0x80001234ULL &&
+    check(cpu.step(cop0_test_eret) && cpu.pc() == 0x80001234ULL &&
               cpu.next_pc() == 0x80001238ULL &&
               (cpu.cop0_status() & Cpu::StatusExl) == 0U &&
               !cpu.in_delay_slot(),
