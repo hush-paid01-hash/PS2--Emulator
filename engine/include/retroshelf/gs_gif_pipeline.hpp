@@ -13,8 +13,8 @@
 
 namespace retroshelf {
 
-// Connects GIF register writes to the GS model and exposes IMAGE/IMAGE2 payloads.
-// Pixel-format-aware transfer into swizzled GS local memory is a separate stage.
+// Connects GIF register writes and IMAGE/IMAGE2 payloads to the GS model.
+// Supported PSMCT32 host-to-local uploads are applied automatically to swizzled GS local memory.
 class GsGifPipeline {
 public:
     bool consume(const std::vector<GifPacket>& packets);
@@ -36,6 +36,7 @@ public:
     void reset();
 
 private:
+    bool apply_pending_image_upload();
     GsRegisterDecoder decoder_;
     GsRegisterState registers_;
     GsLocalMemory local_memory_;
