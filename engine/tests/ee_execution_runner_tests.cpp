@@ -119,12 +119,14 @@ int main() {
     }
     assert(bios_memory.load_bios_image(bios_image, &error));
     retroshelf::Cpu bios_cpu;
-    bios_cpu.set_pc(0xBFC00000U);
+    bios_cpu.set_reg(10U, 0xDEADBEEFU); // the BIOS entry helper must start from reset CPU state
+    bios_cpu.set_pc(0x80001000U);
     retroshelf::EeExecutionRunner bios_runner(bios_cpu, bios_memory);
-    const auto bios_run = bios_runner.run(2);
+    const auto bios_run = bios_runner.run_from_bios_reset_vector(2);
     assert(bios_run.instructions_executed == 2);
     assert(bios_run.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
     assert(bios_cpu.reg(8) == 7U && bios_cpu.reg(9) == 5U);
+    assert(bios_cpu.reg(10U) == 0U); // stale state was cleared before BIOS execution
     assert(bios_run.trace.size() == 2U);
     assert(bios_run.trace[0].pc == 0xBFC00000U && bios_run.trace[0].fetched);
     assert(bios_run.trace[1].pc == 0xBFC00004U && bios_run.trace[1].fetched);
