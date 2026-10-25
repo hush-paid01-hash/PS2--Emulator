@@ -66,6 +66,22 @@ int main() {
     assert(cpu.reg(11) == 9);
     assert(handler.final_pc == exception_vector + 4U);
 
+    // Architected exceptions should enter their handler within the same
+    // bounded run. Unsupported opcodes above remain diagnostic stop conditions.
+    constexpr std::uint32_t syscall_instruction = 0x0000000CU;
+    assert(memory.write(start + 16U, 4, syscall_instruction, &error));
+    cpu.reset();
+    cpu.set_pc(start + 16U);
+    const auto syscall_handler = runner.run(2);
+    assert(syscall_handler.instructions_executed == 2);
+    assert(syscall_handler.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(cpu.reg(11) == 9U);
+    assert(syscall_handler.trace.size() == 2U);
+    assert(syscall_handler.trace[0].pc == start + 16U && syscall_handler.trace[0].fetched);
+    assert(syscall_handler.trace[0].instruction == syscall_instruction);
+    assert(syscall_handler.trace[1].pc == exception_vector && syscall_handler.trace[1].fetched);
+    assert(syscall_handler.final_pc == exception_vector + 4U);
+
     // Start a fresh exception context: the prior unsupported-instruction test
     // intentionally left Status.EXL set while running its handler.
     cpu.reset();

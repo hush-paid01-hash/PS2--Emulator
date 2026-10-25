@@ -33,6 +33,19 @@ EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget)
 
         std::string error;
         if (!cpu_.step_from_ee_memory(memory_, &error)) {
+            // A fetched instruction can raise an architected exception (for
+            // example SYSCALL, BREAK, or an address fault). The CPU has already
+            // moved PC to the exception vector; let the handler execute within
+            // the same bounded run. Unsupported opcodes also vector today, but
+            // remain a diagnostic stop rather than being mistaken for a valid
+            // exception path.
+            const bool entered_exception_handler =
+                fetched && cpu_.pc() == Cpu::GeneralExceptionVector &&
+                error.rfind("Unsupported instruction", 0) != 0;
+            if (entered_exception_handler) {
+                continue;
+            }
+
             result.instructions_executed = i;
             result.final_pc = cpu_.pc();
             result.message = error.empty() ? "EE instruction execution stopped." : error;
