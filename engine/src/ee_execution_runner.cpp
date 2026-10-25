@@ -40,7 +40,8 @@ EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget)
             // remain a diagnostic stop rather than being mistaken for a valid
             // exception path.
             const bool entered_exception_handler =
-                fetched && cpu_.pc() == Cpu::GeneralExceptionVector &&
+                instruction_pc != Cpu::GeneralExceptionVector &&
+                cpu_.pc() == Cpu::GeneralExceptionVector &&
                 error.rfind("Unsupported instruction", 0) != 0;
             if (entered_exception_handler) {
                 continue;
