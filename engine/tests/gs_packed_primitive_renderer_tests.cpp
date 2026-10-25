@@ -98,6 +98,33 @@ int main() {
     assert(unsigned_coordinate_pixel.r == 255 && unsigned_coordinate_pixel.g == 0 &&
            unsigned_coordinate_pixel.b == 0 && unsigned_coordinate_pixel.a == 255);
 
+    renderer.reset();
+    framebuffer.clear();
+    // A triangle strip emits a new triangle for each vertex after the first two.
+    assert(renderer.consume({{0x0, 0x4}, {0x1, 0xFF0000FFULL},
+                             {0x5, xyz(1U << 4U, 1U << 4U)},
+                             {0x5, xyz(6U << 4U, 1U << 4U)},
+                             {0x5, xyz(1U << 4U, 6U << 4U)},
+                             {0x5, xyz(6U << 4U, 6U << 4U)}}, framebuffer));
+    GsFramebuffer::Rgba8 strip_pixel{};
+    assert(framebuffer.get_pixel(4, 4, strip_pixel));
+    assert(strip_pixel.r == 255 && strip_pixel.g == 0 &&
+           strip_pixel.b == 0 && strip_pixel.a == 255);
+
+    renderer.reset();
+    framebuffer.clear();
+    // A triangle fan keeps the first vertex as the common center.
+    assert(renderer.consume({{0x0, 0x5}, {0x1, 0xFF00FF00ULL},
+                             {0x5, xyz(3U << 4U, 3U << 4U)},
+                             {0x5, xyz(1U << 4U, 1U << 4U)},
+                             {0x5, xyz(6U << 4U, 1U << 4U)},
+                             {0x5, xyz(6U << 4U, 6U << 4U)},
+                             {0x5, xyz(1U << 4U, 6U << 4U)}}, framebuffer));
+    GsFramebuffer::Rgba8 fan_pixel{};
+    assert(framebuffer.get_pixel(4, 4, fan_pixel));
+    assert(fan_pixel.r == 0 && fan_pixel.g == 255 &&
+           fan_pixel.b == 0 && fan_pixel.a == 255);
+
     std::cout << "GS packed primitive renderer tests passed\n";
     return 0;
 }
