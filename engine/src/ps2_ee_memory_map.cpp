@@ -12,8 +12,9 @@ bool is_bios_window_address(std::uint32_t address) {
 }
 } // namespace
 
-Ps2EeMemoryMap::Ps2EeMemoryMap() : ram_(MainRamSize, 0) {}
-Ps2EeMemoryMap::Ps2EeMemoryMap(std::size_t main_ram_size) : ram_(main_ram_size, 0) {}
+Ps2EeMemoryMap::Ps2EeMemoryMap() : ram_(MainRamSize, 0), scratchpad_(ScratchpadSize, 0) {}
+Ps2EeMemoryMap::Ps2EeMemoryMap(std::size_t main_ram_size)
+    : ram_(main_ram_size, 0), scratchpad_(ScratchpadSize, 0) {}
 std::size_t Ps2EeMemoryMap::main_ram_size() const { return ram_.size(); }
 std::vector<std::uint8_t>& Ps2EeMemoryMap::main_ram() { return ram_; }
 const std::vector<std::uint8_t>& Ps2EeMemoryMap::main_ram() const { return ram_; }
@@ -34,6 +35,22 @@ bool Ps2EeMemoryMap::load_bios_image(const std::vector<std::uint8_t>& image,
 }
 
 std::size_t Ps2EeMemoryMap::bios_rom_size() const { return bios_rom_.size(); }
+std::size_t Ps2EeMemoryMap::scratchpad_size() const { return scratchpad_.size(); }
+
+bool Ps2EeMemoryMap::resolve_scratchpad(std::uint32_t address, std::size_t width,
+                                        std::size_t& offset, std::string* error) const {
+    if (address < ScratchpadBase ||
+        static_cast<std::uint64_t>(address) >=
+            static_cast<std::uint64_t>(ScratchpadBase) + ScratchpadSize)
+        return false;
+    offset = static_cast<std::size_t>(address - ScratchpadBase);
+    if (width > scratchpad_.size() || offset > scratchpad_.size() - width) {
+        if (error) *error = "Memory access exceeds the EE scratchpad boundary";
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
 
 bool Ps2EeMemoryMap::resolve_bios_rom(std::uint32_t address, std::size_t width,
                                       std::size_t& offset, std::string* error) const {
@@ -100,6 +117,16 @@ bool Ps2EeMemoryMap::read(std::uint32_t address, std::size_t width,
         return false;
     }
     std::size_t offset = 0;
+    if (address >= ScratchpadBase &&
+        static_cast<std::uint64_t>(address) <
+            static_cast<std::uint64_t>(ScratchpadBase) + ScratchpadSize) {
+        if (!resolve_scratchpad(address, width, offset, error)) return false;
+        value = 0;
+        for (std::size_t i = 0; i < width; ++i)
+            value |= static_cast<std::uint64_t>(scratchpad_[offset + i]) << (8U * i);
+        if (error) error->clear();
+        return true;
+    }
     if (is_bios_window_address(address)) {
         if (!resolve_bios_rom(address, width, offset, error)) return false;
         value = 0;
@@ -126,6 +153,17 @@ bool Ps2EeMemoryMap::write(std::uint32_t address, std::size_t width,
     if ((address & static_cast<std::uint32_t>(width - 1U)) != 0U) {
         if (error) *error = "Misaligned memory access";
         return false;
+    }
+    std::size_t scratchpad_offset = 0;
+    if (address >= ScratchpadBase &&
+        static_cast<std::uint64_t>(address) <
+            static_cast<std::uint64_t>(ScratchpadBase) + ScratchpadSize) {
+        if (!resolve_scratchpad(address, width, scratchpad_offset, error)) return false;
+        for (std::size_t i = 0; i < width; ++i)
+            scratchpad_[scratchpad_offset + i] =
+                static_cast<std::uint8_t>((value >> (8U * i)) & 0xFFU);
+        if (error) error->clear();
+        return true;
     }
     std::size_t bios_offset = 0;
     if (resolve_bios_rom(address, width, bios_offset, nullptr)) {
@@ -155,6 +193,18 @@ bool Ps2EeMemoryMap::read128(std::uint32_t address, std::uint64_t& low,
         return false;
     }
     std::size_t offset = 0;
+    if (address >= ScratchpadBase &&
+        static_cast<std::uint64_t>(address) <
+            static_cast<std::uint64_t>(ScratchpadBase) + ScratchpadSize) {
+        if (!resolve_scratchpad(address, 16, offset, error)) return false;
+        low = 0; high = 0;
+        for (std::size_t i = 0; i < 8; ++i) {
+            low |= static_cast<std::uint64_t>(scratchpad_[offset + i]) << (8U * i);
+            high |= static_cast<std::uint64_t>(scratchpad_[offset + 8 + i]) << (8U * i);
+        }
+        if (error) error->clear();
+        return true;
+    }
     if (is_bios_window_address(address)) {
         if (!resolve_bios_rom(address, 16, offset, error)) return false;
         low = 0;
@@ -182,6 +232,20 @@ bool Ps2EeMemoryMap::write128(std::uint32_t address, std::uint64_t low,
     if ((address & 0xFU) != 0U) {
         if (error) *error = "Misaligned 128-bit memory access";
         return false;
+    }
+    std::size_t scratchpad_offset = 0;
+    if (address >= ScratchpadBase &&
+        static_cast<std::uint64_t>(address) <
+            static_cast<std::uint64_t>(ScratchpadBase) + ScratchpadSize) {
+        if (!resolve_scratchpad(address, 16, scratchpad_offset, error)) return false;
+        for (std::size_t i = 0; i < 8; ++i) {
+            scratchpad_[scratchpad_offset + i] =
+                static_cast<std::uint8_t>((low >> (8U * i)) & 0xFFU);
+            scratchpad_[scratchpad_offset + 8 + i] =
+                static_cast<std::uint8_t>((high >> (8U * i)) & 0xFFU);
+        }
+        if (error) error->clear();
+        return true;
     }
     std::size_t bios_offset = 0;
     if (resolve_bios_rom(address, 16, bios_offset, nullptr)) {

@@ -36,6 +36,26 @@ int main() {
     check(!memory.write(0x100000, 8, 1, &error) && !error.empty(),
           "out-of-range access is rejected for small configured RAM");
 
+    check(memory.scratchpad_size() == retroshelf::Ps2EeMemoryMap::ScratchpadSize,
+          "EE scratchpad has the expected 16 KiB capacity");
+    check(memory.write(retroshelf::Ps2EeMemoryMap::ScratchpadBase, 4, 0x78563412U, &error),
+          "write word to EE scratchpad");
+    check(memory.read(retroshelf::Ps2EeMemoryMap::ScratchpadBase, 4, value, &error) &&
+              value == 0x78563412U,
+          "read word from EE scratchpad");
+    check(memory.read(0x70000000U, 4, value, &error) && value == 0x78563412U,
+          "scratchpad bytes remain accessible at the architectural base");
+    check(memory.write128(0x70000010U, 0x0123456789ABCDEFULL,
+                          0xFEDCBA9876543210ULL, &error),
+          "write aligned 128-bit value to EE scratchpad");
+    check(memory.read128(0x70000010U, low, high, &error) &&
+              low == 0x0123456789ABCDEFULL && high == 0xFEDCBA9876543210ULL,
+          "read aligned 128-bit value from EE scratchpad");
+    check(!memory.write(0x70003FFEU, 4, 1, &error),
+          "scratchpad access crossing the 16 KiB boundary is rejected");
+    check(!memory.write(0x70000001U, 4, 1, &error) && !error.empty(),
+          "misaligned scratchpad access is rejected");
+
     retroshelf::Ps2EeMemoryMap small(256);
     check(!small.read(0x100, 8, value, &error), "access beyond configured RAM is rejected");
     check(!small.read(0xBFC00000U, 4, value, &error) &&
