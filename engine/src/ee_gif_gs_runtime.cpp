@@ -54,6 +54,7 @@ bool EeGifGsRuntime::run_frame() {
 EeGifDma& EeGifGsRuntime::dma() { return dma_; }
 const GsFramebuffer& EeGifGsRuntime::framebuffer() const { return framebuffer_; }
 GsFramebuffer& EeGifGsRuntime::framebuffer() { return framebuffer_; }
-const std::string& EeGifGsRuntime::error() const { return error_; }
+const GsLocalMemory& EeGifGsRuntime::local_memory() const { return pipeline_.local_memory(); }
+const std::string& EeGifGsRuntime::error() const { return error_;}
 
 } // namespace retroshelf

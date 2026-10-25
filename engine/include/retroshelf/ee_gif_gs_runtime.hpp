@@ -8,6 +8,7 @@
 #include "retroshelf/ee_gif_dma.hpp"
 #include "retroshelf/gs_framebuffer.hpp"
 #include "retroshelf/gs_gif_pipeline.hpp"
+#include "retroshelf/gs_local_memory.hpp"
 #include "retroshelf/gs_packet_processor.hpp"
 #include "retroshelf/system_bus.hpp"
 
@@ -26,6 +27,7 @@ public:
     EeGifDma& dma();
     const GsFramebuffer& framebuffer() const;
     GsFramebuffer& framebuffer();
+    const GsLocalMemory& local_memory() const;
     const std::string& error() const;
 
 private:
