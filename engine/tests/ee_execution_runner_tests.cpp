@@ -100,7 +100,7 @@ int main() {
 
     // If the exception vector itself is unmapped, stop instead of repeatedly
     // faulting at the same vector until the instruction budget is exhausted.
-    retroshelf::Ps2EeMemoryMap no_handler_memory(64U * 1024U);
+    retroshelf::Ps2EeMemoryMap no_handler_memory(0x100U);
     retroshelf::Cpu no_handler_cpu;
     no_handler_cpu.set_pc(0x30000000U);
     retroshelf::EeExecutionRunner no_handler_runner(no_handler_cpu, no_handler_memory);
