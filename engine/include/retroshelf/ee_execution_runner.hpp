@@ -30,6 +30,7 @@ public:
     };
 
     static constexpr std::size_t TraceCapacity = 256;
+    static constexpr std::uint32_t BiosResetVector = 0xBFC00000U;
 
     struct Result {
         std::size_t instructions_executed{0};
@@ -43,6 +44,11 @@ public:
 
     EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory);
     Result run(std::size_t instruction_budget);
+
+    // Reset the interpreter state and begin fetching at the EE BIOS reset vector.
+    // This is a convenient entry point for the current subset CPU, not a claim
+    // that the full PS2 reset state or BIOS boot process is implemented.
+    Result run_from_bios_reset_vector(std::size_t instruction_budget);
 
 private:
     Cpu& cpu_;
