@@ -25,7 +25,7 @@ bool GsGifPipeline::consume(const std::vector<GifPacket>& packets) {
             }
         }
     }
-    return true;
+    return apply_pending_image_upload();
 }
 
 bool GsGifPipeline::consume_and_render(const std::vector<GifPacket>& packets, GsFramebuffer& target) {
@@ -51,7 +51,20 @@ bool GsGifPipeline::consume_and_render(const std::vector<GifPacket>& packets, Gs
             return false;
         }
     }
-    return true;
+    return apply_pending_image_upload();
+}
+
+bool GsGifPipeline::apply_pending_image_upload() {
+    if (image_transfers_.empty()) return true;
+    const auto state = transfer_state_.snapshot();
+    // Keep generic IMAGE packets and unsupported formats available to callers
+    // without treating them as an applied transfer. PSMCT32 uploads are the
+    // first pixel format supported end-to-end by this pipeline.
+    if (state.width == 0U || state.height == 0U || state.direction != 0U ||
+        state.destination_pixel_storage != 0x00U) {
+        return true;
+    }
+    return upload_image(error_);
 }
 
 const GsRegisterState& GsGifPipeline::registers() const { return registers_; }

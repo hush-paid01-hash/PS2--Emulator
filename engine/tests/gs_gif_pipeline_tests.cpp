@@ -129,8 +129,13 @@ int main() {
         retroshelf::GsGifPipeline pipeline;
         check(pipeline.consume({retroshelf::GifPacket{setup, 1}, retroshelf::GifPacket{image, 1}}),
               "pipeline decodes transfer setup and IMAGE payload");
+        check(pipeline.local_memory().read_byte(0) == 0x11 &&
+                  pipeline.local_memory().read_byte(1) == 0x22 &&
+                  pipeline.local_memory().read_byte(2) == 0x33 &&
+                  pipeline.local_memory().read_byte(3) == 0x44,
+              "configured PSMCT32 IMAGE upload is applied automatically during consume");
         std::string upload_error;
-        check(pipeline.upload_image(upload_error), "PSMCT32 IMAGE upload applies to swizzled GS memory");
+        check(pipeline.upload_image(upload_error), "explicit PSMCT32 IMAGE upload remains available");
         check(pipeline.local_memory().read_byte(0) == 0x11 &&
                   pipeline.local_memory().read_byte(1) == 0x22 &&
                   pipeline.local_memory().read_byte(2) == 0x33 &&
@@ -274,8 +279,11 @@ int main() {
         check(pipeline.stage_image_upload(packed, error), "pipeline stages upload against live GS registers");
         check(packed == std::vector<std::uint8_t>({0x11, 0x22, 0x33, 0x44}),
               "pipeline staging strips only final GIF qword padding");
-        check(pipeline.local_memory().read_byte(0) == 0,
-              "staging does not perform an unsafe linear VRAM write");
+        check(pipeline.local_memory().read_byte(0) == 0x11 &&
+                  pipeline.local_memory().read_byte(1) == 0x22 &&
+                  pipeline.local_memory().read_byte(2) == 0x33 &&
+                  pipeline.local_memory().read_byte(3) == 0x44,
+              "automatic PSMCT32 upload updates GS memory while staging remains inspectable");
     }
 
     return failures == 0 ? 0 : 1;
