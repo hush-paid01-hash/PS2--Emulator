@@ -464,6 +464,21 @@ int main() {
     assert(wide_shift_cpu.step((8U << 16U) | (11U << 11U) | 0x3FU, &error)); // DSRA32 t3,t0,0
     assert(wide_shift_cpu.reg(11) == 0xFFFFFFFFFFFFFFFFULL);
 
+
+    // COP0 register bank supports the common privileged setup registers used
+    // by boot code, while retaining the architectural special handling for
+    // Status, Cause, EPC and read-only BadVAddr.
+    retroshelf::Cpu cop0_bank_cpu;
+    cop0_bank_cpu.set_reg(8, 0xC1234000U);
+    assert(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (10U << 11U), &error)); // MTC0 t0,EntryHi
+    cop0_bank_cpu.set_reg(9, 0U);
+    assert(cop0_bank_cpu.step((0x10U << 26U) | (9U << 16U) | (10U << 11U), &error)); // MFC0 t1,EntryHi
+    assert(cop0_bank_cpu.reg(9) == 0xFFFFFFFFC1234000ULL);
+    cop0_bank_cpu.set_reg(8, 0x12345678U);
+    assert(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (9U << 11U), &error)); // MTC0 t0,Count
+    assert(cop0_bank_cpu.step((0x10U << 26U) | (10U << 16U) | (9U << 11U), &error)); // MFC0 t2,Count
+    assert(cop0_bank_cpu.reg(10) == 0x12345678U);
+
     // The CPU can fetch and execute instructions from the mapped BIOS reset-vector alias.
     retroshelf::Ps2EeMemoryMap bios_memory(64U * 1024U);
     std::vector<std::uint8_t> bios_bytes(16U, 0U);
