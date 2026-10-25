@@ -87,16 +87,19 @@ int main() {
 
     renderer.reset();
     framebuffer.clear();
-    // High-bit XYZ2 coordinates remain unsigned positions. A sprite from
-    // (0,0) to (4095,4095) covers this small target; interpreting 0xFFF0 as
-    // -1 would incorrectly collapse the visible region to its top-left pixel.
+    // XYZ2 X/Y are signed 12.4 coordinates: 0xFFF0 represents -1.0.
+    // The sprite clips at the visible edge instead of treating -1 as 4095.
     assert(renderer.consume({{0x0, 0x6}, {0x1, 0xFF0000FFULL},
-                             {0x5, xyz(0U, 0U)},
-                             {0x5, xyz(0xFFF0U, 0xFFF0U)}}, framebuffer));
-    GsFramebuffer::Rgba8 unsigned_coordinate_pixel{};
-    assert(framebuffer.get_pixel(3, 3, unsigned_coordinate_pixel));
-    assert(unsigned_coordinate_pixel.r == 255 && unsigned_coordinate_pixel.g == 0 &&
-           unsigned_coordinate_pixel.b == 0 && unsigned_coordinate_pixel.a == 255);
+                             {0x5, xyz(0xFFF0U, 0xFFF0U)},
+                             {0x5, xyz(5U << 4U, 5U << 4U)}}, framebuffer));
+    GsFramebuffer::Rgba8 signed_coordinate_pixel{};
+    assert(framebuffer.get_pixel(3, 3, signed_coordinate_pixel));
+    assert(signed_coordinate_pixel.r == 255 && signed_coordinate_pixel.g == 0 &&
+           signed_coordinate_pixel.b == 0 && signed_coordinate_pixel.a == 255);
+    GsFramebuffer::Rgba8 signed_coordinate_outside{};
+    assert(framebuffer.get_pixel(6, 6, signed_coordinate_outside));
+    assert(signed_coordinate_outside.r == 0 && signed_coordinate_outside.g == 0 &&
+           signed_coordinate_outside.b == 0 && signed_coordinate_outside.a == 0);
 
     renderer.reset();
     framebuffer.clear();

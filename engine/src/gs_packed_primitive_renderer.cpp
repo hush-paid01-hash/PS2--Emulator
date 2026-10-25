@@ -15,10 +15,13 @@ constexpr std::uint64_t TriangleFanPrimitive = 0x5U;
 constexpr std::uint64_t SpritePrimitive = 0x6U;
 constexpr std::int32_t MaxCoordinate = 1000000;
 
-// GS XYZ2 X/Y fields are unsigned 16-bit 12.4 fixed-point coordinates.
-// High-bit values are valid positions in the GS coordinate space, not negatives.
+// GS XYZ2 X/Y fields are signed 16-bit 12.4 fixed-point coordinates.
+// Convert to a signed value explicitly before dropping the fractional nibble.
 std::int32_t decode_xyz_coordinate(std::uint16_t raw) {
-    return static_cast<std::int32_t>(raw >> 4U);
+    const std::int32_t signed_fixed = (raw & 0x8000U) != 0U
+        ? static_cast<std::int32_t>(raw) - 0x10000
+        : static_cast<std::int32_t>(raw);
+    return signed_fixed / 16;
 }
 }
 
