@@ -133,7 +133,7 @@ int main() {
     check(cpu.step(cop0_test_mtc0_epc), "MTC0 writes the exception program counter");
     check(cpu.step(cop0_test_mtc0_status) && cpu.cop0_status() == Cpu::StatusExl,
           "MTC0 writes Status.EXL");
-    check(cpu.step(cop0_test_mfc0_epc) && cpu.reg(3) == 0x80001234ULL,
+    check(cpu.step(cop0_test_mfc0_epc) && cpu.reg(3) == 0xFFFFFFFF80001234ULL,
           "MFC0 reads the exception program counter");
     check(cpu.step(cop0_test_eret) && cpu.pc() == 0x80001234ULL &&
               cpu.next_pc() == 0x80001238ULL &&
