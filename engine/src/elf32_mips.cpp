@@ -47,6 +47,7 @@ bool parse_elf32_mips(const std::vector<std::uint8_t>& bytes,
     if (!range_ok(bytes.size(),phoff,table_size))
         return fail(error,"Program-header table is outside the file");
 
+    bool entry_is_executable = false;
     for (std::uint16_t i=0;i<phnum;++i) {
         const auto p=static_cast<std::size_t>(phoff)+static_cast<std::size_t>(i)*phentsize;
         if (u32(bytes,p)!=1) continue; // PT_LOAD only
@@ -58,7 +59,14 @@ bool parse_elf32_mips(const std::vector<std::uint8_t>& bytes,
         if (filesz>memsz) return fail(error,"ELF load segment file size exceeds memory size");
         if (!range_ok(bytes.size(),offset,filesz))
             return fail(error,"ELF load segment extends beyond file");
+        const std::uint64_t virtual_end =
+            static_cast<std::uint64_t>(vaddr) + static_cast<std::uint64_t>(memsz);
+        if (virtual_end > (std::uint64_t{1} << 32U))
+            return fail(error,"ELF load segment wraps the 32-bit address space");
         if (memsz==0) continue;
+        if ((flags & 1U) != 0U && static_cast<std::uint64_t>(entry) >= vaddr &&
+            static_cast<std::uint64_t>(entry) < virtual_end)
+            entry_is_executable = true;
         Elf32LoadSegment segment;
         segment.virtual_address=vaddr;
         segment.memory_size=memsz;
@@ -66,7 +74,12 @@ bool parse_elf32_mips(const std::vector<std::uint8_t>& bytes,
         segment.file_bytes.assign(bytes.begin()+offset,bytes.begin()+offset+filesz);
         image.load_segments.push_back(std::move(segment));
     }
-    if (image.load_segments.empty()) return fail(error,"ELF has no non-empty PT_LOAD segments");
+    if (image.load_segments.empty())
+        return fail(error,"ELF has no non-empty PT_LOAD segments");
+    if (!entry_is_executable) {
+        image = {};
+        return fail(error,"ELF entry point is not inside an executable load segment");
+    }
     image.entry_point=entry;
     if (error) error->clear();
     return true;
