@@ -91,5 +91,50 @@ int main() {
     runtime.dma().registers.qwc = 1;
     check(!runtime.run_frame() && !runtime.error().empty(),
           "runtime propagates DMA failures to its caller");
+
+    // GS local memory is persistent across frame submissions. Configure a
+    // 1x1 PSMCT32 host-to-local transfer in frame one, then submit a harmless
+    // register write in frame two and verify the pixel survives.
+    {
+        std::vector<std::uint8_t> frame_ram(256, 0);
+        const auto write_ad = [&frame_ram](std::size_t offset, std::uint64_t value,
+                                           std::uint64_t address) {
+            write_u64(frame_ram, offset, value);
+            write_u64(frame_ram, offset + 8U, address);
+        };
+        write_u64(frame_ram, 0, 4ULL | (1ULL << 15U) | (1ULL << 60U));
+        write_u64(frame_ram, 8, 0xEULL);
+        write_ad(16, 0ULL, 0x50ULL); // BITBLTBUF: PSMCT32 destination
+        write_ad(32, 0ULL, 0x51ULL); // TRXPOS: origin
+        write_ad(48, 1ULL | (1ULL << 32U), 0x52ULL); // TRXREG: 1x1
+        write_ad(64, 0ULL, 0x53ULL); // TRXDIR: host-to-local
+        write_u64(frame_ram, 80, 1ULL | (1ULL << 15U) | (2ULL << 58U));
+        frame_ram[96] = 0x11; frame_ram[97] = 0x22;
+        frame_ram[98] = 0x33; frame_ram[99] = 0x44;
+
+        retroshelf::EeGifGsRuntime persistent_runtime(frame_ram, 8, 8);
+        persistent_runtime.dma().registers.chcr = 1U << 8U;
+        persistent_runtime.dma().registers.madr = 0;
+        persistent_runtime.dma().registers.qwc = 7;
+        check(persistent_runtime.run_frame(), "first frame applies PSMCT32 image upload");
+        check(persistent_runtime.pipeline().local_memory().read_byte(0) == 0x11 &&
+                  persistent_runtime.pipeline().local_memory().read_byte(3) == 0x44,
+              "first frame writes uploaded pixel into persistent GS local memory");
+
+        write_u64(frame_ram, 112, 1ULL | (1ULL << 15U) | (1ULL << 60U));
+        write_u64(frame_ram, 120, 0x1ULL); // RGBAQ, no new image transfer
+        write_u64(frame_ram, 128, 0xFF0000FFULL);
+        write_u64(frame_ram, 136, 0ULL);
+        persistent_runtime.dma().registers.chcr = 1U << 8U;
+        persistent_runtime.dma().registers.madr = 112;
+        persistent_runtime.dma().registers.qwc = 2;
+        check(persistent_runtime.run_frame(), "second frame runs without resetting GS state");
+        check(persistent_runtime.pipeline().local_memory().read_byte(0) == 0x11 &&
+                  persistent_runtime.pipeline().local_memory().read_byte(1) == 0x22 &&
+                  persistent_runtime.pipeline().local_memory().read_byte(2) == 0x33 &&
+                  persistent_runtime.pipeline().local_memory().read_byte(3) == 0x44,
+              "GS local-memory pixel persists across frames");
+    }
+
     return failures == 0 ? 0 : 1;
 }

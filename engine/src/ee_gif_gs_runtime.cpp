@@ -26,8 +26,9 @@ bool EeGifGsRuntime::run_frame() {
         return false;
     }
 
+    // The GIF parser is a per-DMA-stream object; GS registers and local memory
+    // are persistent hardware state and must survive subsequent frames.
     parser_ = GsPacketProcessor{};
-    pipeline_.reset();
     framebuffer_.clear({0, 0, 0, 255});
 
     if (!dma_.start()) {
@@ -55,6 +56,7 @@ EeGifDma& EeGifGsRuntime::dma() { return dma_; }
 const GsFramebuffer& EeGifGsRuntime::framebuffer() const { return framebuffer_; }
 GsFramebuffer& EeGifGsRuntime::framebuffer() { return framebuffer_; }
 const GsLocalMemory& EeGifGsRuntime::local_memory() const { return pipeline_.local_memory(); }
-const std::string& EeGifGsRuntime::error() const { return error_;}
+const GsGifPipeline& EeGifGsRuntime::pipeline() const { return pipeline_; }
+const std::string& EeGifGsRuntime::error() const { return error_; }
 
 } // namespace retroshelf
