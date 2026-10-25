@@ -46,5 +46,23 @@ int main() {
     bytes=valid_elf();
     put32(bytes,68,9); put32(bytes,72,8);
     assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+
+    bytes=valid_elf();
+    put32(bytes,24,0x00200000); // Entry point is outside the only PT_LOAD segment.
+    assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+    assert(image.load_segments.empty());
+    assert(error=="ELF entry point is not inside an executable load segment");
+
+    bytes=valid_elf();
+    put32(bytes,76,4); // Segment is readable but not executable.
+    assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+    assert(image.load_segments.empty());
+    assert(error=="ELF entry point is not inside an executable load segment");
+
+    bytes=valid_elf();
+    put32(bytes,60,0xFFFFFFFCU);
+    put32(bytes,72,8); // Segment crosses the 32-bit address boundary.
+    assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+    assert(image.load_segments.empty());
     std::cout<<"ELF32 MIPS parser tests passed\n";
 }
