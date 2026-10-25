@@ -25,6 +25,7 @@ bool fail(std::string* error, const char* message) {
 bool parse_elf32_mips(const std::vector<std::uint8_t>& bytes,
                       Elf32MipsImage& image, std::string* error) {
     image = {};
+    Elf32MipsImage parsed;
     constexpr std::size_t header_size=52, program_header_size=32;
     if (bytes.size() < header_size) return fail(error,"ELF header is truncated");
     if (bytes[0]!=0x7f || bytes[1]!='E' || bytes[2]!='L' || bytes[3]!='F')
@@ -72,15 +73,14 @@ bool parse_elf32_mips(const std::vector<std::uint8_t>& bytes,
         segment.memory_size=memsz;
         segment.flags=flags;
         segment.file_bytes.assign(bytes.begin()+offset,bytes.begin()+offset+filesz);
-        image.load_segments.push_back(std::move(segment));
+        parsed.load_segments.push_back(std::move(segment));
     }
-    if (image.load_segments.empty())
+    if (parsed.load_segments.empty())
         return fail(error,"ELF has no non-empty PT_LOAD segments");
-    if (!entry_is_executable) {
-        image = {};
+    if (!entry_is_executable)
         return fail(error,"ELF entry point is not inside an executable load segment");
-    }
-    image.entry_point=entry;
+    parsed.entry_point=entry;
+    image = std::move(parsed);
     if (error) error->clear();
     return true;
 }

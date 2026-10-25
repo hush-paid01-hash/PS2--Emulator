@@ -64,5 +64,19 @@ int main() {
     put32(bytes,72,8); // Segment crosses the 32-bit address boundary.
     assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
     assert(image.load_segments.empty());
+
+    // A malformed later segment must not expose earlier, partially parsed segments.
+    bytes=valid_elf();
+    bytes.resize(120,0);
+    put16(bytes,44,2);
+    put32(bytes,84,1);          // Second PT_LOAD header.
+    put32(bytes,88,116);        // File offset.
+    put32(bytes,92,0x00200000); // Virtual address.
+    put32(bytes,100,8);         // File size exceeds memory size.
+    put32(bytes,104,4);
+    put32(bytes,108,5);
+    assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+    assert(image.load_segments.empty());
+    assert(error=="ELF load segment file size exceeds memory size");
     std::cout<<"ELF32 MIPS parser tests passed\n";
 }
