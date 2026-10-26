@@ -72,7 +72,9 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     const std::uint64_t branch_base = pc_ + 4; // branch/jump targets are relative to the delay slot
 
     const bool is_jr = opcode == 0x00 && (funct == 0x08 || funct == 0x09);
-    const bool is_branch = (opcode >= 0x01 && opcode <= 0x07) || (opcode >= 0x14 && opcode <= 0x17) || is_jr;
+    const bool is_branch = (opcode >= 0x01 && opcode <= 0x07) ||
+                           opcode == 0x02 || opcode == 0x03 ||
+                           (opcode >= 0x14 && opcode <= 0x17) || is_jr;
     if (is_branch && in_delay) {
         if (error) *error = "Branch or jump inside a branch delay slot is not supported";
         return false;
