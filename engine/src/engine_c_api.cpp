@@ -170,10 +170,11 @@ extern "C" int32_t retroshelf_engine_run_bios_reset_vector(
     if (!memory.load_bios_image(image, &error)) return 0;
 
     retroshelf::Cpu cpu;
-    cpu.set_pc(0xBFC00000ULL);
     const std::uint64_t budget = std::min<std::uint64_t>(instruction_budget, 1000000U);
     retroshelf::EeExecutionRunner runner(cpu, memory);
-    const auto result = runner.run(static_cast<std::size_t>(budget));
+    // Exercise the same explicit reset-vector entrypoint used by engine tests.
+    // This remains a bounded smoke test, not a complete BIOS boot.
+    const auto result = runner.run_from_bios_reset_vector(static_cast<std::size_t>(budget));
     g_last_trace = result.trace;
 
     if (instructions_executed)
