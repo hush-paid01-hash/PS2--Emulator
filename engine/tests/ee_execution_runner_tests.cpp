@@ -111,6 +111,38 @@ int main() {
     assert(!unhandled_fetch_fault.trace[0].fetched);
     assert(!unhandled_fetch_fault.trace[1].fetched);
 
+    // A recoverable exception handler can adjust EPC, execute ERET, and resume
+    // the interrupted stream in one bounded run.
+    retroshelf::Ps2EeMemoryMap return_memory(64U * 1024U);
+    retroshelf::Cpu return_cpu;
+    constexpr std::uint32_t return_start = 0x00001000U;
+    constexpr std::uint32_t return_vector = 0x80000180U;
+    constexpr std::uint32_t return_syscall = 0x0000000CU;
+    constexpr std::uint32_t mfc0_k0_epc = (0x10U << 26U) | (14U << 11U) | (26U << 16U);
+    constexpr std::uint32_t addiu_k0_k0_4 = (0x09U << 26U) | (26U << 21U) | (26U << 16U) | 4U;
+    constexpr std::uint32_t mtc0_k0_epc = (0x10U << 26U) | (0x04U << 21U) | (26U << 16U) | (14U << 11U);
+    constexpr std::uint32_t eret_instruction = (0x10U << 26U) | (0x10U << 21U) | 0x18U;
+    constexpr std::uint32_t resume_marker = (0x09U << 26U) | (12U << 16U) | 42U;
+    assert(return_memory.write(return_start, 4, return_syscall, &error));
+    assert(return_memory.write(return_start + 4U, 4, resume_marker, &error));
+    assert(return_memory.write(return_vector, 4, mfc0_k0_epc, &error));
+    assert(return_memory.write(return_vector + 4U, 4, addiu_k0_k0_4, &error));
+    assert(return_memory.write(return_vector + 8U, 4, mtc0_k0_epc, &error));
+    assert(return_memory.write(return_vector + 12U, 4, eret_instruction, &error));
+    return_cpu.set_pc(return_start);
+    retroshelf::EeExecutionRunner return_runner(return_cpu, return_memory);
+    const auto returned = return_runner.run(6U);
+    assert(returned.instructions_executed == 6U);
+    assert(returned.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(return_cpu.reg(12U) == 42U);
+    assert((return_cpu.cop0_status() & retroshelf::Cpu::StatusExl) == 0U);
+    assert(returned.trace.size() == 6U);
+    assert(returned.trace[0].pc == return_start && returned.trace[0].instruction == return_syscall);
+    assert(returned.trace[1].pc == return_vector && returned.trace[1].instruction == mfc0_k0_epc);
+    assert(returned.trace[4].pc == return_vector + 12U && returned.trace[4].instruction == eret_instruction);
+    assert(returned.trace[5].pc == return_start + 4U && returned.trace[5].instruction == resume_marker);
+    assert(returned.final_pc == return_start + 8U);
+
     // Trace storage is bounded even when the execution budget is large.
     // Replace the unsupported instruction with a NOP so the run can continue.
     assert(memory.write(start + 12U, 4, 0U, &error));
