@@ -72,8 +72,13 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     const std::uint64_t branch_base = pc_ + 4; // branch/jump targets are relative to the delay slot
 
     const bool is_jr = opcode == 0x00 && (funct == 0x08 || funct == 0x09);
-    const bool is_branch = (opcode >= 0x01 && opcode <= 0x07) ||
-                           opcode == 0x02 || opcode == 0x03 ||
+    // REGIMM also contains immediate trap instructions (TGEI/TGEIU/TLTI/
+    // TLTIU/TEQI/TNEI). Only its branch encodings create delay slots.
+    const bool is_regimm_branch = opcode == 0x01 &&
+        (rt == 0x00 || rt == 0x01 || rt == 0x02 || rt == 0x03 ||
+         rt == 0x10 || rt == 0x11 || rt == 0x12 || rt == 0x13);
+    const bool is_branch = is_regimm_branch ||
+                           (opcode >= 0x02 && opcode <= 0x07) ||
                            (opcode >= 0x14 && opcode <= 0x17) || is_jr;
     if (is_branch && in_delay) {
         if (error) *error = "Branch or jump inside a branch delay slot is not supported";
