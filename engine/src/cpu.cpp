@@ -416,12 +416,20 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     }
     case 0x04: return branch(reg(rs) == reg(rt), rel_target); // BEQ
     case 0x05: return branch(reg(rs) != reg(rt), rel_target); // BNE
-    case 0x06: return branch(sreg(rs) <= 0, rel_target); // BLEZ
-    case 0x07: return branch(sreg(rs) > 0, rel_target); // BGTZ
+    case 0x06:
+        if (rt != 0U) return unsupported();
+        return branch(sreg(rs) <= 0, rel_target); // BLEZ
+    case 0x07:
+        if (rt != 0U) return unsupported();
+        return branch(sreg(rs) > 0, rel_target); // BGTZ
     case 0x14: return branch_likely(reg(rs) == reg(rt), rel_target); // BEQL
     case 0x15: return branch_likely(reg(rs) != reg(rt), rel_target); // BNEL
-    case 0x16: return branch_likely(sreg(rs) <= 0, rel_target); // BLEZL
-    case 0x17: return branch_likely(sreg(rs) > 0, rel_target); // BGTZL
+    case 0x16:
+        if (rt != 0U) return unsupported();
+        return branch_likely(sreg(rs) <= 0, rel_target); // BLEZL
+    case 0x17:
+        if (rt != 0U) return unsupported();
+        return branch_likely(sreg(rs) > 0, rel_target); // BGTZL
     case 0x18: { // DADDI: signed 64-bit addition with overflow exception
         const std::uint64_t lhs = reg(rs);
         const std::uint64_t rhs = static_cast<std::uint64_t>(simm);
