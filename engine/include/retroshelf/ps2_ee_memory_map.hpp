@@ -15,6 +15,8 @@ public:
     static constexpr std::size_t MainRamSize = 32U * 1024U * 1024U;
     static constexpr std::uint32_t MainRamBase = 0x00000000U;
     static constexpr std::uint32_t MainRamMirrorBase = 0x20000000U;
+    static constexpr std::uint32_t MainRamAcceleratedBase = 0x30100000U;
+    static constexpr std::uint32_t MainRamAcceleratedEnd = 0x32000000U;
     static constexpr std::uint32_t Kseg0Base = 0x80000000U;
     static constexpr std::uint32_t Kseg1Base = 0xA0000000U;
     static constexpr std::uint32_t SegmentMask = 0x1FFFFFFFU;
