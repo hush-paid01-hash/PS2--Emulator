@@ -956,5 +956,27 @@ int main() {
               retroshelf::Cpu::ExcReservedInstruction,
           "malformed BLEZ in delay slot raises Reserved Instruction");
 
+
+    // Variable 64-bit shift amounts use only the low six bits.
+    cpu.reset(); cpu.set_reg(1, 64); cpu.set_reg(2, 0x123456789ABCDEF0ULL);
+    check(cpu.step(rtype(1, 2, 3, 0x14)) &&
+              cpu.reg(3) == 0x123456789ABCDEF0ULL,
+          "DSLLV masks a shift count of 64 to zero");
+    cpu.reset(); cpu.set_reg(1, 65); cpu.set_reg(2, 3);
+    check(cpu.step(rtype(1, 2, 3, 0x14)) && cpu.reg(3) == 6,
+          "DSLLV masks a shift count of 65 to one");
+    cpu.reset(); cpu.set_reg(1, 65); cpu.set_reg(2, 0x8000000000000000ULL);
+    check(cpu.step(rtype(1, 2, 3, 0x17)) &&
+              cpu.reg(3) == 0xC000000000000000ULL,
+          "DSRAV masks a shift count of 65 to one and sign-fills");
+    cpu.reset(); cpu.set_reg(2, 1);
+    check(cpu.step((2U << 16U) | (3U << 11U) | (31U << 6U) | 0x3CU) &&
+              cpu.reg(3) == 0x8000000000000000ULL,
+          "DSLL32 supports the maximum shift amount of 63");
+    cpu.reset(); cpu.set_reg(2, 0x8000000000000000ULL);
+    check(cpu.step((2U << 16U) | (3U << 11U) | (31U << 6U) | 0x3EU) &&
+              cpu.reg(3) == 1,
+          "DSRL32 supports the maximum shift amount of 63");
+
     return failures == 0 ? 0 : 1;
 }
