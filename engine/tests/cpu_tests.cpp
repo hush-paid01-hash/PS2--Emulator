@@ -918,5 +918,18 @@ int main() {
               "malformed BLEZ/BGTZ encoding raises Reserved Instruction");
     }
 
+    // Malformed BLEZ-family words are reserved instructions even in a
+    // delay slot; they must not be rejected as a valid nested branch.
+    retroshelf::Cpu malformed_delay_cpu;
+    constexpr std::uint32_t beq_always = (0x04U << 26U) | (1U << 21U) |
+                                          (1U << 16U) | 1U;
+    check(malformed_delay_cpu.step(beq_always), "branch setup for malformed delay-slot test");
+    const std::uint32_t malformed_blez_delay = (0x06U << 26U) | (1U << 16U);
+    check(!malformed_delay_cpu.step(malformed_blez_delay),
+          "malformed BLEZ in delay slot is rejected");
+    check(((malformed_delay_cpu.cop0_cause() >> 2U) & 0x1FU) ==
+              retroshelf::Cpu::ExcReservedInstruction,
+          "malformed BLEZ in delay slot raises Reserved Instruction");
+
     return failures == 0 ? 0 : 1;
 }
