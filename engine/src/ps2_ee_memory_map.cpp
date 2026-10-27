@@ -89,14 +89,22 @@ bool Ps2EeMemoryMap::resolve_main_ram(std::uint32_t address, std::size_t width,
     if ((address >= Kseg0Base && address < 0xC0000000U))
         physical = address & SegmentMask;
 
-    if (physical >= MainRamMirrorBase &&
-        physical < MainRamMirrorBase + MainRamSize)
-        physical -= MainRamMirrorBase;
-
-    if (physical >= MainRamBase && physical < MainRamSize) {
-        offset = static_cast<std::size_t>(physical);
+    // The accelerated uncached window starts at 0x30100000 and maps
+    // physical RAM from offset 1 MiB through the end of the 32 MiB bank.
+    // It is a distinct alias, not a modulo mirror of the low 1 MiB.
+    if (physical >= MainRamAcceleratedBase &&
+        physical < MainRamAcceleratedEnd) {
+        offset = static_cast<std::size_t>(physical - 0x30000000U);
     } else {
-        return fail("Address is not in a supported EE main-RAM region");
+        if (physical >= MainRamMirrorBase &&
+            physical < MainRamMirrorBase + MainRamSize)
+            physical -= MainRamMirrorBase;
+
+        if (physical >= MainRamBase && physical < MainRamSize) {
+            offset = static_cast<std::size_t>(physical);
+        } else {
+            return fail("Address is not in a supported EE main-RAM region");
+        }
     }
     if ((address & static_cast<std::uint32_t>(alignment - 1U)) != 0U)
         return fail("Misaligned memory access");
