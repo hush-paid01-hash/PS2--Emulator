@@ -906,5 +906,17 @@ int main() {
               cop0_bank_cpu.reg(9) == 0,
           "CPU reset clears COP0 EntryHi storage");
 
+    // BLEZ/BGTZ and their likely forms require the rt field to be zero.
+    // Malformed encodings must raise RI rather than silently branch.
+    for (const std::uint32_t opcode : {0x06U, 0x07U, 0x16U, 0x17U}) {
+        retroshelf::Cpu reserved_branch_cpu;
+        const std::uint32_t malformed = (opcode << 26U) | (1U << 16U);
+        check(!reserved_branch_cpu.step(malformed),
+              "BLEZ/BGTZ family rejects nonzero reserved rt field");
+        check(((reserved_branch_cpu.cop0_cause() >> 2U) & 0x1FU) ==
+                  retroshelf::Cpu::ExcReservedInstruction,
+              "malformed BLEZ/BGTZ encoding raises Reserved Instruction");
+    }
+
     return failures == 0 ? 0 : 1;
 }
