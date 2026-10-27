@@ -118,6 +118,16 @@ int main() {
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
           "register trap in a delay slot preserves EPC and sets Cause.BD");
 
+    // REGIMM's immediate traps are not branches and must execute in a delay slot.
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(1, 5);
+    check(cpu.step(itype(0x04, 0, 0, 2)),
+          "immediate-trap delay test schedules a branch delay slot");
+    error.clear();
+    check(!cpu.step(itype(0x01, 1, 0x08, 4), &error) &&
+              cpu.cop0_epc() == 0x100 && (cpu.cop0_cause() & Cpu::CauseBd) != 0U &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcTrap,
+          "TGEI executes in a delay slot and raises an architected trap");
+
     // COP0 EPC round-trip and ERET return-path regression.
     // MTC0 r1,EPC; MTC0 r2,Status; ERET must restore PC and clear EXL.
     cpu.reset();
