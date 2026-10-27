@@ -151,6 +151,23 @@ int main() {
               !cpu.in_delay_slot(),
           "ERET returns to EPC and clears EXL without a delay slot");
 
+    // Error-level return has priority over EXL/EPC: ERL selects ErrorEPC and
+    // clears only ERL, leaving EXL unchanged if it was also set.
+    cpu.reset();
+    cpu.set_reg(1, 0xBFC00100ULL);
+    cpu.set_reg(2, Cpu::StatusErl | Cpu::StatusExl);
+    constexpr std::uint32_t cop0_test_mtc0_error_epc =
+        (0x10U << 26U) | (0x04U << 21U) | (1U << 16U) | (30U << 11U);
+    check(cpu.step(cop0_test_mtc0_error_epc),
+          "MTC0 writes ErrorEPC for error-level return");
+    check(cpu.step(cop0_test_mtc0_status),
+          "MTC0 sets both Status.ERL and Status.EXL");
+    check(cpu.step(cop0_test_eret) && cpu.pc() == 0xBFC00100ULL &&
+              cpu.next_pc() == 0xBFC00104ULL &&
+              (cpu.cop0_status() & Cpu::StatusErl) == 0U &&
+              (cpu.cop0_status() & Cpu::StatusExl) != 0U,
+          "ERET selects ErrorEPC and clears ERL before considering EXL");
+
     // Immediate logical operations zero-extend their 16-bit masks.
     cpu.reset(); cpu.set_reg(1, 0x12345678);
     check(cpu.step(itype(0x0C, 1, 2, 0x00FF)) && cpu.reg(2) == 0x78,

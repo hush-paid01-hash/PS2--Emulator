@@ -382,10 +382,16 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             default: return unsupported();
             }
         }
-        if (rs == 0x10 && funct == 0x18) { // ERET: return to EPC and clear Status.EXL.
-            pc_ = epc_;
-            next_pc_ = epc_ + 4;
-            status_ &= ~StatusExl;
+        if (rs == 0x10 && funct == 0x18) { // ERET: ERL/ErrorEPC takes priority over EXL/EPC.
+            if ((status_ & StatusErl) != 0U) {
+                pc_ = cop0_regs_[30]; // ErrorEPC
+                next_pc_ = pc_ + 4;
+                status_ &= ~StatusErl;
+            } else {
+                pc_ = epc_;
+                next_pc_ = epc_ + 4;
+                status_ &= ~StatusExl;
+            }
             delay_slot_pending_ = false;
             return true;
         }
