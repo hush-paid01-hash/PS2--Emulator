@@ -77,9 +77,13 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     const bool is_regimm_branch = opcode == 0x01 &&
         (rt == 0x00 || rt == 0x01 || rt == 0x02 || rt == 0x03 ||
          rt == 0x10 || rt == 0x11 || rt == 0x12 || rt == 0x13);
+    const bool is_blez_family_branch =
+        (opcode == 0x06U || opcode == 0x07U ||
+         opcode == 0x16U || opcode == 0x17U) && rt == 0U;
     const bool is_branch = is_regimm_branch ||
-                           (opcode >= 0x02 && opcode <= 0x07) ||
-                           (opcode >= 0x14 && opcode <= 0x17) || is_jr;
+                           (opcode >= 0x02 && opcode <= 0x05) ||
+                           is_blez_family_branch ||
+                           (opcode >= 0x14 && opcode <= 0x15) || is_jr;
     if (is_branch && in_delay) {
         if (error) *error = "Branch or jump inside a branch delay slot is not supported";
         return false;
