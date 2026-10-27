@@ -872,6 +872,31 @@ int main() {
     check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorStore,
           "misaligned SQ records AdES");
 
+    // LQ/SQ offsets are signed 16-bit immediates. Verify negative offsets
+    // address the preceding quadword instead of becoming a large positive offset.
+    cpu.reset();
+    check(ee_memory.write128(0x220, 0x0123456789ABCDEFULL, 0xFEDCBA9876543210ULL, &error),
+          "seed quadword for signed-offset LQ regression");
+    cpu.set_reg(1, 0x230);
+    check(run_ee_instruction(itype(0x1E, 1, 4, -16)),
+          "LQ accepts a negative signed immediate");
+    check(cpu.reg(4) == 0x0123456789ABCDEFULL &&
+              cpu.reg_high(4) == 0xFEDCBA9876543210ULL,
+          "LQ negative offset loads the preceding quadword");
+    cpu.set_reg(5, 0xAABBCCDDEEFF0011ULL);
+    cpu.set_reg_high(5, 0x1122334455667788ULL);
+    check(run_ee_instruction(itype(0x1F, 1, 5, -16)),
+          "SQ accepts a negative signed immediate");
+    std::uint64_t signed_offset_low = 0, signed_offset_high = 0;
+    check(ee_memory.read128(0x220, signed_offset_low, signed_offset_high, &error) &&
+              signed_offset_low == 0xAABBCCDDEEFF0011ULL &&
+              signed_offset_high == 0x1122334455667788ULL,
+          "SQ negative offset writes the preceding quadword");
+    cpu.set_reg(1, 0x230);
+    check(run_ee_instruction(itype(0x1E, 1, 0, -16)) &&
+              cpu.reg(0) == 0 && cpu.reg_high(0) == 0,
+          "LQ targeting register zero preserves both zero-register halves");
+
     // Cause is mostly read-only: MTC0 may change only software interrupt-pending bits IP0/IP1.
     retroshelf::Cpu cause_cpu;
     check(!cause_cpu.step(0x0000000CU), "SYSCALL seeds read-only Cause exception-code bits");
