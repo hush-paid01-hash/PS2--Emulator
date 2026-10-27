@@ -26,6 +26,21 @@ int main() {
     check(memory.read(0xA0000100, 4, value, &error) && value == 0x12345678,
           "KSEG1 uncached alias resolves to RAM");
 
+    // The accelerated uncached window maps physical RAM starting at offset 1 MiB.
+    retroshelf::Ps2EeMemoryMap full_ram;
+    check(full_ram.write(0x00100000U, 4, 0xCAFEBABEU, &error),
+          "seed RAM at the accelerated alias's 1 MiB offset");
+    check(full_ram.read(retroshelf::Ps2EeMemoryMap::MainRamAcceleratedBase,
+                        4, value, &error) && value == 0xCAFEBABEU,
+          "accelerated uncached alias resolves to physical RAM offset 1 MiB");
+    check(full_ram.write(retroshelf::Ps2EeMemoryMap::MainRamAcceleratedBase + 4U,
+                         4, 0x1234ABCDU, &error) &&
+              full_ram.read(0x00100004U, 4, value, &error) && value == 0x1234ABCDU,
+          "writes through accelerated alias update the same physical RAM");
+    check(!full_ram.read(retroshelf::Ps2EeMemoryMap::MainRamAcceleratedEnd,
+                         4, value, &error) && !error.empty(),
+          "address immediately beyond accelerated RAM alias is rejected");
+
     check(memory.write(0x104, 1, 0xFE, &error), "byte write succeeds");
     check(memory.read(0x104, 1, value, &error) && value == 0xFE,
           "byte read returns unsigned byte value");
