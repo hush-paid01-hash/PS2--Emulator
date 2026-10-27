@@ -36,6 +36,7 @@ public:
     // Minimal COP0 subset: Status, Cause, EPC and BadVAddr are modelled.
     static constexpr std::uint32_t CauseBd = 1U << 31U;
     static constexpr std::uint32_t StatusExl = 1U << 1U;
+    static constexpr std::uint32_t StatusErl = 1U << 2U;
     static constexpr std::uint32_t ExcSyscall = 8;
     static constexpr std::uint32_t ExcBreakpoint = 9;
     static constexpr std::uint32_t ExcAddressErrorLoad = 4;
