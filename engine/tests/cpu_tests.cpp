@@ -292,11 +292,27 @@ int main() {
     cpu.step((5U << 21U) | (5U << 11U) | 0x09U); cpu.step(nop);
     check(cpu.pc() == 0x300 && cpu.reg(5) == 0x108, "JALR with rd==rs uses old target");
 
-    // Branch inside a delay slot is rejected, not silently mis-executed.
+    // Branches and jumps inside a delay slot are rejected before changing
+    // the pending target or performing link-register side effects.
     cpu.reset(); cpu.set_pc(0x100);
     cpu.step(itype(0x04, 0, 0, 3));
     error.clear();
-    check(!cpu.step(itype(0x04, 0, 0, 3), &error) && !error.empty(), "branch in delay slot is rejected");
+    check(!cpu.step(itype(0x04, 0, 0, 3), &error) && !error.empty(),
+          "conditional branch in delay slot is rejected");
+
+    cpu.reset(); cpu.set_pc(0x100);
+    cpu.step(itype(0x04, 0, 0, 3));
+    error.clear();
+    check(!cpu.step((0x02U << 26U) | 0x40U, &error) && !error.empty() &&
+              cpu.pc() == 0x104 && cpu.in_delay_slot(),
+          "J in delay slot is rejected without overwriting pending branch");
+
+    cpu.reset(); cpu.set_pc(0x100); cpu.set_reg(31, 0xBAD);
+    cpu.step(itype(0x04, 0, 0, 3));
+    error.clear();
+    check(!cpu.step((0x03U << 26U) | 0x40U, &error) && !error.empty() &&
+              cpu.pc() == 0x104 && cpu.in_delay_slot() && cpu.reg(31) == 0xBAD,
+          "JAL in delay slot is rejected without writing the link register");
 
     // Exceptions: normal instruction sets BD=0, EPC=instruction.
     cpu.reset(); cpu.set_pc(0x100);
