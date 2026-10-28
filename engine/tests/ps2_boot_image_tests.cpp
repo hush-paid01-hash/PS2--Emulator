@@ -1,4 +1,5 @@
 #include "retroshelf/ps2_boot_image.hpp"
+#include "retroshelf/ps2_disc_execution.hpp"
 #include "retroshelf/elf_ram_loader.hpp"
 #include "retroshelf/ps2_ee_memory_map.hpp"
 #include "retroshelf/cpu.hpp"
@@ -131,6 +132,62 @@ int main() {
     assert(boot_memory.main_ram()[boot_entry] == 0x07);
     assert(boot_memory.main_ram()[boot_entry + 8] == 0);
 
+    // End-to-end development path: open synthetic disc, load SYSTEM.CNF ELF,
+    // set EE entry PC, and execute two supported instructions from mapped RAM.
+    const auto execution_disc_path = make_disc();
+    retroshelf::Iso9660Disc execution_disc;
+    assert(execution_disc.open(execution_disc_path, &error));
+    retroshelf::Ps2EeMemoryMap execution_memory(2 * 1024 * 1024);
+    retroshelf::Cpu execution_cpu;
+    const auto execution = retroshelf::load_and_execute_ps2_disc(
+        execution_disc, execution_memory, execution_cpu, 2);
+    assert(execution.image_loaded);
+    assert(execution.executable_path == "SLUS_123.45;1");
+    assert(execution.entry_point == 0x00100000U);
+    assert(execution.execution.instructions_executed == 2);
+    assert(execution.execution.reason ==
+           retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(execution_cpu.reg(8) == 7);
+    assert(execution_cpu.reg(9) == 5);
+    assert(execution_cpu.pc() == 0x00100008U);
+    // The integrated disc-to-CPU path must preserve a useful instruction trace.
+    assert(execution.execution.trace.size() == 2);
+    assert(execution.execution.trace[0].pc == 0x00100000U);
+    assert(execution.execution.trace[0].instruction == 0x24080007U);
+    assert(execution.execution.trace[0].fetched);
+    assert(execution.execution.trace[1].pc == 0x00100004U);
+    assert(execution.execution.trace[1].instruction == 0x24090005U);
+    assert(execution.execution.trace[1].fetched);
+    // The shared execution runner must fetch from the mapped BIOS ROM too,
+    // not just from disc-loaded main RAM.
+    retroshelf::Ps2EeMemoryMap bios_execution_memory(2 * 1024 * 1024);
+    std::vector<std::uint8_t> synthetic_bios(16, 0);
+    const std::uint32_t bios_addiu_t0 = 0x24080007U;
+    const std::uint32_t bios_addiu_t1 = 0x24090005U;
+    for (std::size_t i = 0; i < 4; ++i) {
+        synthetic_bios[i] = static_cast<std::uint8_t>(bios_addiu_t0 >> (8U * i));
+        synthetic_bios[4 + i] = static_cast<std::uint8_t>(bios_addiu_t1 >> (8U * i));
+    }
+    assert(bios_execution_memory.load_bios_image(synthetic_bios, &error));
+    retroshelf::Cpu bios_execution_cpu;
+    bios_execution_cpu.set_pc(retroshelf::Ps2EeMemoryMap::Kseg1Base |
+                              retroshelf::Ps2EeMemoryMap::BiosRomBase);
+    retroshelf::EeExecutionRunner bios_runner(bios_execution_cpu, bios_execution_memory);
+    const auto bios_execution = bios_runner.run(2);
+    assert(bios_execution.instructions_executed == 2);
+    assert(bios_execution.reason ==
+           retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(bios_execution_cpu.reg(8) == 7U && bios_execution_cpu.reg(9) == 5U);
+    assert(bios_execution_cpu.pc() == 0xBFC00008U);
+    assert(bios_execution.trace.size() == 2);
+    assert(bios_execution.trace[0].pc == 0xBFC00000U &&
+           bios_execution.trace[0].instruction == bios_addiu_t0 &&
+           bios_execution.trace[0].fetched);
+    assert(bios_execution.trace[1].pc == 0xBFC00004U &&
+           bios_execution.trace[1].instruction == bios_addiu_t1 &&
+           bios_execution.trace[1].fetched);
+    std::filesystem::remove(execution_disc_path);
+
     std::filesystem::remove(disc_path);
 
     retroshelf::Iso9660Disc unopened;
@@ -150,5 +207,17 @@ int main() {
     assert(boot_entry == 0);
     assert(boot_executable.empty());
     assert(boot_memory.main_ram() == before_failed_boot);
+    // Failed disc loading must not look like a completed instruction-budget run.
+    retroshelf::Cpu failed_execution_cpu;
+    failed_execution_cpu.set_pc(0x00123400U);
+    const auto failed_execution = retroshelf::load_and_execute_ps2_disc(
+        unopened, boot_memory, failed_execution_cpu, 10);
+    assert(!failed_execution.image_loaded);
+    assert(!failed_execution.error.empty());
+    assert(failed_execution.execution.reason ==
+           retroshelf::EeExecutionRunner::StopReason::NotStarted);
+    assert(failed_execution.execution.instructions_executed == 0);
+    assert(failed_execution.execution.final_pc == 0x00123400U);
+    assert(failed_execution_cpu.pc() == 0x00123400U);
     std::cout << "PS2 disc-to-ELF integration tests passed\n";
 }

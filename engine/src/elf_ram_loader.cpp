@@ -42,6 +42,8 @@ bool load_elf32_into_ee_memory(const Elf32MipsImage& image,
     entry_point = 0;
     if (memory.main_ram_size() == 0)
         return fail(error, "EE main RAM is empty");
+    if ((image.entry_point & 3U) != 0)
+        return fail(error, "ELF entry point is not 4-byte aligned");
     struct ResolvedSegment { std::size_t offset; std::size_t size; const Elf32LoadSegment* segment; };
     std::vector<ResolvedSegment> resolved;
     resolved.reserve(image.load_segments.size());
@@ -61,6 +63,14 @@ bool load_elf32_into_ee_memory(const Elf32MipsImage& image,
             static_cast<std::uint64_t>(segment.virtual_address) + segment.memory_size;
         if (virtual_end > (std::uint64_t{1} << 32U))
             return fail(error, "ELF segment wraps the 32-bit address space");
+        // A PT_LOAD range must map to one contiguous physical-RAM span.
+        // Resolving only the first byte can miss a crossing between aliases.
+        std::size_t final_byte_offset = 0;
+        if (!memory.resolve_main_ram(
+                static_cast<std::uint32_t>(virtual_end - 1U), 1, 1,
+                final_byte_offset, error) ||
+            final_byte_offset != offset + segment.memory_size - 1U)
+            return fail(error, "ELF segment crosses an EE RAM alias boundary");
         for (const auto& prior : resolved) {
             const auto end = offset + segment.memory_size;
             const auto prior_end = prior.offset + prior.size;

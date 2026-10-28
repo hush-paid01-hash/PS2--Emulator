@@ -68,6 +68,7 @@ int main() {
     high_pc_cpu.set_pc(0x180001000ULL);
     assert(!high_pc_cpu.step_from_ee_memory(ee, &error));
     assert(error.find("32-bit EE address space") != std::string::npos);
+    assert(high_pc_cpu.cop0_bad_vaddr() == 0x180001000ULL);
 
     retroshelf::Cpu high_data_cpu;
     high_data_cpu.set_pc(0x80001000U);
@@ -86,6 +87,7 @@ int main() {
     assert(ee.write(0x80002000U, 4,
                     (0x23U << 26U) | (16U << 21U) | (9U << 16U), &error)); // LW t1,0(s0)
     assert(!bad_load_cpu.step_from_ee_memory(ee, &error));
+    assert(bad_load_cpu.cop0_bad_vaddr() == 0x30000000U);
     assert((bad_load_cpu.cop0_cause() & (0x1FU << 2U)) ==
            (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
     assert((bad_load_cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
@@ -229,8 +231,8 @@ int main() {
     mult_cpu.set_reg(9, 3U);
     assert(ee.write(0x8000B100U, 4, (8U << 21U) | (9U << 16U) | 0x18U, &error)); // MULT t0,t1
     assert(mult_cpu.step_from_ee_memory(ee, &error));
-    assert(mult_cpu.lo() == 0xFFFFFFFAU);
-    assert(mult_cpu.hi() == 0xFFFFFFFFU);
+    assert(mult_cpu.lo() == 0xFFFFFFFFFFFFFFFAULL);
+    assert(mult_cpu.hi() == 0xFFFFFFFFFFFFFFFFULL);
 
     // DIV/DIVU place quotient in LO and remainder in HI.
     retroshelf::Cpu div_cpu;
@@ -324,6 +326,56 @@ int main() {
     }
 
 
+    // LDL/LDR/SDL/SDR merge all eight byte lanes of a little-endian doubleword.
+    const std::uint64_t dword_merge_memory = 0x8877665544332211ULL;
+    const std::uint64_t dword_merge_register = 0xAABBCCDDEEFF0011ULL;
+    const std::uint64_t ldl_expected[] = {
+        0x11BBCCDDEEFF0011ULL, 0x2211CCDDEEFF0011ULL,
+        0x332211DDEEFF0011ULL, 0x44332211EEFF0011ULL,
+        0x5544332211FF0011ULL, 0x6655443322110011ULL,
+        0x7766554433221111ULL, 0x8877665544332211ULL};
+    const std::uint64_t ldr_expected[] = {
+        0x8877665544332211ULL, 0xAA88776655443322ULL,
+        0xAABB887766554433ULL, 0xAABBCC8877665544ULL,
+        0xAABBCCDD88776655ULL, 0xAABBCCDDEE887766ULL,
+        0xAABBCCDDEEFF8877ULL, 0xAABBCCDDEEFF0088ULL};
+    const std::uint64_t sdl_expected[] = {
+        0x88776655443322AAULL, 0x887766554433AABBULL,
+        0x8877665544AABBCCULL, 0x88776655AABBCCDDULL,
+        0x887766AABBCCDDEEULL, 0x8877AABBCCDDEEFFULL,
+        0x88AABBCCDDEEFF00ULL, 0xAABBCCDDEEFF0011ULL};
+    const std::uint64_t sdr_expected[] = {
+        0xAABBCCDDEEFF0011ULL, 0xBBCCDDEEFF001111ULL,
+        0xCCDDEEFF00112211ULL, 0xDDEEFF0011332211ULL,
+        0xEEFF001144332211ULL, 0xFF00115544332211ULL,
+        0x0011665544332211ULL, 0x1177665544332211ULL};
+    const std::uint32_t dword_merge_opcodes[] = {0x1AU, 0x1BU, 0x2CU, 0x2DU};
+    const std::uint64_t* dword_merge_expected[] = {
+        ldl_expected, ldr_expected, sdl_expected, sdr_expected};
+    for (unsigned op = 0; op < 4; ++op) {
+        for (unsigned lane = 0; lane < 8; ++lane) {
+            const std::uint32_t test_pc = 0x8000D000U + op * 0x40U + lane * 4U;
+            assert(ee.write(merge_base, 8, dword_merge_memory, &error));
+            assert(ee.write(test_pc, 4,
+                            (dword_merge_opcodes[op] << 26U) |
+                            (16U << 21U) | (8U << 16U) | lane, &error));
+            retroshelf::Cpu merge_cpu;
+            merge_cpu.set_pc(test_pc);
+            merge_cpu.set_reg(16, merge_base);
+            merge_cpu.set_reg(8, dword_merge_register);
+            assert(merge_cpu.step_from_ee_memory(ee, &error));
+            std::uint64_t merged = 0;
+            assert(ee.read(merge_base, 8, merged, &error));
+            if (op < 2) {
+                assert(merge_cpu.reg(8) == dword_merge_expected[op][lane]);
+                assert(merged == dword_merge_memory);
+            } else {
+                assert(merged == dword_merge_expected[op][lane]);
+            }
+        }
+    }
+
+
     // Signed ADD, SUB, and ADDI trap on 32-bit overflow; unsigned variants do not.
     retroshelf::Cpu add_overflow_cpu;
     add_overflow_cpu.set_pc(0x8000E000U);
@@ -360,9 +412,9 @@ int main() {
     nonoverflow_cpu.set_reg(8, 0x7FFFFFFFU);
     nonoverflow_cpu.set_reg(9, 1U);
     assert(nonoverflow_cpu.step((8U << 21U) | (9U << 16U) | (10U << 11U) | 0x21U, &error)); // ADDU wraps
-    assert(nonoverflow_cpu.reg(10) == 0x80000000ULL);
+    assert(nonoverflow_cpu.reg(10) == 0xFFFFFFFF80000000ULL);
     assert(nonoverflow_cpu.step((0x09U << 26U) | (8U << 21U) | (11U << 16U) | 1U, &error)); // ADDIU wraps
-    assert(nonoverflow_cpu.reg(11) == 0x80000000ULL);
+    assert(nonoverflow_cpu.reg(11) == 0xFFFFFFFF80000000ULL);
 
 
     // SYSCALL and BREAK raise their own exception codes and save the fault PC.
@@ -411,6 +463,61 @@ int main() {
     wide_shift_cpu.set_reg(8, 0xFFFFFFFF80000000ULL);
     assert(wide_shift_cpu.step((8U << 16U) | (11U << 11U) | 0x3FU, &error)); // DSRA32 t3,t0,0
     assert(wide_shift_cpu.reg(11) == 0xFFFFFFFFFFFFFFFFULL);
+
+
+    // COP0 register bank supports the common privileged setup registers used
+    // by boot code, while retaining the architectural special handling for
+    // Status, Cause, EPC and read-only BadVAddr.
+    retroshelf::Cpu cop0_bank_cpu;
+    cop0_bank_cpu.set_reg(8, 0xC1234000U);
+    assert(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (10U << 11U), &error)); // MTC0 t0,EntryHi
+    cop0_bank_cpu.set_reg(9, 0U);
+    assert(cop0_bank_cpu.step((0x10U << 26U) | (9U << 16U) | (10U << 11U), &error)); // MFC0 t1,EntryHi
+    assert(cop0_bank_cpu.reg(9) == 0xFFFFFFFFC1234000ULL);
+    cop0_bank_cpu.set_reg(8, 0x12345678U);
+    assert(cop0_bank_cpu.step((0x10U << 26U) | (4U << 21U) | (8U << 16U) | (9U << 11U), &error)); // MTC0 t0,Count
+    assert(cop0_bank_cpu.step((0x10U << 26U) | (10U << 16U) | (9U << 11U), &error)); // MFC0 t2,Count
+    assert(cop0_bank_cpu.reg(10) == 0x12345678U);
+
+    // The CPU can fetch and execute instructions from the mapped BIOS reset-vector alias.
+    retroshelf::Ps2EeMemoryMap bios_memory(64U * 1024U);
+    std::vector<std::uint8_t> bios_bytes(16U, 0U);
+    const std::uint32_t bios_addiu_t0 = (0x09U << 26U) | (8U << 16U) | 7U;
+    const std::uint32_t bios_addiu_t1 = (0x09U << 26U) | (9U << 16U) | 5U;
+    for (std::size_t i = 0; i < 4; ++i) {
+        bios_bytes[i] = static_cast<std::uint8_t>(bios_addiu_t0 >> (i * 8U));
+        bios_bytes[4U + i] = static_cast<std::uint8_t>(bios_addiu_t1 >> (i * 8U));
+    }
+    assert(bios_memory.load_bios_image(bios_bytes, &error));
+    retroshelf::Cpu bios_cpu;
+    bios_cpu.set_pc(0xBFC00000U);
+    assert(bios_cpu.step_from_ee_memory(bios_memory, &error));
+    assert(bios_cpu.reg(8) == 7U);
+    assert(bios_cpu.pc() == 0xBFC00004U);
+    assert(bios_cpu.step_from_ee_memory(bios_memory, &error));
+    assert(bios_cpu.reg(9) == 5U);
+    assert(bios_cpu.pc() == 0xBFC00008U);
+
+    // Out-of-range fetches through the legacy RAM adapter must enter the
+    // same address-exception path as fetches from the mapped EE memory.
+    std::vector<std::uint8_t> short_ram(16U, 0U);
+    retroshelf::Cpu ram_fetch_oob_cpu;
+    ram_fetch_oob_cpu.set_pc(0x1020U);
+    assert(!ram_fetch_oob_cpu.step_from_ram(short_ram, 0x1000U, &error));
+    assert(ram_fetch_oob_cpu.cop0_bad_vaddr() == 0x1020U);
+    assert(ram_fetch_oob_cpu.cop0_epc() == 0x1020U);
+    assert((ram_fetch_oob_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
+    assert(ram_fetch_oob_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
+
+    retroshelf::Cpu ram_fetch_below_cpu;
+    ram_fetch_below_cpu.set_pc(0x0FFCU);
+    assert(!ram_fetch_below_cpu.step_from_ram(short_ram, 0x1000U, &error));
+    assert(ram_fetch_below_cpu.cop0_bad_vaddr() == 0x0FFCU);
+    assert(ram_fetch_below_cpu.cop0_epc() == 0x0FFCU);
+    assert((ram_fetch_below_cpu.cop0_cause() & (0x1FU << 2U)) ==
+           (retroshelf::Cpu::ExcAddressErrorLoad << 2U));
+    assert(ram_fetch_below_cpu.pc() == retroshelf::Cpu::GeneralExceptionVector);
 
     std::cout << "CPU boot execution tests passed\\n";
 }

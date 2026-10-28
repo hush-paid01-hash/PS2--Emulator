@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
 
 struct ContentView: View {
     @State private var showingBIOSPicker = false
@@ -9,6 +10,12 @@ struct ContentView: View {
     @State private var biosURL: URL?
     @State private var gameURL: URL?
     @State private var statusMessage = "Checking engine bridge…"
+    @State private var smokeTestMessage: String?
+    @State private var isRunningSmokeTest = false
+    @State private var isRunningBIOSSmokeTest = false
+    @State private var biosSmokeTestMessage: String?
+    @State private var previewImage: UIImage?
+    @State private var previewMessage = "No preview rendered yet"
 
     private let supportedGameExtensions: Set<String> = ["iso", "bin", "img", "chd", "rom"]
     private let preflightExtensions: Set<String> = ["iso", "bin", "img"]
@@ -51,6 +58,19 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
+                        Button {
+                            runBIOSResetVectorSmokeTest()
+                        } label: {
+                            Label(isRunningBIOSSmokeTest ? "Testing BIOS reset vector…" : "Test BIOS reset vector", systemImage: "cpu")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isRunningBIOSSmokeTest || biosURL == nil)
+                        if let biosSmokeTestMessage {
+                            Text(biosSmokeTestMessage)
+                                .font(.footnote)
+                                .textSelection(.enabled)
+                        }
                     }
                     .padding()
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -67,6 +87,58 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Graphics output preview", systemImage: "display").font(.headline)
+                        Text("Renders a test triangle through the native software rasterizer. This is a graphics-path check, not a PS2 game frame.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        if let previewImage {
+                            Image(uiImage: previewImage)
+                                .resizable()
+                                .interpolation(.none)
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: .infinity)
+                                .background(Color.black, in: RoundedRectangle(cornerRadius: 10))
+                                .accessibilityLabel("Software rasterizer demo triangle")
+                        }
+                        Text(previewMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Button {
+                            renderGraphicsPreview()
+                        } label: {
+                            Label("Render graphics test frame", systemImage: "play.rectangle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Engine test (not gameplay)", systemImage: "cpu").font(.headline)
+                        Text("Runs up to 10,000 instructions from the imported disc executable using the current incomplete CPU interpreter. It does not boot the BIOS or render a game.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Button {
+                            runSmokeTest()
+                        } label: {
+                            Label(isRunningSmokeTest ? "Running engine test…" : "Run limited engine test", systemImage: "play.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isRunningSmokeTest || gameURL == nil || !preflightExtensions.contains(gameURL?.pathExtension.lowercased() ?? ""))
+
+                        if let smokeTestMessage {
+                            Text(smokeTestMessage)
+                                .font(.footnote)
+                                .textSelection(.enabled)
+                        }
                     }
                     .padding()
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -100,6 +172,30 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
     }
 
+
+    private func renderGraphicsPreview() {
+        guard let frame = EngineBridge.renderDemoPreview(),
+              let provider = CGDataProvider(data: frame.rgba as CFData),
+              let cgImage = CGImage(
+                width: frame.width,
+                height: frame.height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: frame.width * 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            previewMessage = "Could not render or read the native framebuffer."
+            return
+        }
+        previewImage = UIImage(cgImage: cgImage)
+        previewMessage = "Rendered \(frame.width) × \(frame.height) RGBA frame from the native software rasterizer. Test pattern only."
+    }
+
     private func handleImport(_ result: Result<[URL], Error>, isBIOS: Bool) {
         switch result {
         case .success(let urls):
@@ -123,13 +219,9 @@ struct ContentView: View {
                     return
                 }
                 if isBIOS {
-                    // Native engine preflight checks that the file is readable and
-                    // reports whether its size is within a broad plausible range.
-                    // This is not BIOS authentication or firmware boot support.
-                    let biosInspection = EngineBridge.inspectBIOSImage(at: importedURL)
-                    guard biosInspection != 0 else {
+                    guard let inspection = EngineBridge.inspectBIOS(at: importedURL) else {
                         try? FileManager.default.removeItem(at: importedURL)
-                        statusMessage = "BIOS import failed: engine could not read this file."
+                        statusMessage = "BIOS import failed: the native engine could not read the selected file."
                         return
                     }
 
@@ -137,9 +229,10 @@ struct ContentView: View {
                     biosName = sourceURL.lastPathComponent
                     UserDefaults.standard.set(importedURL.lastPathComponent, forKey: "hush.importedBIOS")
                     UserDefaults.standard.set(sourceURL.lastPathComponent, forKey: "hush.importedBIOSDisplayName")
-                    statusMessage = biosInspection == 1
-                        ? "BIOS saved; size check passed. Authenticity, compatibility, and BIOS boot are not implemented."
-                        : "BIOS saved, but its size is unusual. Verify your own BIOS dump; BIOS boot is not implemented."
+                    let sizeMiB = Double(inspection.sizeBytes) / (1024.0 * 1024.0)
+                    statusMessage = inspection.plausibleSize
+                        ? String(format: "BIOS file readable (%.1f MiB). Size is plausible, but authenticity, compatibility, and BIOS boot are not verified.", sizeMiB)
+                        : String(format: "BIOS file readable (%.1f MiB), but size is unusual. Authenticity, compatibility, and BIOS boot are not verified.", sizeMiB)
                 } else {
                     gameURL = importedURL
                     gameName = sourceURL.lastPathComponent
@@ -161,6 +254,39 @@ struct ContentView: View {
 
         case .failure(let error):
             statusMessage = "File import failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func runBIOSResetVectorSmokeTest() {
+        guard let biosURL else {
+            biosSmokeTestMessage = "Import a BIOS image first."
+            return
+        }
+        isRunningBIOSSmokeTest = true
+        defer { isRunningBIOSSmokeTest = false }
+        guard let report = EngineBridge.runBIOSResetVectorSmokeTest(at: biosURL) else {
+            biosSmokeTestMessage = "The native engine could not map the selected BIOS. Use a readable BIOS image no larger than 4 MiB."
+            return
+        }
+        let pc = String(report.finalPC, radix: 16).uppercased()
+        biosSmokeTestMessage = "BIOS reset-vector test only: \(report.instructionsExecuted) instructions; PC 0x\(pc); \(report.summary). This is not a full BIOS boot.\n\n\(report.traceSummary)"
+    }
+
+    private func runSmokeTest() {
+        guard let gameURL else {
+            statusMessage = "Import a supported ISO/BIN/IMG disc first."
+            return
+        }
+        isRunningSmokeTest = true
+        defer { isRunningSmokeTest = false }
+        guard EngineBridge.validateDiscBootImage(at: gameURL) else {
+            smokeTestMessage = "The selected image did not pass disc preflight."
+            return
+        }
+        if let report = EngineBridge.runDiscSmokeTest(at: gameURL) {
+            smokeTestMessage = report.summary + "\n\n" + report.traceSummary
+        } else {
+            smokeTestMessage = "The engine could not load the disc executable for the limited test."
         }
     }
 

@@ -46,5 +46,37 @@ int main() {
     bytes=valid_elf();
     put32(bytes,68,9); put32(bytes,72,8);
     assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+
+    bytes=valid_elf();
+    put32(bytes,24,0x00200000); // Entry point is outside the only PT_LOAD segment.
+    assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+    assert(image.load_segments.empty());
+    assert(error=="ELF entry point is not inside an executable load segment");
+
+    bytes=valid_elf();
+    put32(bytes,76,4); // Segment is readable but not executable.
+    assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+    assert(image.load_segments.empty());
+    assert(error=="ELF entry point is not inside an executable load segment");
+
+    bytes=valid_elf();
+    put32(bytes,60,0xFFFFFFFCU);
+    put32(bytes,72,8); // Segment crosses the 32-bit address boundary.
+    assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+    assert(image.load_segments.empty());
+
+    // A malformed later segment must not expose earlier, partially parsed segments.
+    bytes=valid_elf();
+    bytes.resize(120,0);
+    put16(bytes,44,2);
+    put32(bytes,84,1);          // Second PT_LOAD header.
+    put32(bytes,88,116);        // File offset.
+    put32(bytes,92,0x00200000); // Virtual address.
+    put32(bytes,100,8);         // File size exceeds memory size.
+    put32(bytes,104,4);
+    put32(bytes,108,5);
+    assert(!retroshelf::parse_elf32_mips(bytes,image,&error));
+    assert(image.load_segments.empty());
+    assert(error=="ELF load segment file size exceeds memory size");
     std::cout<<"ELF32 MIPS parser tests passed\n";
 }

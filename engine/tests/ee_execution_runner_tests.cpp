@@ -1,0 +1,199 @@
+#include "retroshelf/ee_execution_runner.hpp"
+
+#include <cassert>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+int main() {
+    retroshelf::EeExecutionRunner::Result not_started;
+    assert(not_started.reason == retroshelf::EeExecutionRunner::StopReason::NotStarted);
+
+    retroshelf::Ps2EeMemoryMap memory(64U * 1024U);
+    retroshelf::Cpu cpu;
+    std::string error;
+    constexpr std::uint32_t start = 0x80001000U;
+
+    // ADDIU t0, zero, 7; ADDIU t1, zero, 5; ADDU t2, t0, t1.
+    assert(memory.write(start, 4, (0x09U << 26U) | (8U << 16U) | 7U, &error));
+    assert(memory.write(start + 4U, 4, (0x09U << 26U) | (9U << 16U) | 5U, &error));
+    assert(memory.write(start + 8U, 4, (8U << 21U) | (9U << 16U) | (10U << 11U) | 0x21U, &error));
+    cpu.set_pc(start);
+
+    retroshelf::EeExecutionRunner runner(cpu, memory);
+    const auto first = runner.run(2);
+    assert(first.instructions_executed == 2);
+    assert(first.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(cpu.reg(8) == 7 && cpu.reg(9) == 5);
+    assert(cpu.reg(10) == 0);
+    assert(cpu.pc() == start + 8U);
+    assert(first.trace.size() == 2);
+    assert(first.trace[0].pc == start && first.trace[0].fetched);
+    assert(first.trace[0].instruction == ((0x09U << 26U) | (8U << 16U) | 7U));
+    assert(first.trace[1].pc == start + 4U && first.trace[1].fetched);
+
+    const auto second = runner.run(1);
+    assert(second.instructions_executed == 1);
+    assert(cpu.reg(10) == 12);
+    assert(second.final_pc == start + 12U);
+    assert(second.trace.size() == 1 && second.trace[0].pc == start + 8U);
+
+    const auto zero = runner.run(0);
+    assert(zero.instructions_executed == 0);
+    assert(zero.reason == retroshelf::EeExecutionRunner::StopReason::NoInstructionsRequested);
+    assert(!zero.message.empty());
+    assert(zero.final_pc == cpu.pc());
+    assert(zero.trace.empty());
+
+    // The trace captures the exact unsupported instruction before the CPU traps.
+    constexpr std::uint32_t unsupported = 0x3EU << 26U;
+    assert(memory.write(start + 12U, 4, unsupported, &error));
+    const auto stopped = runner.run(1);
+    assert(stopped.instructions_executed == 0);
+    assert(stopped.reason == retroshelf::EeExecutionRunner::StopReason::CpuExceptionOrUnsupportedInstruction);
+    assert(stopped.final_pc == retroshelf::Cpu::GeneralExceptionVector);
+    assert(!stopped.message.empty());
+    assert(stopped.trace.size() == 1);
+    assert(stopped.trace[0].pc == start + 12U);
+    assert(stopped.trace[0].instruction == unsupported);
+    assert(stopped.trace[0].fetched);
+
+    constexpr std::uint32_t exception_vector = 0x80000180U;
+    assert(memory.write(exception_vector, 4, (0x09U << 26U) | (11U << 16U) | 9U, &error));
+    const auto handler = runner.run(1);
+    assert(handler.instructions_executed == 1);
+    assert(handler.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(cpu.reg(11) == 9);
+    assert(handler.final_pc == exception_vector + 4U);
+
+    // Architected exceptions should enter their handler within the same
+    // bounded run. Unsupported opcodes above remain diagnostic stop conditions.
+    constexpr std::uint32_t syscall_instruction = 0x0000000CU;
+    assert(memory.write(start + 16U, 4, syscall_instruction, &error));
+    cpu.reset();
+    cpu.set_pc(start + 16U);
+    const auto syscall_handler = runner.run(2);
+    assert(syscall_handler.instructions_executed == 2);
+    assert(syscall_handler.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(cpu.reg(11) == 9U);
+    assert(syscall_handler.trace.size() == 2U);
+    assert(syscall_handler.trace[0].pc == start + 16U && syscall_handler.trace[0].fetched);
+    assert(syscall_handler.trace[0].instruction == syscall_instruction);
+    assert(syscall_handler.trace[1].pc == exception_vector && syscall_handler.trace[1].fetched);
+    assert(syscall_handler.final_pc == exception_vector + 4U);
+
+    // An instruction-fetch fault should enter the mapped general exception
+    // handler automatically, without requiring a second runner invocation.
+    cpu.reset();
+    cpu.set_pc(0x30000000U);
+    const auto fetch_fault = runner.run(2);
+    assert(fetch_fault.instructions_executed == 2);
+    assert(fetch_fault.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(fetch_fault.final_pc == exception_vector + 4U);
+    assert(cpu.cop0_epc() == 0x30000000U);
+    assert(cpu.cop0_bad_vaddr() == 0x30000000U);
+    assert(cpu.reg(11) == 9U);
+    assert(fetch_fault.trace.size() == 2U);
+    assert(fetch_fault.trace[0].pc == 0x30000000U);
+    assert(!fetch_fault.trace[0].fetched);
+    assert(fetch_fault.trace[1].pc == exception_vector && fetch_fault.trace[1].fetched);
+
+    // If the exception vector itself is unmapped, stop instead of repeatedly
+    // faulting at the same vector until the instruction budget is exhausted.
+    retroshelf::Ps2EeMemoryMap no_handler_memory(0x100U);
+    retroshelf::Cpu no_handler_cpu;
+    no_handler_cpu.set_pc(0x30000000U);
+    retroshelf::EeExecutionRunner no_handler_runner(no_handler_cpu, no_handler_memory);
+    const auto unhandled_fetch_fault = no_handler_runner.run(3);
+    assert(unhandled_fetch_fault.reason == retroshelf::EeExecutionRunner::StopReason::InvalidInstructionFetch);
+    assert(unhandled_fetch_fault.final_pc == retroshelf::Cpu::GeneralExceptionVector);
+    assert(unhandled_fetch_fault.trace.size() == 2U);
+    assert(!unhandled_fetch_fault.trace[0].fetched);
+    assert(!unhandled_fetch_fault.trace[1].fetched);
+
+    // A recoverable exception handler can adjust EPC, execute ERET, and resume
+    // the interrupted stream in one bounded run.
+    retroshelf::Ps2EeMemoryMap return_memory(64U * 1024U);
+    retroshelf::Cpu return_cpu;
+    constexpr std::uint32_t return_start = 0x00001000U;
+    constexpr std::uint32_t return_vector = 0x80000180U;
+    constexpr std::uint32_t return_syscall = 0x0000000CU;
+    constexpr std::uint32_t mfc0_k0_epc = (0x10U << 26U) | (14U << 11U) | (26U << 16U);
+    constexpr std::uint32_t addiu_k0_k0_4 = (0x09U << 26U) | (26U << 21U) | (26U << 16U) | 4U;
+    constexpr std::uint32_t mtc0_k0_epc = (0x10U << 26U) | (0x04U << 21U) | (26U << 16U) | (14U << 11U);
+    constexpr std::uint32_t eret_instruction = (0x10U << 26U) | (0x10U << 21U) | 0x18U;
+    constexpr std::uint32_t resume_marker = (0x09U << 26U) | (12U << 16U) | 42U;
+    assert(return_memory.write(return_start, 4, return_syscall, &error));
+    assert(return_memory.write(return_start + 4U, 4, resume_marker, &error));
+    assert(return_memory.write(return_vector, 4, mfc0_k0_epc, &error));
+    assert(return_memory.write(return_vector + 4U, 4, addiu_k0_k0_4, &error));
+    assert(return_memory.write(return_vector + 8U, 4, mtc0_k0_epc, &error));
+    assert(return_memory.write(return_vector + 12U, 4, eret_instruction, &error));
+    return_cpu.set_pc(return_start);
+    retroshelf::EeExecutionRunner return_runner(return_cpu, return_memory);
+    const auto returned = return_runner.run(6U);
+    assert(returned.instructions_executed == 6U);
+    assert(returned.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(return_cpu.reg(12U) == 42U);
+    assert((return_cpu.cop0_status() & retroshelf::Cpu::StatusExl) == 0U);
+    assert(returned.trace.size() == 6U);
+    assert(returned.trace[0].pc == return_start && returned.trace[0].instruction == return_syscall);
+    assert(returned.trace[1].pc == return_vector && returned.trace[1].instruction == mfc0_k0_epc);
+    assert(returned.trace[4].pc == return_vector + 12U && returned.trace[4].instruction == eret_instruction);
+    assert(returned.trace[5].pc == return_start + 4U && returned.trace[5].instruction == resume_marker);
+    assert(returned.final_pc == return_start + 8U);
+
+    // Trace storage is bounded even when the execution budget is large.
+    // Replace the unsupported instruction with a NOP so the run can continue.
+    assert(memory.write(start + 12U, 4, 0U, &error));
+    cpu.set_pc(start);
+    const auto bounded = runner.run(retroshelf::EeExecutionRunner::TraceCapacity + 1U);
+    assert(bounded.trace.size() == retroshelf::EeExecutionRunner::TraceCapacity);
+    // A branch in a branch delay slot currently fails without entering the
+    // exception vector. Report this as an execution error, not a fetch fault.
+    cpu.reset();
+    cpu.set_pc(start);
+    constexpr std::uint32_t beq_zero_zero_one = (0x04U << 26U) | 1U;
+    assert(memory.write(start, 4, beq_zero_zero_one, &error));
+    assert(memory.write(start + 4U, 4, beq_zero_zero_one, &error));
+    const auto branch = runner.run(1);
+    assert(branch.instructions_executed == 1);
+    const auto delay_slot_branch = runner.run(1);
+    assert(delay_slot_branch.instructions_executed == 0);
+    assert(delay_slot_branch.reason == retroshelf::EeExecutionRunner::StopReason::ExecutionError);
+    assert(delay_slot_branch.final_pc == start + 4U);
+    assert(delay_slot_branch.message.find("delay slot") != std::string::npos);
+    assert(delay_slot_branch.trace.size() == 1 && delay_slot_branch.trace[0].fetched);
+
+
+    // Exercise the complete runner + memory-map path from the real EE BIOS
+    // reset-vector alias, rather than testing BIOS reads only through Cpu.
+    retroshelf::Ps2EeMemoryMap bios_memory(64U * 1024U);
+    std::vector<std::uint8_t> bios_image(8U, 0U);
+    constexpr std::uint32_t bios_addiu_t0 = (0x09U << 26U) | (8U << 16U) | 7U;
+    constexpr std::uint32_t bios_addiu_t1 = (0x09U << 26U) | (9U << 16U) | 5U;
+    for (unsigned i = 0; i < 4U; ++i) {
+        bios_image[i] = static_cast<std::uint8_t>(bios_addiu_t0 >> (i * 8U));
+        bios_image[4U + i] = static_cast<std::uint8_t>(bios_addiu_t1 >> (i * 8U));
+    }
+    assert(bios_memory.load_bios_image(bios_image, &error));
+    retroshelf::Cpu bios_cpu;
+    bios_cpu.set_reg(10U, 0xDEADBEEFU); // the BIOS entry helper must start from reset CPU state
+    bios_cpu.set_pc(0x80001000U);
+    retroshelf::EeExecutionRunner bios_runner(bios_cpu, bios_memory);
+    const auto bios_run = bios_runner.run_from_bios_reset_vector(2);
+    assert(bios_run.instructions_executed == 2);
+    assert(bios_run.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
+    assert(bios_cpu.reg(8) == 7U && bios_cpu.reg(9) == 5U);
+    assert(bios_cpu.reg(10U) == 0U); // stale state was cleared before BIOS execution
+    assert(bios_run.trace.size() == 2U);
+    assert(bios_run.trace[0].pc == 0xBFC00000U && bios_run.trace[0].fetched);
+    assert(bios_run.trace[1].pc == 0xBFC00004U && bios_run.trace[1].fetched);
+    assert(bios_run.final_pc == 0xBFC00008U);
+
+    // The BIOS mapping must stay read-only even when accessed through KSEG1.
+    assert(!bios_memory.write(0xBFC00000U, 4, 0U, &error));
+    assert(!error.empty());
+
+    return 0;
+}
