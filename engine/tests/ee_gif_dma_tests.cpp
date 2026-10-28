@@ -1,5 +1,7 @@
 #include "retroshelf/ee_gif_dma.hpp"
 #include "retroshelf/gs_packet_processor.hpp"
+#include "retroshelf/gs_gif_pipeline.hpp"
+#include "retroshelf/gs_framebuffer.hpp"
 #include "retroshelf/system_bus.hpp"
 
 #include <cstdint>
@@ -293,6 +295,24 @@ int main() {
 
     {
         std::vector<std::uint8_t> ram(64);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction;
+        dma.registers.madr = 0;
+        dma.registers.qwc = static_cast<std::uint32_t>(
+            retroshelf::EeGifDma::MaxTransferBytes / retroshelf::EeGifDma::QwordSize + 1U);
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  dma.error().find("transfer limit") != std::string::npos &&
+                  (dma.registers.chcr & Start) == 0 && dma.registers.qwc == 0,
+              "oversized normal transfer is rejected before reading RAM");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Error,
+              "oversized normal transfer raises one DMA error interrupt");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
         fill(ram, 16, 0x82);
         std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
         retroshelf::EeGifDma dma(ram, {},
@@ -405,6 +425,98 @@ int main() {
         check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
                   dma.error().find("unaligned") != std::string::npos,
               "system-bus DMA rejects a payload address not aligned to a qword");
+    }
+
+
+    {
+        // End-to-end regression: chained EE GIF DMA carries a real PACKED
+        // triangle through the persistent GIF parser and software GS renderer.
+        std::vector<std::uint8_t> ram(192);
+        const std::uint8_t addresses[] = {0x0, 0x1, 0x5, 0x5, 0x5};
+        const std::uint64_t values[] = {
+            0x3ULL, 0xFF0000FFULL,
+            (static_cast<std::uint64_t>(1U << 4U) << 16U) | (1U << 4U),
+            (static_cast<std::uint64_t>(1U << 4U) << 16U) | (6U << 4U),
+            (static_cast<std::uint64_t>(6U << 4U) << 16U) | (1U << 4U)
+        };
+        for (std::size_t i = 0; i < 5U; ++i) {
+            const std::size_t offset = 16U + i * 32U;
+            const std::uint64_t gif_tag = 1ULL | (i == 4U ? (1ULL << 15U) : 0ULL) |
+                                          (1ULL << 60U);
+            write_qword(ram, static_cast<std::uint32_t>(offset), gif_tag, addresses[i]);
+            write_qword(ram, static_cast<std::uint32_t>(offset + 16U), values[i], 0ULL);
+        }
+        write_tag(ram, 0, 10, 1);
+        write_tag(ram, 176, 0, 7);
+
+        retroshelf::SystemBus bus(ram);
+        retroshelf::GsPacketProcessor parser;
+        retroshelf::GsGifPipeline pipeline;
+        retroshelf::GsFramebuffer framebuffer;
+        std::vector<retroshelf::EeGifDma::Interrupt> dma_interrupts;
+        const bool framebuffer_ready = framebuffer.resize(8, 8);
+        retroshelf::EeGifDma dma(
+            bus,
+            [&](const auto& payload) {
+                if (!parser.submit(payload)) throw std::runtime_error(parser.error());
+            },
+            [&](auto reason) { dma_interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction | Chain;
+        dma.registers.tadr = 0;
+        const bool transferred = dma.start();
+        const bool stream_finished = parser.finish_stream();
+        const auto packets = parser.take_packets();
+        check(transferred && stream_finished && packets.size() == 1,
+              "chained EE GIF DMA transfers a complete five-register GIF stream");
+        check(dma.registers.tadr == 192 && dma.registers.madr == 192 &&
+                  dma.registers.qwc == 0 && dma.state() == retroshelf::EeGifDma::State::Completed &&
+                  dma_interrupts.size() == 1 &&
+                  dma_interrupts[0] == retroshelf::EeGifDma::Interrupt::Completion,
+              "rendering test verifies DMA terminal registers and one completion interrupt");
+        const bool rendered = framebuffer_ready &&
+                              pipeline.consume_and_render(packets, framebuffer);
+        check(rendered, "DMA packet renders through GIF parser and GS pipeline");
+        retroshelf::GsFramebuffer::Rgba8 pixel{};
+        check(rendered && framebuffer.get_pixel(2, 2, pixel) &&
+                  pixel.r == 255 && pixel.g == 0 && pixel.b == 0 && pixel.a == 255,
+              "end-to-end DMA-to-GS output contains the expected red triangle pixel");
+    }
+
+    {
+        std::vector<std::uint8_t> ram(64);
+        std::vector<retroshelf::EeGifDma::Interrupt> interrupts;
+        retroshelf::EeGifDma dma(ram, [](const auto&) {},
+                                 [&](auto reason) { interrupts.push_back(reason); });
+        dma.registers.chcr = Start | Direction;
+        dma.registers.madr = 0xFFFFFFF0U;
+        dma.registers.qwc = 2;
+        check(!dma.start() && dma.state() == retroshelf::EeGifDma::State::Error &&
+                  dma.error().find("address overflows") != std::string::npos &&
+                  (dma.registers.chcr & Start) == 0 && dma.registers.qwc == 0,
+              "normal transfer rejects 32-bit guest-address wraparound before bus access");
+        check(interrupts.size() == 1 &&
+                  interrupts[0] == retroshelf::EeGifDma::Interrupt::Error,
+              "address-wrap rejection raises exactly one DMA error interrupt");
+    }
+
+    {
+        // TTE forwards each 16-byte DMA tag to the GIF path before its payload.
+        std::vector<std::uint8_t> ram(128);
+        fill(ram, 16, 0xA5);
+        write_tag(ram, 0, 1, 1);
+        write_tag(ram, 32, 0, 7);
+        std::vector<std::vector<std::uint8_t>> payloads;
+        retroshelf::EeGifDma dma(ram, [&](const auto& payload) { payloads.push_back(payload); });
+        dma.registers.chcr = Start | Direction | Chain | (1U << 6U);
+        dma.registers.tadr = 0;
+        check(dma.start() && payloads.size() == 3 &&
+                  payloads[0].size() == 16 && payloads[0][3] == 0x10 &&
+                  all_bytes(payloads[1], 0xA5) && payloads[2].size() == 16 &&
+                  payloads[2][3] == 0x70,
+              "TTE forwards CNT and END tags in order with their payload");
+        check(dma.state() == retroshelf::EeGifDma::State::Completed &&
+                  (dma.registers.chcr & Start) == 0,
+              "TTE tag forwarding still completes the chain");
     }
 
     return failures == 0 ? 0 : 1;

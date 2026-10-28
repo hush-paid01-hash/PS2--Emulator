@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#030712"/><stop offset=".55" stop-color="#071b46"/><stop offset="1" stop-color="#02040b"/></linearGradient>
+ <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a8e8ff"/><stop offset=".35" stop-color="#168cff"/><stop offset="1" stop-color="#0037ff"/></linearGradient>
+ <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset=".45" stop-color="#9fdcff"/><stop offset="1" stop-color="#287bff"/></linearGradient>
+ <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="14"/></filter>
+</defs>
+<rect width="1024" height="1024" rx="180" fill="url(#bg)"/>
+<rect x="18" y="18" width="988" height="988" rx="166" fill="none" stroke="#087cff" stroke-width="12"/>
+<rect x="32" y="32" width="960" height="960" rx="152" fill="none" stroke="#67cfff" stroke-opacity=".55" stroke-width="3"/>
+<path d="M60 650 Q280 430 510 650 T965 570" fill="none" stroke="#006dff" stroke-width="22" opacity=".5" filter="url(#glow)"/>
+<path d="M60 650 Q280 430 510 650 T965 570" fill="none" stroke="#168cff" stroke-width="5"/>
+<!-- console silhouette -->
+<g transform="translate(275 130)">
+ <path d="M115 55 L380 5 L430 40 L430 590 L115 650 Z" fill="#03060d" stroke="url(#blue)" stroke-width="7"/>
+ <path d="M380 5 L430 40 L430 590 L380 560 Z" fill="#0b1428" stroke="#176aff" stroke-width="4"/>
+ <path d="M400 65 V540 M414 75 V550" stroke="#223b62" stroke-width="5"/>
+ <circle cx="403" cy="160" r="7" fill="#4dc4ff"/>
+</g>
+<!-- HUSH title -->
+<text x="512" y="590" font-family="Arial, Helvetica, sans-serif" font-size="190" font-weight="900" text-anchor="middle" letter-spacing="8" fill="#006dff" opacity=".85" filter="url(#glow)">HUSH</text>
+<text x="512" y="590" font-family="Arial, Helvetica, sans-serif" font-size="190" font-weight="900" text-anchor="middle" letter-spacing="8" fill="url(#silver)" stroke="#d9f5ff" stroke-width="2">HUSH</text>
+<path d="M130 622 H894" stroke="#168cff" stroke-width="4" opacity=".9"/>
+<!-- controller -->
+<g transform="translate(210 680)">
+ <path d="M75 5 Q125 -30 180 10 L225 40 Q255 50 290 25 Q335 -5 380 15 Q425 40 440 95 L470 180 Q478 225 445 242 Q410 257 380 222 L340 178 H155 L115 222 Q80 257 45 242 Q12 225 20 180 L50 95 Q58 45 75 5Z" fill="#050a14" stroke="url(#blue)" stroke-width="7"/>
+ <path d="M75 90 H145 M110 55 V125" stroke="#9bdfff" stroke-width="16" stroke-linecap="round"/>
+ <circle cx="350" cy="70" r="17" fill="#168cff"/><circle cx="385" cy="102" r="17" fill="#f34a91"/><circle cx="315" cy="102" r="17" fill="#50d9a4"/><circle cx="350" cy="134" r="17" fill="#f6d35b"/>
+ <circle cx="205" cy="125" r="32" fill="#101e36" stroke="#2b8cff" stroke-width="5"/><circle cx="280" cy="125" r="32" fill="#101e36" stroke="#2b8cff" stroke-width="5"/>
+</g>
+<text x="512" y="960" font-family="Arial, Helvetica, sans-serif" font-size="35" font-weight="700" letter-spacing="12" text-anchor="middle" fill="#9fdcff">PLAY • EXPLORE • HUSH</text>
+</svg>

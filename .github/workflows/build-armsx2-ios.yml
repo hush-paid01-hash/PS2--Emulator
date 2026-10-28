@@ -1,0 +1,86 @@
+name: Build external ARMSX2 iOS app (unsigned)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    name: Build ARMSX2 iOS app
+    runs-on: macos-26
+    steps:
+      - name: Check out ARMSX2 source
+        uses: actions/checkout@v4
+        with:
+          repository: ARMSX2/ARMSX2
+          path: armsx2
+          submodules: recursive
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -switch /Applications/Xcode.app
+          xcodebuild -version
+
+      - name: Install Rust iOS target if Rust is available
+        run: |
+          if command -v rustup >/dev/null 2>&1; then
+            rustup target add aarch64-apple-ios
+          else
+            echo "rustup is not installed on runner; continue because project may not require it"
+          fi
+
+      - name: Configure native iOS build
+        working-directory: armsx2/platforms/ios/app/src/main/cpp
+        run: |
+          cmake -G Xcode -B build \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DARMSX2_REAL_DEVICE=ON
+
+      - name: Build ARMSX2 for iPhone
+        working-directory: armsx2/platforms/ios/app/src/main/cpp
+        run: |
+          cmake --build build \
+            --config Release \
+            -- \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Find application bundle
+        working-directory: armsx2/platforms/ios/app/src/main/cpp
+        run: |
+          APP_PATH=$(find build -type d -name "ARMSX2iOS.app" -print -quit)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: ARMSX2iOS.app was not produced."
+            find build -type d -name "*.app" -print
+            exit 1
+          fi
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+          echo "Found app: $APP_PATH"
+
+      - name: Package unsigned IPA
+        run: |
+          SHORT_SHA=$(git -C armsx2 rev-parse --short=8 HEAD)
+          IPA_NAME="ARMSX2-iOS-${SHORT_SHA}.ipa"
+          STAGING=$(mktemp -d)
+          mkdir -p "$STAGING/Payload"
+          cp -R "$APP_PATH" "$STAGING/Payload/"
+          (cd "$STAGING" && zip -r "$GITHUB_WORKSPACE/$IPA_NAME" Payload -x "*.DS_Store")
+          echo "IPA_NAME=$IPA_NAME" >> "$GITHUB_ENV"
+          ls -lh "$IPA_NAME"
+
+      - name: Upload unsigned IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARMSX2-iOS-unsigned-IPA
+          path: "*.ipa"
+          if-no-files-found: error
+          retention-days: 7
+
+# Important: this builds the separate ARMSX2 project, not the partial C++
+# engine in this repository. The IPA is unsigned and normally cannot be
+# installed directly on a standard iPhone without a supported signing/sideload
+# process. This is a build artifact, not proof of installation or gameplay.

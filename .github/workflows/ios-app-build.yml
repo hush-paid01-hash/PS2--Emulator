@@ -1,0 +1,103 @@
+name: Native iOS app build
+
+on:
+  pull_request:
+    paths:
+      - "project.yml"
+      - "ios/OriginalPS2/**"
+      - "engine/**"
+      - ".github/workflows/ios-app-build.yml"
+      - ".github/workflows/ios-shell-parse.yml"
+  push:
+    branches: [main]
+    paths:
+      - "project.yml"
+      - "ios/OriginalPS2/**"
+      - "engine/**"
+      - ".github/workflows/ios-app-build.yml"
+      - ".github/workflows/ios-shell-parse.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    name: Generate Xcode project and build iOS targets
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode.app
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Verify generated scheme
+        run: xcodebuild -list -project Hush.xcodeproj
+
+      - name: Configure native engine tests
+        run: cmake -S engine -B build/engine -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build native engine and test executables
+        run: cmake --build build/engine --parallel 3
+
+      - name: Run native engine regression tests
+        run: ctest --test-dir build/engine --output-on-failure
+
+      - name: Build iOS Simulator app
+        run: |
+          xcodebuild \
+            -project Hush.xcodeproj \
+            -scheme OriginalPS2 \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Upload iOS Simulator app artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Hush-iOS-Simulator-Debug
+          path: build/DerivedData/Build/Products/Debug-iphonesimulator/Hush.app
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Build iOS device target (unsigned)
+        run: |
+          xcodebuild \
+            -project Hush.xcodeproj \
+            -scheme OriginalPS2 \
+            -sdk iphoneos \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Upload unsigned iOS device app artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Hush-iOS-Device-Unsigned
+          path: build/DerivedData/Build/Products/Debug-iphoneos/Hush.app
+          if-no-files-found: error
+          retention-days: 7
+
+# The device artifact verifies an iOS-device build but is unsigned. It is not
+# directly installable on an iPhone. Installation requires valid signing and
+# provisioning; neither signing credentials nor an Apple Developer account
+# are configured by this workflow. A successful build does not prove gameplay.

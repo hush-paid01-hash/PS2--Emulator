@@ -1,0 +1,75 @@
+name: Native iOS syntax and simulator build
+
+on:
+  pull_request:
+    paths:
+      - "project.yml"
+      - "ios/OriginalPS2/**"
+      - "engine/**"
+      - ".github/workflows/ios-shell-parse.yml"
+      - ".github/workflows/ios-app-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "project.yml"
+      - "ios/OriginalPS2/**"
+      - "engine/**"
+      - ".github/workflows/ios-shell-parse.yml"
+      - ".github/workflows/ios-app-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  swift-source-parse:
+    name: Parse SwiftUI source
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Check Swift compiler
+        run: swift --version
+
+      - name: Parse native frontend source
+        run: swiftc -parse ios/OriginalPS2/OriginalPS2App.swift ios/OriginalPS2/ContentView.swift ios/OriginalPS2/EngineBridge.swift
+
+  build-ios-simulator:
+    name: Generate Xcode project and build iOS Simulator app
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode.app
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Verify generated scheme
+        run: xcodebuild -list -project Hush.xcodeproj
+
+      - name: Build app and linked C++ engine
+        run: |
+          xcodebuild \
+            -project Hush.xcodeproj \
+            -scheme OriginalPS2 \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+# The simulator build verifies compilation/linking only; it does not prove physical-device installation or PS2 gameplay.
