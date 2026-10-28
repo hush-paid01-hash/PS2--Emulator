@@ -34,9 +34,10 @@ bool GsPackedPrimitiveRenderer::consume(
         switch (write.address) {
         case PrimRegister:
             prim_ = write.value;
-            if ((prim_ & PrimitiveMask) != LinePrimitive)
+            if ((prim_ & PrimitiveMask) != LinePrimitive) {
                 line_vertices_.clear();
                 line_colors_.clear();
+            }
             if ((prim_ & PrimitiveMask) != TrianglePrimitive &&
                 (prim_ & PrimitiveMask) != TriangleStripPrimitive &&
                 (prim_ & PrimitiveMask) != TriangleFanPrimitive)
