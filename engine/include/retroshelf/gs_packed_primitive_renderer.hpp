@@ -25,6 +25,7 @@ private:
     GsFramebuffer::Rgba8 color_{};
     std::vector<GsSoftwareRasterizer::Point> line_vertices_;
     std::vector<GsSoftwareRasterizer::Point> triangle_vertices_;
+    std::vector<GsFramebuffer::Rgba8> triangle_colors_;
     std::vector<GsSoftwareRasterizer::Point> sprite_vertices_;
     std::string error_;
 };

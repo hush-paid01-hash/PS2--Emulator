@@ -24,6 +24,12 @@ public:
     // an empty target or coordinates outside the supported safe range.
     bool draw_triangle(GsFramebuffer& target, Point a, Point b, Point c,
                        GsFramebuffer::Rgba8 color) const;
+
+    // Draws a Gouraud-shaded triangle using per-vertex RGBA colours.
+    bool draw_triangle_gouraud(GsFramebuffer& target, Point a, Point b, Point c,
+                               GsFramebuffer::Rgba8 color_a,
+                               GsFramebuffer::Rgba8 color_b,
+                               GsFramebuffer::Rgba8 color_c) const;
 };
 
 } // namespace retroshelf

@@ -84,4 +84,51 @@ bool GsSoftwareRasterizer::draw_triangle(GsFramebuffer& target, Point a, Point b
     return true;
 }
 
+
+bool GsSoftwareRasterizer::draw_triangle_gouraud(
+    GsFramebuffer& target, Point a, Point b, Point c,
+    GsFramebuffer::Rgba8 color_a, GsFramebuffer::Rgba8 color_b,
+    GsFramebuffer::Rgba8 color_c) const {
+    if (target.empty() || !safe_point(a) || !safe_point(b) || !safe_point(c))
+        return false;
+
+    const std::int64_t area = edge(a, b, c.x, c.y);
+    if (area == 0) return true;
+    const std::int64_t min_x = std::max<std::int64_t>(0, std::min({a.x, b.x, c.x}));
+    const std::int64_t min_y = std::max<std::int64_t>(0, std::min({a.y, b.y, c.y}));
+    const std::int64_t max_x = std::min<std::int64_t>(
+        static_cast<std::int64_t>(target.width()) - 1, std::max({a.x, b.x, c.x}));
+    const std::int64_t max_y = std::min<std::int64_t>(
+        static_cast<std::int64_t>(target.height()) - 1, std::max({a.y, b.y, c.y}));
+    if (min_x > max_x || min_y > max_y) return true;
+
+    const bool positive = area > 0;
+    const std::int64_t denominator = positive ? area : -area;
+    const auto interpolate = [denominator](
+        std::int64_t wa, std::int64_t wb, std::int64_t wc,
+        std::uint8_t ca, std::uint8_t cb, std::uint8_t cc) {
+        const std::int64_t value = (wa * ca + wb * cb + wc * cc) / denominator;
+        return static_cast<std::uint8_t>(std::clamp<std::int64_t>(value, 0, 255));
+    };
+
+    for (std::int64_t y = min_y; y <= max_y; ++y) {
+        for (std::int64_t x = min_x; x <= max_x; ++x) {
+            std::int64_t wa = edge(b, c, x, y);
+            std::int64_t wb = edge(c, a, x, y);
+            std::int64_t wc = edge(a, b, x, y);
+            if (positive ? (wa < 0 || wb < 0 || wc < 0)
+                         : (wa > 0 || wb > 0 || wc > 0))
+                continue;
+            if (!positive) { wa = -wa; wb = -wb; wc = -wc; }
+            target.set_pixel(static_cast<std::size_t>(x), static_cast<std::size_t>(y), {
+                interpolate(wa, wb, wc, color_a.r, color_b.r, color_c.r),
+                interpolate(wa, wb, wc, color_a.g, color_b.g, color_c.g),
+                interpolate(wa, wb, wc, color_a.b, color_b.b, color_c.b),
+                interpolate(wa, wb, wc, color_a.a, color_b.a, color_c.a)
+            });
+        }
+    }
+    return true;
+}
+
 } // namespace retroshelf
