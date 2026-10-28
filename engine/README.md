@@ -9,7 +9,8 @@ This folder is the first portable C++ milestone for the original PS2-emulator pr
 - An EE GIF DMA channel model with normal transfers and DMA chain tags.
 - A bounds-checked system-bus interface over the current EE RAM allocation.
 - A stateful GIF-tag packet parser for PACKED, REGLIST, IMAGE, and IMAGE2 streams.
-- A command-line demonstration and automated tests.
+- A partial GS pipeline with register-state decoding, local-memory/image-upload foundations, and a software framebuffer/rasterizer for supported primitive paths.
+- A synthetic GIF-to-framebuffer demo used to check the graphics path, plus automated tests.
 - CMake build configuration for Linux and later integration into a larger project.
 
 ## Build and test on Ubuntu
@@ -50,16 +51,15 @@ an iOS app. The C ABI smoke test verifies the exported functions from C++ CI.
 
 ## Important limitations
 
-This is **not yet a complete PlayStation 2 emulator** and cannot boot or play games. The PS2 Emotion Engine requires substantial additional work, including accurate CPU behavior, exceptions, memory/bus handling, COP0/COP1/COP2, vector units, timers, DMA, the Graphics Synthesizer, sound hardware, and BIOS integration. This initial subset is for testing the build workflow and code structure only.
+This is **not yet a complete PlayStation 2 emulator** and cannot boot or play games. The PS2 Emotion Engine and surrounding hardware require substantial additional work, including accurate CPU behavior, exceptions and memory/bus handling, COP0/COP1/COP2, vector units, timers, DMA arbitration, full Graphics Synthesizer behavior, texture sampling/blending, sound hardware, interrupts, and BIOS integration. This initial subset is for testing the build workflow and code structure only.
 
 `SystemBus` currently bounds reads and writes to the supplied EE-RAM vector; it is not a
 PS2 memory map or an address-aliasing implementation. GIF DMA reads both chain tags and
 payloads through that bus interface and submits payloads to `GsPacketProcessor`, which
 parses GIF-tag framing and preserves complete packet bytes in a drainable queue bounded
-to 64 MiB. It is a packet parser, not a GS register implementation or renderer. Incomplete
-streams are reported by `finish_stream()`.
+to 64 MiB. It feeds the current partial GS pipeline; this is not complete GS hardware emulation. The software renderer supports only a limited set of primitive paths and is not yet driven by a complete running game. Incomplete streams are reported by `finish_stream()`.
 
-DMA completion, tag, and error events are available through its interrupt callback. There
+DMA completion, tag, and error events are available through its interrupt callback. The current C ABI also exposes a synthetic graphics preview rendered through the partial GIF-to-GS pipeline; it is explicitly a test pattern, not a game frame. There
 is no EE interrupt controller or architectural status/mask/acknowledgment register model
 yet. GIF path arbitration, full GS behavior, and scratchpad transfers are unsupported.
 CHCR.DIR must be clear for the supported EE-RAM-to-GIF direction; GIF-to-RAM transfers
@@ -67,8 +67,7 @@ are unsupported.
 It models main-RAM chain tags and the two-entry CALL/RET stack, but not scratchpad
 transfers, tag transfer-enable (TTE), REFS cache-snooping behavior, cycle timing,
 or hardware arbitration. Payload transfers and aggregate chain processing are bounded to
-64 MiB per start operation, and chain processing is bounded to 65,536 tags. No retail game
-compatibility has been validated.
+64 MiB per start operation, and chain processing is bounded to 65,536 tags. No retail game compatibility has been validated. The native UI's BIOS-reset-vector and disc-execution actions are bounded smoke tests using the incomplete instruction subset, not a full BIOS boot or playable game session.
 
 Use only BIOS and game images you are legally entitled to use. The portable engine can be developed on Linux, but a native iPhone app requires an appropriate Apple build/signing workflow, and iOS imposes restrictions on JIT execution.
 
