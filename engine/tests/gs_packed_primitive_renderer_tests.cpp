@@ -144,6 +144,19 @@ int main() {
     assert(interpolated.r > 0 && interpolated.g > 0 && interpolated.b > 0);
     assert(interpolated.a == 255);
 
+
+    renderer.reset();
+    framebuffer.clear();
+    // A malformed/oversized strip must fail safely instead of growing state forever.
+    std::vector<Write> oversized_strip;
+    oversized_strip.reserve(65538U);
+    oversized_strip.push_back({0x0, 0x4});
+    oversized_strip.push_back({0x1, 0xFFFFFFFFULL});
+    for (std::size_t i = 0; i < 65537U; ++i)
+        oversized_strip.push_back({0x5, xyz(1U << 4U, 1U << 4U)});
+    assert(!renderer.consume(oversized_strip, framebuffer));
+    assert(renderer.error().find("vertex limit") != std::string::npos);
+
     std::cout << "GS packed primitive renderer tests passed\n";
     return 0;
 }
