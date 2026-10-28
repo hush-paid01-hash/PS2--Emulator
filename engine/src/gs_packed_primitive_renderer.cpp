@@ -15,6 +15,7 @@ constexpr std::uint64_t TriangleStripPrimitive = 0x4U;
 constexpr std::uint64_t TriangleFanPrimitive = 0x5U;
 constexpr std::uint64_t SpritePrimitive = 0x6U;
 constexpr std::int32_t MaxCoordinate = 1000000;
+constexpr std::size_t MaxPrimitiveVertices = 65536U;
 
 // GS XYZ2 X/Y fields are signed 16-bit 12.4 fixed-point coordinates.
 // Convert to a signed value explicitly before dropping the fractional nibble.
@@ -97,6 +98,10 @@ bool GsPackedPrimitiveRenderer::consume(
                         sprite_vertices_.clear();
                     }
                 } else {
+                    if (triangle_vertices_.size() >= MaxPrimitiveVertices) {
+                        error_ = "GS primitive exceeds supported vertex limit";
+                        return false;
+                    }
                     triangle_vertices_.push_back({x, y});
                     triangle_colors_.push_back(color_);
                     const auto primitive = prim_ & PrimitiveMask;
