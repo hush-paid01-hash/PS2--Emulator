@@ -8,6 +8,7 @@ constexpr std::uint8_t PrimRegister = 0x0;
 constexpr std::uint8_t RgbaqRegister = 0x1;
 constexpr std::uint8_t Xyz2Register = 0x5;
 constexpr std::uint64_t PrimitiveMask = 0x7U;
+constexpr std::uint64_t GouraudShadingBit = 1U << 3U;
 constexpr std::uint64_t LinePrimitive = 0x1U;
 constexpr std::uint64_t TrianglePrimitive = 0x3U;
 constexpr std::uint64_t TriangleStripPrimitive = 0x4U;
@@ -37,7 +38,7 @@ bool GsPackedPrimitiveRenderer::consume(
             if ((prim_ & PrimitiveMask) != TrianglePrimitive &&
                 (prim_ & PrimitiveMask) != TriangleStripPrimitive &&
                 (prim_ & PrimitiveMask) != TriangleFanPrimitive)
-                triangle_vertices_.clear();
+                { triangle_vertices_.clear(); triangle_colors_.clear(); }
             if ((prim_ & PrimitiveMask) != SpritePrimitive)
                 sprite_vertices_.clear();
             break;
@@ -97,15 +98,23 @@ bool GsPackedPrimitiveRenderer::consume(
                     }
                 } else {
                     triangle_vertices_.push_back({x, y});
+                    triangle_colors_.push_back(color_);
                     const auto primitive = prim_ & PrimitiveMask;
                     if (primitive == TrianglePrimitive && triangle_vertices_.size() == 3U) {
-                        if (!rasterizer_.draw_triangle(target, triangle_vertices_[0],
-                                                       triangle_vertices_[1],
-                                                       triangle_vertices_[2], color_)) {
+                        const bool gouraud = (prim_ & GouraudShadingBit) != 0U;
+                        const bool drawn = gouraud
+                            ? rasterizer_.draw_triangle_gouraud(
+                                target, triangle_vertices_[0], triangle_vertices_[1],
+                                triangle_vertices_[2], triangle_colors_[0],
+                                triangle_colors_[1], triangle_colors_[2])
+                            : rasterizer_.draw_triangle(target, triangle_vertices_[0],
+                                triangle_vertices_[1], triangle_vertices_[2], color_);
+                        if (!drawn) {
                             error_ = "GS triangle could not be drawn to framebuffer";
                             return false;
                         }
                         triangle_vertices_.clear();
+                        triangle_colors_.clear();
                     } else if ((primitive == TriangleStripPrimitive ||
                                 primitive == TriangleFanPrimitive) &&
                                triangle_vertices_.size() >= 3U) {
@@ -115,9 +124,15 @@ bool GsPackedPrimitiveRenderer::consume(
                             ? 0U : (last % 2U == 0U ? last - 2U : second);
                         const std::size_t middle = primitive == TriangleFanPrimitive
                             ? second : (last % 2U == 0U ? second : last - 2U);
-                        if (!rasterizer_.draw_triangle(target, triangle_vertices_[first],
-                                                       triangle_vertices_[middle],
-                                                       triangle_vertices_[last], color_)) {
+                        const bool gouraud = (prim_ & GouraudShadingBit) != 0U;
+                        const bool drawn = gouraud
+                            ? rasterizer_.draw_triangle_gouraud(
+                                target, triangle_vertices_[first], triangle_vertices_[middle],
+                                triangle_vertices_[last], triangle_colors_[first],
+                                triangle_colors_[middle], triangle_colors_[last])
+                            : rasterizer_.draw_triangle(target, triangle_vertices_[first],
+                                triangle_vertices_[middle], triangle_vertices_[last], color_);
+                        if (!drawn) {
                             error_ = "GS triangle strip/fan could not be drawn to framebuffer";
                             return false;
                         }
@@ -139,6 +154,7 @@ void GsPackedPrimitiveRenderer::reset() {
     color_ = {};
     line_vertices_.clear();
     triangle_vertices_.clear();
+    triangle_colors_.clear();
     sprite_vertices_.clear();
     error_.clear();
 }
