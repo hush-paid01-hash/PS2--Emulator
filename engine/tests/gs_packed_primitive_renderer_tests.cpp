@@ -128,6 +128,22 @@ int main() {
     assert(fan_pixel.r == 0 && fan_pixel.g == 255 &&
            fan_pixel.b == 0 && fan_pixel.a == 255);
 
+
+    renderer.reset();
+    framebuffer.clear();
+    // PRIM.IIP enables Gouraud shading: vertex colours interpolate across the face.
+    assert(renderer.consume({{0x0, 0xBU},
+                             {0x1, 0xFF0000FFULL},
+                             {0x5, xyz(1U << 4U, 1U << 4U)},
+                             {0x1, 0xFF00FF00ULL},
+                             {0x5, xyz(6U << 4U, 1U << 4U)},
+                             {0x1, 0xFFFF0000ULL},
+                             {0x5, xyz(1U << 4U, 6U << 4U)}}, framebuffer));
+    GsFramebuffer::Rgba8 interpolated{};
+    assert(framebuffer.get_pixel(2, 2, interpolated));
+    assert(interpolated.r > 0 && interpolated.g > 0 && interpolated.b > 0);
+    assert(interpolated.a == 255);
+
     std::cout << "GS packed primitive renderer tests passed\n";
     return 0;
 }
