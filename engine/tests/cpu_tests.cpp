@@ -1012,5 +1012,24 @@ int main() {
               cpu.reg(3) == 1,
           "DSRL32 supports the maximum shift amount of 63");
 
+
+    // Sign-extension and comparison edge cases used by ordinary EE integer code.
+    cpu.reset();
+    check(cpu.step(itype(0x09, 0, 6, -1)) &&
+              cpu.reg(6) == 0xFFFFFFFFFFFFFFFFULL,
+          "ADDIU sign-extends a negative immediate");
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000080000000ULL);
+    check(cpu.step(rtype(1, 0, 2, 0x00)) &&
+              cpu.reg(2) == 0,
+          "SLL zero-shift sign-extends a 32-bit result only when bit 31 is set");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    cpu.set_reg(2, 1);
+    check(cpu.step(rtype(1, 2, 3, 0x2A)) && cpu.reg(3) == 1,
+          "SLT compares signed 64-bit register values");
+    check(cpu.step(rtype(1, 2, 4, 0x2B)) && cpu.reg(4) == 0,
+          "SLTU compares register values as unsigned 64-bit integers");
+
     return failures == 0 ? 0 : 1;
 }
