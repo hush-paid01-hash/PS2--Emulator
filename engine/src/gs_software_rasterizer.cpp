@@ -48,6 +48,47 @@ bool GsSoftwareRasterizer::draw_line(GsFramebuffer& target, Point a, Point b,
     return true;
 }
 
+
+bool GsSoftwareRasterizer::draw_line_gouraud(
+    GsFramebuffer& target, Point a, Point b,
+    GsFramebuffer::Rgba8 color_a, GsFramebuffer::Rgba8 color_b) const {
+    if (target.empty() || !safe_point(a) || !safe_point(b)) return false;
+
+    std::int64_t x = a.x;
+    std::int64_t y = a.y;
+    const std::int64_t dx = std::abs(static_cast<std::int64_t>(b.x) - a.x);
+    const std::int64_t dy = std::abs(static_cast<std::int64_t>(b.y) - a.y);
+    const std::int64_t steps = std::max(dx, dy);
+    const std::int64_t sx = a.x < b.x ? 1 : -1;
+    const std::int64_t sy = a.y < b.y ? 1 : -1;
+    std::int64_t error = dx - dy;
+    std::int64_t index = 0;
+    const auto channel = [steps](std::int64_t i, std::uint8_t start, std::uint8_t end) {
+        if (steps == 0) return start;
+        const auto value = static_cast<std::int64_t>(start) +
+            (static_cast<std::int64_t>(end) - start) * i / steps;
+        return static_cast<std::uint8_t>(std::clamp<std::int64_t>(value, 0, 255));
+    };
+
+    for (;;) {
+        if (x >= 0 && y >= 0 && x < static_cast<std::int64_t>(target.width()) &&
+            y < static_cast<std::int64_t>(target.height())) {
+            target.set_pixel(static_cast<std::size_t>(x), static_cast<std::size_t>(y), {
+                channel(index, color_a.r, color_b.r),
+                channel(index, color_a.g, color_b.g),
+                channel(index, color_a.b, color_b.b),
+                channel(index, color_a.a, color_b.a)
+            });
+        }
+        if (x == b.x && y == b.y) break;
+        const std::int64_t doubled_error = 2 * error;
+        if (doubled_error > -dy) { error -= dy; x += sx; }
+        if (doubled_error < dx) { error += dx; y += sy; }
+        ++index;
+    }
+    return true;
+}
+
 bool GsSoftwareRasterizer::draw_triangle(GsFramebuffer& target, Point a, Point b,
                                          Point c, GsFramebuffer::Rgba8 color) const {
     if (target.empty() || !safe_point(a) || !safe_point(b) || !safe_point(c))

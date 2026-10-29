@@ -24,6 +24,7 @@ private:
     std::uint64_t prim_{0};
     GsFramebuffer::Rgba8 color_{};
     std::vector<GsSoftwareRasterizer::Point> line_vertices_;
+    std::vector<GsFramebuffer::Rgba8> line_colors_;
     std::vector<GsSoftwareRasterizer::Point> triangle_vertices_;
     std::vector<GsFramebuffer::Rgba8> triangle_colors_;
     std::vector<GsSoftwareRasterizer::Point> sprite_vertices_;

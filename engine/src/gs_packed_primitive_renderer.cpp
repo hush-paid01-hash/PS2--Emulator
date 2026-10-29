@@ -34,8 +34,10 @@ bool GsPackedPrimitiveRenderer::consume(
         switch (write.address) {
         case PrimRegister:
             prim_ = write.value;
-            if ((prim_ & PrimitiveMask) != LinePrimitive)
+            if ((prim_ & PrimitiveMask) != LinePrimitive) {
                 line_vertices_.clear();
+                line_colors_.clear();
+            }
             if ((prim_ & PrimitiveMask) != TrianglePrimitive &&
                 (prim_ & PrimitiveMask) != TriangleStripPrimitive &&
                 (prim_ & PrimitiveMask) != TriangleFanPrimitive)
@@ -68,13 +70,20 @@ bool GsPackedPrimitiveRenderer::consume(
                 }
                 if ((prim_ & PrimitiveMask) == LinePrimitive) {
                     line_vertices_.push_back({x, y});
+                    line_colors_.push_back(color_);
                     if (line_vertices_.size() == 2U) {
-                        if (!rasterizer_.draw_line(target, line_vertices_[0],
-                                                   line_vertices_[1], color_)) {
+                        const bool gouraud = (prim_ & GouraudShadingBit) != 0U;
+                        const bool drawn = gouraud
+                            ? rasterizer_.draw_line_gouraud(target, line_vertices_[0],
+                                line_vertices_[1], line_colors_[0], line_colors_[1])
+                            : rasterizer_.draw_line(target, line_vertices_[0],
+                                line_vertices_[1], color_);
+                        if (!drawn) {
                             error_ = "GS line could not be drawn to framebuffer";
                             return false;
                         }
                         line_vertices_.clear();
+                        line_colors_.clear();
                     }
                 } else if ((prim_ & PrimitiveMask) == SpritePrimitive) {
                     sprite_vertices_.push_back({x, y});
@@ -158,6 +167,7 @@ void GsPackedPrimitiveRenderer::reset() {
     prim_ = 0;
     color_ = {};
     line_vertices_.clear();
+    line_colors_.clear();
     triangle_vertices_.clear();
     triangle_colors_.clear();
     sprite_vertices_.clear();
