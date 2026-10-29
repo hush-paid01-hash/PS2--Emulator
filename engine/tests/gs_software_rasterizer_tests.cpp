@@ -54,6 +54,14 @@ int main() {
     check(fb.get_pixel(1, 3, pixel) && pixel == red &&
               fb.get_pixel(5, 3, pixel) && pixel == blue,
           "reverse-direction Gouraud line keeps endpoint colors aligned");
+    fb.clear(black);
+    check(rasterizer.draw_line_gouraud(fb, {-2, 6}, {2, 6}, red, blue),
+          "partially off-screen Gouraud line clips safely");
+    check(fb.get_pixel(0, 6, pixel) && pixel.r == 127 &&
+              pixel.g == 0 && pixel.b == 127 && pixel.a == 255,
+          "clipped Gouraud line preserves interpolation from original endpoints");
+    check(fb.get_pixel(7, 6, pixel) && pixel == black,
+          "clipped Gouraud line does not write beyond target");
     check(rasterizer.draw_line_gouraud(fb, {4, 4}, {4, 4}, green, blue),
           "zero-length Gouraud line is accepted");
     check(fb.get_pixel(4, 4, pixel) && pixel == green,
