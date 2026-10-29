@@ -14,6 +14,7 @@ int main() {
     const retroshelf::GsFramebuffer::Rgba8 black{0, 0, 0, 255};
     const retroshelf::GsFramebuffer::Rgba8 red{255, 0, 0, 255};
     const retroshelf::GsFramebuffer::Rgba8 green{0, 255, 0, 255};
+    const retroshelf::GsFramebuffer::Rgba8 blue{0, 0, 255, 255};
     check(!rasterizer.draw_triangle(fb, {0, 0}, {4, 0}, {0, 4}, red),
           "empty target is rejected");
     check(fb.resize(8, 8), "target allocation succeeds");
@@ -36,6 +37,46 @@ int main() {
           "degenerate triangle is accepted as a no-op");
     check(!rasterizer.draw_triangle(fb, {1000001, 0}, {0, 2}, {2, 0}, red),
           "extreme coordinates are rejected");
+
+    fb.clear(black);
+    check(rasterizer.draw_line_gouraud(fb, {1, 2}, {5, 2}, red, blue),
+          "Gouraud line rasterizes");
+    check(fb.get_pixel(1, 2, pixel) && pixel == red,
+          "Gouraud line preserves its first endpoint color");
+    check(fb.get_pixel(5, 2, pixel) && pixel == blue,
+          "Gouraud line preserves its last endpoint color");
+    check(fb.get_pixel(3, 2, pixel) && pixel.r == 127 &&
+              pixel.g == 0 && pixel.b == 127 && pixel.a == 255,
+          "Gouraud line interpolates midpoint channels");
+    fb.clear(black);
+    check(rasterizer.draw_line_gouraud(fb, {5, 3}, {1, 3}, blue, red),
+          "reverse-direction Gouraud line rasterizes");
+    check(fb.get_pixel(1, 3, pixel) && pixel == red &&
+              fb.get_pixel(5, 3, pixel) && pixel == blue,
+          "reverse-direction Gouraud line keeps endpoint colors aligned");
+    fb.clear(black);
+    check(rasterizer.draw_line_gouraud(fb, {-2, 6}, {2, 6}, red, blue),
+          "partially off-screen Gouraud line clips safely");
+    check(fb.get_pixel(0, 6, pixel) && pixel.r == 127 &&
+              pixel.g == 0 && pixel.b == 127 && pixel.a == 255,
+          "clipped Gouraud line preserves interpolation from original endpoints");
+    check(fb.get_pixel(7, 6, pixel) && pixel == black,
+          "clipped Gouraud line does not write beyond target");
+    check(rasterizer.draw_line_gouraud(fb, {4, 4}, {4, 4}, green, blue),
+          "zero-length Gouraud line is accepted");
+    check(fb.get_pixel(4, 4, pixel) && pixel == green,
+          "zero-length Gouraud line uses the first endpoint color");
+
+    fb.clear(black);
+    check(rasterizer.draw_triangle_gouraud(
+              fb, {1, 1}, {5, 1}, {1, 5}, red, green, blue),
+          "Gouraud triangle rasterizes");
+    check(fb.get_pixel(1, 1, pixel) && pixel == red,
+          "Gouraud triangle preserves first vertex color");
+    check(fb.get_pixel(5, 1, pixel) && pixel == green,
+          "Gouraud triangle preserves second vertex color");
+    check(fb.get_pixel(1, 5, pixel) && pixel == blue,
+          "Gouraud triangle preserves third vertex color");
 
     return failures == 0 ? 0 : 1;
 }
