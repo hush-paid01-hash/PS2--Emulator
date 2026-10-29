@@ -1031,5 +1031,27 @@ int main() {
     check(cpu.step(rtype(1, 2, 4, 0x2B)) && cpu.reg(4) == 0,
           "SLTU compares register values as unsigned 64-bit integers");
 
+    // Immediate logical operations zero-extend their 16-bit operand, while LUI
+    // constructs a 32-bit value and sign-extends it to the EE register width.
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0C, 1, 2, static_cast<std::int16_t>(0x8001))) &&
+              cpu.reg(2) == 0x8001ULL,
+          "ANDI zero-extends its immediate and clears upper register bits");
+    cpu.reset();
+    cpu.set_reg(1, 0x1234000000000000ULL);
+    check(cpu.step(itype(0x0D, 1, 2, static_cast<std::int16_t>(0xABCD))) &&
+              cpu.reg(2) == 0x123400000000ABCDULL,
+          "ORI zero-extends its immediate without changing upper bits");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFF0000ULL);
+    check(cpu.step(itype(0x0E, 1, 2, static_cast<std::int16_t>(0x00FF))) &&
+              cpu.reg(2) == 0xFFFFFFFFFFFF00FFULL,
+          "XORI zero-extends its immediate");
+    cpu.reset();
+    check(cpu.step(itype(0x0F, 0, 2, static_cast<std::int16_t>(0x8000))) &&
+              cpu.reg(2) == 0xFFFFFFFF80000000ULL,
+          "LUI sign-extends the constructed 32-bit value");
+
     return failures == 0 ? 0 : 1;
 }
