@@ -67,5 +67,33 @@ int main() {
     check(fb.get_pixel(4, 4, pixel) && pixel == green,
           "zero-length Gouraud line uses its single endpoint colour");
 
+    fb.clear(black);
+    const retroshelf::GsSoftwareRasterizer::Point a{1, 1};
+    const retroshelf::GsSoftwareRasterizer::Point b{6, 1};
+    const retroshelf::GsSoftwareRasterizer::Point c{1, 6};
+    check(rasterizer.draw_triangle_gouraud(fb, a, b, c, red, green, blue),
+          "Gouraud triangle renders in forward winding");
+    retroshelf::GsFramebuffer::Rgba8 forward{};
+    check(fb.get_pixel(2, 2, forward),
+          "forward-winding Gouraud sample is readable");
+    fb.clear(black);
+    check(rasterizer.draw_triangle_gouraud(fb, a, c, b, red, blue, green),
+          "Gouraud triangle renders in reversed winding");
+    retroshelf::GsFramebuffer::Rgba8 reversed{};
+    check(fb.get_pixel(2, 2, reversed),
+          "reversed-winding Gouraud sample is readable");
+    check(forward == reversed,
+          "reversing winding with matching vertex colours preserves interpolation");
+
+    fb.clear(black);
+    check(rasterizer.draw_triangle_gouraud(fb, a, b, c, red, green, blue),
+          "Gouraud triangle renders for vertex-colour check");
+    check(fb.get_pixel(1, 1, pixel) && pixel == red,
+          "Gouraud triangle preserves first vertex colour");
+    check(fb.get_pixel(6, 1, pixel) && pixel == green,
+          "Gouraud triangle preserves second vertex colour");
+    check(fb.get_pixel(1, 6, pixel) && pixel == blue,
+          "Gouraud triangle preserves third vertex colour");
+
     return failures == 0 ? 0 : 1;
 }
