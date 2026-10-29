@@ -27,6 +27,23 @@ int main() {
     cpu.reset();
     check(cpu.reg(8) == 0 && cpu.pc() == 0, "reset clears CPU state");
 
+    // The EE's 128-bit GPR model is currently represented as low/high halves.
+    // Both halves of register zero must remain hardwired to zero.
+    cpu.set_reg_high(0, 0xDEADBEEFCAFEBABEULL);
+    check(cpu.reg_high(0) == 0,
+          "high half of GPR zero remains hardwired to zero");
+    cpu.set_reg(0, 0x0123456789ABCDEFULL);
+    check(cpu.reg(0) == 0,
+          "low half of GPR zero remains hardwired to zero");
+    cpu.set_reg(4, 0x1111222233334444ULL);
+    cpu.set_reg_high(4, 0xAAAABBBBCCCCDDDDULL);
+    check(cpu.reg(4) == 0x1111222233334444ULL &&
+              cpu.reg_high(4) == 0xAAAABBBBCCCCDDDDULL,
+          "ordinary GPR low and high halves retain independent values");
+    cpu.reset();
+    check(cpu.reg(4) == 0 && cpu.reg_high(4) == 0,
+          "reset clears both halves of extended GPR state");
+
     cpu.set_reg(11, 16);
     cpu.set_reg(12, 0x12345678);
     constexpr std::uint32_t sw = (0x2BU << 26U) | (11U << 21U) | (12U << 16U);
