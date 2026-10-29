@@ -1021,8 +1021,8 @@ int main() {
     cpu.reset();
     cpu.set_reg(1, 0x0000000080000000ULL);
     check(cpu.step(rtype(1, 0, 2, 0x00)) &&
-              cpu.reg(2) == 0,
-          "SLL zero-shift sign-extends a 32-bit result only when bit 31 is set");
+              cpu.reg(2) == 0xFFFFFFFF80000000ULL,
+          "SLL sign-extends a 32-bit result with bit 31 set");
     cpu.reset();
     cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
     cpu.set_reg(2, 1);
