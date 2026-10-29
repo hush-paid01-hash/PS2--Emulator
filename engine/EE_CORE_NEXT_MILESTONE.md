@@ -4,12 +4,12 @@ This document records the next engineering gate for the original Hush PS2 emulat
 
 ## Current verified boundary
 
-The current CPU is a limited interpreter. The CPU state uses 64-bit low/high register arrays; it does not yet represent the full 128-bit EE general-purpose registers and complete R5900 instruction set. The BIOS image loader maps bytes but does not by itself provide a complete BIOS boot path. The command-line program is a small arithmetic demonstration. Passing unit tests is not evidence of retail-game compatibility.
+The current CPU is a limited interpreter. It stores each EE general-purpose register as separate 64-bit low/high halves, and LQ/SQ cover basic transfer of both halves. That storage is not equivalent to complete R5900 128-bit instruction semantics: the MMI instruction families and broader EE behavior remain incomplete. HI/LO and several multiply/divide operations already exist in partial form and still require manual-based semantic auditing. The BIOS image loader maps bytes but does not by itself provide a complete BIOS boot path. The command-line program is a small arithmetic demonstration. Passing unit tests is not evidence of retail-game compatibility.
 
 ## Implementation order
 
 1. **Lock down instruction semantics with tests.** Add focused tests for R5900 integer instructions, sign-extension rules, exception state, delay slots, and edge cases. Cross-check each behavior against the EE Core Instruction Set Manual and PS2Tek documentation.
-2. **Represent EE architectural state correctly.** Replace the current split 64-bit register approximation with a deliberate 128-bit GPR representation (low 64 and high 64), preserving the architectural zero register. Add HI/LO and the additional multiply/divide state required by the EE.
+2. **Validate EE architectural state and 128-bit semantics.** Preserve the existing low/high 64-bit GPR storage and verify reset, zero-register, LQ/SQ, and instruction writeback invariants. Audit the existing HI/LO and multiply/divide operations against the EE manual; add missing EE-specific state or behavior only where the reference requires it.
 3. **Implement missing base and EE-specific instructions incrementally.** Prioritize the boot-critical integer/COP0 subset first, then MMI instructions. Each instruction group needs regression tests before being used by the execution runner.
 4. **Correct exceptions and mapped memory behavior.** Model reset/exception vectors, COP0 status and cause semantics, address translation/aliases, memory-mapped hardware access, and exception return paths with tests.
 5. **Connect BIOS boot to real EE execution.** Use a legally obtained BIOS, record a bounded trace, and distinguish real firmware execution from synthetic test images.
