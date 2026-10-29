@@ -496,6 +496,19 @@ int main() {
     cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
     check(cpu.step(rtype(1, 2, 0, 0x1B)) && cpu.lo() == 0x7FFFFFFFULL && cpu.hi() == 1,
           "DIVU uses only the low 32 bits of each operand");
+
+    cpu.reset(); cpu.set_reg(1, 0x12345678FFFFFFFFULL); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1B)) &&
+          cpu.lo() == 0xFFFFFFFFULL && cpu.hi() == 0xFFFFFFFFULL,
+          "DIVU by zero returns the 32-bit all-ones quotient and low-word dividend remainder");
+    cpu.reset(); cpu.set_reg(1, 7); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1A)) &&
+          cpu.lo() == 0xFFFFFFFFFFFFFFFFULL && cpu.hi() == 7,
+          "DIV by zero with a nonnegative dividend returns minus one and preserves the remainder");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFFFFFFFF9ULL); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1A)) &&
+          cpu.lo() == 1 && cpu.hi() == 0xFFFFFFFFFFFFFFF9ULL,
+          "DIV by zero with a negative dividend returns one and sign-extends the remainder");
     cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
     check(cpu.step(rtype(1, 2, 0, 0x18)) &&
           cpu.lo() == 0xFFFFFFFFFFFFFFFEULL && cpu.hi() == 0xFFFFFFFFFFFFFFFFULL,
