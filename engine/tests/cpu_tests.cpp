@@ -1145,6 +1145,30 @@ int main() {
               cpu.reg(3) == 0x00000000FFFFFFFFULL &&
               cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
           "PSUBW wraps independently across all four 32-bit lanes");
+    // Halfword packed operations use eight independent 16-bit lanes.
+    cpu.reset();
+    cpu.set_reg(1, 0x7FFF8000FFFF0001ULL);
+    cpu.set_reg_high(1, 0x0001000200030004ULL);
+    cpu.set_reg(2, 0x0001FFFF00010002ULL);
+    cpu.set_reg_high(2, 0x0001000200030004ULL);
+    const std::uint32_t paddh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (4U << 6U) | 0x08U;
+    check(cpu.step(paddh) &&
+              cpu.reg(3) == 0x80007FFF00000003ULL &&
+              cpu.reg_high(3) == 0x0002000400060008ULL,
+          "PADDH wraps independently across eight 16-bit lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x0001000000000000ULL);
+    cpu.set_reg_high(1, 0x8000000000000000ULL);
+    cpu.set_reg(2, 0x0002000100010001ULL);
+    cpu.set_reg_high(2, 0x0001000100010001ULL);
+    const std::uint32_t psubh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (5U << 6U) | 0x08U;
+    check(cpu.step(psubh) &&
+              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
+              cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
+          "PSUBH wraps independently across eight 16-bit lanes");
+
     cpu.reset();
     cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
     cpu.set_reg_high(1, 0xFFFFFFFFFFFFFFFFULL);
