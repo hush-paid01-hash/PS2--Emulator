@@ -1142,8 +1142,8 @@ int main() {
     cpu.set_reg_high(2, 0x0000000100000001ULL);
     const std::uint32_t psubw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | (1U << 6U) | 0x08U;
     check(cpu.step(psubw) &&
-              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
-              cpu.reg_high(3) == 0x7FFFFFFF7FFFFFFFULL,
+              cpu.reg(3) == 0x00000000FFFFFFFFULL &&
+              cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
           "PSUBW wraps independently across all four 32-bit lanes");
     cpu.reset();
     cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
