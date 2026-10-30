@@ -1130,7 +1130,7 @@ int main() {
     cpu.set_reg_high(1, 0x7FFFFFFF80000000ULL);
     cpu.set_reg(2, 0x0000000100000002ULL);
     cpu.set_reg_high(2, 0x0000000180000001ULL);
-    const std::uint32_t paddw = (1U << 21U) | (2U << 16U) | (3U << 11U) | 0x08U;
+    const std::uint32_t paddw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | 0x08U;
     check(cpu.step(paddw) &&
               cpu.reg(3) == 0x0000000000000003ULL &&
               cpu.reg_high(3) == 0x8000000000000001ULL,
@@ -1140,7 +1140,7 @@ int main() {
     cpu.set_reg_high(1, 0x8000000000000000ULL);
     cpu.set_reg(2, 0x0000000000000002ULL);
     cpu.set_reg_high(2, 0x0000000100000001ULL);
-    const std::uint32_t psubw = (1U << 21U) | (2U << 16U) | (3U << 11U) | (1U << 6U) | 0x08U;
+    const std::uint32_t psubw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | (1U << 6U) | 0x08U;
     check(cpu.step(psubw) &&
               cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
               cpu.reg_high(3) == 0x7FFFFFFF7FFFFFFFULL,
