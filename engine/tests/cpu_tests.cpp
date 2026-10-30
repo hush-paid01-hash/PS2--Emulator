@@ -641,6 +641,15 @@ int main() {
     cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-3LL)); cpu.set_reg(2, static_cast<std::uint64_t>(-7LL));
     check(cpu.step(rtype(1, 2, 0, 0x1C)) && cpu.lo() == 21 && cpu.hi() == 0,
           "DMULT produces the correct positive product for two negative operands");
+    cpu.reset(); cpu.set_reg(1, 3); cpu.set_reg(2, static_cast<std::uint64_t>(-7LL));
+    check(cpu.step(rtype(1, 2, 0, 0x1C)) &&
+              cpu.lo() == 0xFFFFFFFFFFFFFFEBULL &&
+              cpu.hi() == 0xFFFFFFFFFFFFFFFFULL,
+          "DMULT sign-corrects the high half when only the right operand is negative");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL); cpu.set_reg(2, static_cast<std::uint64_t>(-1LL));
+    check(cpu.step(rtype(1, 2, 0, 0x1C)) &&
+              cpu.lo() == 0x8000000000000000ULL && cpu.hi() == 0,
+          "DMULT handles the signed minimum multiplied by negative one");
     cpu.reset(); cpu.set_reg(1, 0x123456789ABCDEF0ULL); cpu.set_reg(2, 0x10);
     check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == 0x0123456789ABCDEFULL && cpu.hi() == 0,
           "DDIVU divides a 64-bit dividend without truncating it to 32 bits");
