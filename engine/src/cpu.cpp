@@ -346,12 +346,14 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x1C: { // MMI0 packed 32-bit word arithmetic (PADDW / PSUBW).
         const unsigned sub_op = (instruction >> 6U) & 0x1FU;
         if (funct != 0x08U || (sub_op != 0U && sub_op != 1U &&
-                               sub_op != 4U && sub_op != 5U)) return unsupported();
+                               sub_op != 4U && sub_op != 5U &&
+                               sub_op != 8U && sub_op != 9U)) return unsupported();
         const std::uint64_t lhs_low = reg(rs);
         const std::uint64_t lhs_high = reg_high(rs);
         const std::uint64_t rhs_low = reg(rt);
         const std::uint64_t rhs_high = reg_high(rt);
-        const unsigned lane_bits = (sub_op == 4U || sub_op == 5U) ? 16U : 32U;
+        const unsigned lane_bits = (sub_op == 8U || sub_op == 9U) ? 8U :
+                                   (sub_op == 4U || sub_op == 5U) ? 16U : 32U;
         const std::uint64_t lane_mask = (std::uint64_t{1} << lane_bits) - 1U;
         const unsigned lane_count = 64U / lane_bits;
         const auto packed = [sub_op, lane_bits, lane_mask, lane_count](
@@ -361,7 +363,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
                 const unsigned shift = i * lane_bits;
                 const std::uint64_t a = (lhs >> shift) & lane_mask;
                 const std::uint64_t b = (rhs >> shift) & lane_mask;
-                const std::uint64_t value = (sub_op == 0U || sub_op == 4U)
+                const std::uint64_t value = (sub_op == 0U || sub_op == 4U || sub_op == 8U)
                                                 ? (a + b) & lane_mask
                                                 : (a - b) & lane_mask;
                 result |= value << shift;
