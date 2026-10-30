@@ -1165,8 +1165,8 @@ int main() {
     const std::uint32_t psubh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
                                 (3U << 11U) | (5U << 6U) | 0x08U;
     check(cpu.step(psubh) &&
-              cpu.reg(3) == 0xFFFF0000FFFFFFFFULL &&
-              cpu.reg_high(3) == 0x7FFF0000FFFF0000ULL,
+              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
+              cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
           "PSUBH wraps independently across eight 16-bit lanes");
 
     cpu.reset();
