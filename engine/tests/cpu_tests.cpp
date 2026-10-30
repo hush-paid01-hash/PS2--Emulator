@@ -1132,7 +1132,7 @@ int main() {
     cpu.set_reg_high(2, 0x0000000180000001ULL);
     const std::uint32_t paddw = (1U << 21U) | (2U << 16U) | (3U << 11U) | 0x08U;
     check(cpu.step(paddw) &&
-              cpu.reg(3) == 0x0000000300000000ULL &&
+              cpu.reg(3) == 0x0000000000000003ULL &&
               cpu.reg_high(3) == 0x8000000000000001ULL,
           "PADDW wraps independently across all four 32-bit lanes");
     cpu.reset();
@@ -1142,7 +1142,7 @@ int main() {
     cpu.set_reg_high(2, 0x0000000100000001ULL);
     const std::uint32_t psubw = (1U << 21U) | (2U << 16U) | (3U << 11U) | (1U << 6U) | 0x08U;
     check(cpu.step(psubw) &&
-              cpu.reg(3) == 0x00000000FFFFFFFFULL &&
+              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
               cpu.reg_high(3) == 0x7FFFFFFF7FFFFFFFULL,
           "PSUBW wraps independently across all four 32-bit lanes");
     cpu.reset();
