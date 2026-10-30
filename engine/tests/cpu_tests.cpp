@@ -1099,5 +1099,29 @@ int main() {
               cpu.reg(2) == 0xFFFFFFFF80000000ULL,
           "LUI sign-extends the constructed 32-bit value");
 
+    // Arithmetic-right-shift regression boundaries: sign propagation must
+    // be explicit for 32-bit and 64-bit forms, including the +32 encoding.
+    cpu.reset();
+    cpu.set_reg(1, 0x80000001ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | (1U << 6U) | 0x03U) &&
+              cpu.reg(2) == 0xFFFFFFFFC0000000ULL,
+          "SRA sign-fills a negative 32-bit operand and sign-extends its result");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFF80000000ULL);
+    cpu.set_reg(3, 1);
+    check(cpu.step((3U << 21U) | (1U << 16U) | (2U << 11U) | 0x07U) &&
+              cpu.reg(2) == 0xFFFFFFFFC0000000ULL,
+          "SRAV uses the low five shift-count bits and preserves the sign");
+    cpu.reset();
+    cpu.set_reg(1, 0x8000000000000000ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | (4U << 6U) | 0x3BU) &&
+              cpu.reg(2) == 0xF800000000000000ULL,
+          "DSRA arithmetic-shifts a negative 64-bit operand");
+    cpu.reset();
+    cpu.set_reg(1, 0x8000000000000000ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | 0x3FU) &&
+              cpu.reg(2) == 0xFFFFFFFF80000000ULL,
+          "DSRA32 applies the encoded 32-bit shift and sign-fills");
+
     return failures == 0 ? 0 : 1;
 }
