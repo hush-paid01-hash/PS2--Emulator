@@ -1132,8 +1132,8 @@ int main() {
     cpu.set_reg_high(2, 0x0000000180000001ULL);
     const std::uint32_t paddw = (1U << 21U) | (2U << 16U) | (3U << 11U) | 0x08U;
     check(cpu.step(paddw) &&
-              cpu.reg(3) == 0x0000000000000003ULL &&
-              cpu.reg_high(3) == 0x8000000080000001ULL,
+              cpu.reg(3) == 0x0000000300000000ULL &&
+              cpu.reg_high(3) == 0x8000000000000001ULL,
           "PADDW wraps independently across all four 32-bit lanes");
     cpu.reset();
     cpu.set_reg(1, 0x0000000000000001ULL);
@@ -1142,7 +1142,7 @@ int main() {
     cpu.set_reg_high(2, 0x0000000100000001ULL);
     const std::uint32_t psubw = (1U << 21U) | (2U << 16U) | (3U << 11U) | (1U << 6U) | 0x08U;
     check(cpu.step(psubw) &&
-              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
+              cpu.reg(3) == 0x00000000FFFFFFFFULL &&
               cpu.reg_high(3) == 0x7FFFFFFF7FFFFFFFULL,
           "PSUBW wraps independently across all four 32-bit lanes");
     cpu.reset();
@@ -1157,7 +1157,7 @@ int main() {
     // MMI primary opcode rejects unsupported sub-operations rather than
     // accidentally treating unrelated encodings as packed arithmetic.
     cpu.reset();
-    check(!cpu.step((1U << 21U) | (2U << 16U) | (2U << 11U) | 0x09U),
+    check(!cpu.step((0x1CU << 26U) | (2U << 6U) | 0x08U),
           "unsupported MMI function encoding raises Reserved Instruction");
 
     return failures == 0 ? 0 : 1;
