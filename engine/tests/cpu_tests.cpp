@@ -1145,6 +1145,33 @@ int main() {
               cpu.reg(3) == 0x00000000FFFFFFFFULL &&
               cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
           "PSUBW wraps independently across all four 32-bit lanes");
+    // Signed packed greater-than compares each lane independently.
+    cpu.reset();
+    cpu.set_reg(1, 0x00000005FFFFFFFFULL);
+    cpu.set_reg_high(1, 0x0000000080000000ULL);
+    cpu.set_reg(2, 0x0000000500000000ULL);
+    cpu.set_reg_high(2, 0x0000000000000001ULL);
+    const std::uint32_t pcgtw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (2U << 6U) | 0x08U;
+    check(cpu.step(pcgtw) &&
+              cpu.reg(3) == 0x0000000000000000ULL &&
+              cpu.reg_high(3) == 0x0000000000000000ULL,
+          "PCGTW compares signed 32-bit lanes without cross-lane carry");
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000000008000ULL);
+    cpu.set_reg(2, 0x0000000000000001ULL);
+    const std::uint32_t pcgth = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (6U << 6U) | 0x08U;
+    check(cpu.step(pcgth) && cpu.reg(3) == 0U,
+          "PCGTH treats the high-bit halfword as negative");
+    cpu.reset();
+    cpu.set_reg(1, 0x000000000000007FULL);
+    cpu.set_reg(2, 0x0000000000000001ULL);
+    const std::uint32_t pcgtb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (10U << 6U) | 0x08U;
+    check(cpu.step(pcgtb) && cpu.reg(3) == 0x00000000000000FFULL,
+          "PCGTB emits an all-ones byte for a positive signed comparison");
+
     // Byte packed operations use sixteen independent 8-bit lanes.
     cpu.reset();
     cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
