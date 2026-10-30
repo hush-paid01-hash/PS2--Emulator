@@ -1055,6 +1055,30 @@ int main() {
 
     // Immediate logical operations zero-extend their 16-bit operand, while LUI
     // constructs a 32-bit value and sign-extends it to the EE register width.
+    // SLTI compares against a sign-extended immediate as a signed EE value.
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0A, 1, 2, 1)) && cpu.reg(2) == 1,
+          "SLTI treats all-ones GPR value as signed negative one");
+    cpu.reset();
+    cpu.set_reg(1, 1);
+    check(cpu.step(itype(0x0A, 1, 2, -1)) && cpu.reg(2) == 0,
+          "SLTI sign-extends a negative immediate before signed comparison");
+
+    // SLTIU sign-extends its immediate first, then performs an unsigned comparison.
+    cpu.reset();
+    cpu.set_reg(1, 0x7FFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0B, 1, 2, -1)) && cpu.reg(2) == 1,
+          "SLTIU compares against the sign-extended all-ones immediate as unsigned");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0B, 1, 2, -1)) && cpu.reg(2) == 0,
+          "SLTIU equality with sign-extended negative immediate is false");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0B, 1, 2, 1)) && cpu.reg(2) == 0,
+          "SLTIU treats positive immediate as unsigned positive value");
+
     cpu.reset();
     cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
     check(cpu.step(itype(0x0C, 1, 2, static_cast<std::int16_t>(0x8001))) &&
