@@ -1147,23 +1147,23 @@ int main() {
           "PSUBW wraps independently across all four 32-bit lanes");
     // Signed packed greater-than compares each lane independently.
     cpu.reset();
-    cpu.set_reg(1, 0x00000005FFFFFFFFULL);
+    cpu.set_reg(1, 0x00000007FFFFFFFFULL);
     cpu.set_reg_high(1, 0x0000000080000000ULL);
     cpu.set_reg(2, 0x0000000500000000ULL);
     cpu.set_reg_high(2, 0x0000000000000001ULL);
     const std::uint32_t pcgtw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
                                 (3U << 11U) | (2U << 6U) | 0x08U;
     check(cpu.step(pcgtw) &&
-              cpu.reg(3) == 0x0000000000000000ULL &&
+              cpu.reg(3) == 0x00000000FFFFFFFF0000000000000000ULL &&
               cpu.reg_high(3) == 0x0000000000000000ULL,
-          "PCGTW compares signed 32-bit lanes without cross-lane carry");
+          "PCGTW emits all-ones only for lanes with a greater signed operand");
     cpu.reset();
-    cpu.set_reg(1, 0x0000000000008000ULL);
+    cpu.set_reg(1, 0x0000000000018000ULL);
     cpu.set_reg(2, 0x0000000000000001ULL);
     const std::uint32_t pcgth = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
                                 (3U << 11U) | (6U << 6U) | 0x08U;
-    check(cpu.step(pcgth) && cpu.reg(3) == 0U,
-          "PCGTH treats the high-bit halfword as negative");
+    check(cpu.step(pcgth) && cpu.reg(3) == 0x00000000FFFF0000ULL,
+          "PCGTH compares signed halfwords independently and recognizes a positive lane");
     cpu.reset();
     cpu.set_reg(1, 0x000000000000007FULL);
     cpu.set_reg(2, 0x0000000000000001ULL);
