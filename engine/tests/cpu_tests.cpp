@@ -1123,5 +1123,42 @@ int main() {
               cpu.reg(2) == 0xFFFFFFFF80000000ULL,
           "DSRA32 applies the encoded 32-bit shift and sign-fills");
 
+    // MMI0 packed word arithmetic operates independently on all four
+    // 32-bit lanes across the low/high halves of each 128-bit EE GPR.
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFF00000001ULL);
+    cpu.set_reg_high(1, 0x7FFFFFFF80000000ULL);
+    cpu.set_reg(2, 0x0000000100000002ULL);
+    cpu.set_reg_high(2, 0x0000000180000001ULL);
+    const std::uint32_t paddw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | 0x08U;
+    check(cpu.step(paddw) &&
+              cpu.reg(3) == 0x0000000000000003ULL &&
+              cpu.reg_high(3) == 0x8000000000000001ULL,
+          "PADDW wraps independently across all four 32-bit lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000000000001ULL);
+    cpu.set_reg_high(1, 0x8000000000000000ULL);
+    cpu.set_reg(2, 0x0000000000000002ULL);
+    cpu.set_reg_high(2, 0x0000000100000001ULL);
+    const std::uint32_t psubw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | (1U << 6U) | 0x08U;
+    check(cpu.step(psubw) &&
+              cpu.reg(3) == 0x00000000FFFFFFFFULL &&
+              cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
+          "PSUBW wraps independently across all four 32-bit lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    cpu.set_reg_high(1, 0xFFFFFFFFFFFFFFFFULL);
+    cpu.set_reg(2, 1U);
+    cpu.set_reg_high(2, 1U);
+    const std::uint32_t paddw_zero = (1U << 21U) | (2U << 16U) | 0x08U;
+    check(cpu.step(paddw_zero) && cpu.reg(0) == 0U && cpu.reg_high(0) == 0U,
+          "PADDW targeting GPR zero preserves both zero-register halves");
+
+    // MMI primary opcode rejects unsupported sub-operations rather than
+    // accidentally treating unrelated encodings as packed arithmetic.
+    cpu.reset();
+    check(!cpu.step((0x1CU << 26U) | (2U << 6U) | 0x08U),
+          "unsupported MMI function encoding raises Reserved Instruction");
+
     return failures == 0 ? 0 : 1;
 }
