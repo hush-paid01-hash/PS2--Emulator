@@ -343,6 +343,30 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         default: break;
         }
         break;
+    case 0x1C: { // MMI0 packed 32-bit word arithmetic (PADDW / PSUBW).
+        const unsigned sub_op = (instruction >> 6U) & 0x1FU;
+        if (funct != 0x08U || (sub_op != 0U && sub_op != 1U)) return unsupported();
+        const std::uint64_t lhs_low = reg(rs);
+        const std::uint64_t lhs_high = reg_high(rs);
+        const std::uint64_t rhs_low = reg(rt);
+        const std::uint64_t rhs_high = reg_high(rt);
+        const auto lane = [sub_op](std::uint32_t lhs, std::uint32_t rhs) {
+            return sub_op == 0U ? lhs + rhs : lhs - rhs;
+        };
+        const std::uint64_t result_low =
+            static_cast<std::uint64_t>(lane(static_cast<std::uint32_t>(lhs_low),
+                                            static_cast<std::uint32_t>(rhs_low))) |
+            (static_cast<std::uint64_t>(lane(static_cast<std::uint32_t>(lhs_low >> 32U),
+                                             static_cast<std::uint32_t>(rhs_low >> 32U))) << 32U);
+        const std::uint64_t result_high =
+            static_cast<std::uint64_t>(lane(static_cast<std::uint32_t>(lhs_high),
+                                             static_cast<std::uint32_t>(rhs_high))) |
+            (static_cast<std::uint64_t>(lane(static_cast<std::uint32_t>(lhs_high >> 32U),
+                                             static_cast<std::uint32_t>(rhs_high >> 32U))) << 32U);
+        set_reg(rd, result_low);
+        set_reg_high(rd, result_high);
+        return true;
+    }
     case 0x10: { // Minimal COP0 support: MFC0, MTC0 and ERET.
         const auto read_cop0 = [this](std::uint32_t index, std::uint64_t& value) {
             switch (index) {
