@@ -1154,7 +1154,7 @@ int main() {
     const std::uint32_t pcgtw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
                                 (3U << 11U) | (2U << 6U) | 0x08U;
     check(cpu.step(pcgtw) &&
-              cpu.reg(3) == 0x00000000FFFFFFFF0000000000000000ULL &&
+              cpu.reg(3) == 0x00000000FFFFFFFFULL &&
               cpu.reg_high(3) == 0x0000000000000000ULL,
           "PCGTW emits all-ones only for lanes with a greater signed operand");
     cpu.reset();
