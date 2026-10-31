@@ -1179,7 +1179,7 @@ int main() {
     cpu.set_reg(2, 0x0000000500000004ULL);
     cpu.set_reg_high(2, 0x0000000400000005ULL);
     const std::uint32_t pceqw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (12U << 6U) | 0x08U;
+                                (3U << 11U) | (2U << 6U) | 0x28U;
     check(cpu.step(pceqw) &&
               cpu.reg(3) == 0xFFFFFFFF00000000ULL &&
               cpu.reg_high(3) == 0x00000000FFFFFFFFULL,
@@ -1188,7 +1188,7 @@ int main() {
     cpu.set_reg(1, 0x0002000100020001ULL);
     cpu.set_reg(2, 0x0002000000020001ULL);
     const std::uint32_t pceqh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (14U << 6U) | 0x08U;
+                                (3U << 11U) | (6U << 6U) | 0x28U;
     check(cpu.step(pceqh) && cpu.reg(3) == 0xFFFF0000FFFFFFFFULL &&
               cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
           "PCEQH compares eight independent 16-bit lanes");
@@ -1196,7 +1196,7 @@ int main() {
     cpu.set_reg(1, 0x0000000004030201ULL);
     cpu.set_reg(2, 0x000000000403FF01ULL);
     const std::uint32_t pceqb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (16U << 6U) | 0x08U;
+                                (3U << 11U) | (10U << 6U) | 0x28U;
     check(cpu.step(pceqb) && cpu.reg(3) == 0xFFFFFFFFFFFF00FFULL &&
               cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
           "PCEQB compares sixteen independent 8-bit lanes");
