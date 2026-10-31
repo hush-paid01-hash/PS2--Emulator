@@ -1145,6 +1145,33 @@ int main() {
               cpu.reg(3) == 0x00000000FFFFFFFFULL &&
               cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
           "PSUBW wraps independently across all four 32-bit lanes");
+    // Signed packed greater-than compares each lane independently.
+    cpu.reset();
+    cpu.set_reg(1, 0x00000007FFFFFFFFULL);
+    cpu.set_reg_high(1, 0x0000000080000000ULL);
+    cpu.set_reg(2, 0x0000000500000000ULL);
+    cpu.set_reg_high(2, 0x0000000000000001ULL);
+    const std::uint32_t pcgtw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (2U << 6U) | 0x08U;
+    check(cpu.step(pcgtw) &&
+              cpu.reg(3) == 0xFFFFFFFF00000000ULL &&
+              cpu.reg_high(3) == 0x0000000000000000ULL,
+          "PCGTW emits all-ones only for lanes with a greater signed operand");
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000000018000ULL);
+    cpu.set_reg(2, 0x0000000000000001ULL);
+    const std::uint32_t pcgth = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (6U << 6U) | 0x08U;
+    check(cpu.step(pcgth) && cpu.reg(3) == 0x00000000FFFF0000ULL,
+          "PCGTH compares signed halfwords independently and recognizes a positive lane");
+    cpu.reset();
+    cpu.set_reg(1, 0x000000000000007FULL);
+    cpu.set_reg(2, 0x0000000000000001ULL);
+    const std::uint32_t pcgtb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (10U << 6U) | 0x08U;
+    check(cpu.step(pcgtb) && cpu.reg(3) == 0x00000000000000FFULL,
+          "PCGTB emits an all-ones byte for a positive signed comparison");
+
     // Byte packed operations use sixteen independent 8-bit lanes.
     cpu.reset();
     cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
@@ -1205,7 +1232,7 @@ int main() {
     // MMI primary opcode rejects unsupported sub-operations rather than
     // accidentally treating unrelated encodings as packed arithmetic.
     cpu.reset();
-    check(!cpu.step((0x1CU << 26U) | (2U << 6U) | 0x08U),
+    check(!cpu.step((0x1CU << 26U) | (3U << 6U) | 0x08U),
           "unsupported MMI function encoding raises Reserved Instruction");
 
     return failures == 0 ? 0 : 1;
