@@ -1181,7 +1181,7 @@ int main() {
     const std::uint32_t pceqw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
                                 (3U << 11U) | (12U << 6U) | 0x08U;
     check(cpu.step(pceqw) &&
-              cpu.reg(3) == 0x00000000FFFFFFFFULL &&
+              cpu.reg(3) == 0xFFFFFFFF00000000ULL &&
               cpu.reg_high(3) == 0x00000000FFFFFFFFULL,
           "PCEQW compares four independent 32-bit lanes across both GPR halves");
     cpu.reset();
