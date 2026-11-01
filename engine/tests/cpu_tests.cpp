@@ -1172,9 +1172,6 @@ int main() {
     check(cpu.step(pcgtb) && cpu.reg(3) == 0x00000000000000FFULL,
           "PCGTB emits an all-ones byte for a positive signed comparison");
 
-<<<<<<< HEAD
-    // MMI1 packed equality emits an all-ones lane for equality and zero otherwise.
-=======
     // PMAXW and PMAXH select the signed maximum independently per lane
     // across both 64-bit halves of the EE's 128-bit GPRs.
     cpu.reset();
@@ -1200,8 +1197,7 @@ int main() {
               cpu.reg_high(3) == 0x7FFF7FFF00010000ULL,
           "PMAXH selects signed maxima across all eight 16-bit lanes");
 
-    // Packed equality emits an all-ones lane for equality and zero otherwise.
->>>>>>> origin/main
+    // MMI1 packed equality emits an all-ones lane for equality and zero otherwise.
     cpu.reset();
     cpu.set_reg(1, 0x0000000500000005ULL);
     cpu.set_reg_high(1, 0x0000000500000005ULL);
