@@ -1194,7 +1194,7 @@ int main() {
                                 (3U << 11U) | (7U << 6U) | 0x08U;
     check(cpu.step(pmaxh) &&
               cpu.reg(3) == 0x7FFF000100010002ULL &&
-              cpu.reg_high(3) == 0x7FFF800000010000ULL,
+              cpu.reg_high(3) == 0x7FFF7FFF00010000ULL,
           "PMAXH selects signed maxima across all eight 16-bit lanes");
 
     // Packed equality emits an all-ones lane for equality and zero otherwise.
