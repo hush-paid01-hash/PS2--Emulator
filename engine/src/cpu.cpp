@@ -343,16 +343,22 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         default: break;
         }
         break;
+<<<<<<< HEAD
     case 0x1C: { // MMI0 packed arithmetic and signed comparisons.
         const unsigned sub_op = (instruction >> 6U) & 0x1FU;
         if (funct != 0x08U || (sub_op != 0U && sub_op != 1U &&
                                sub_op != 2U && sub_op != 4U && sub_op != 5U &&
                                sub_op != 6U && sub_op != 8U && sub_op != 9U &&
                                sub_op != 10U)) return unsupported();
+=======
+    case 0x1C: {
+        const unsigned sub_op = (instruction >> 6U) & 0x1FU;
+>>>>>>> origin/main
         const std::uint64_t lhs_low = reg(rs);
         const std::uint64_t lhs_high = reg_high(rs);
         const std::uint64_t rhs_low = reg(rt);
         const std::uint64_t rhs_high = reg_high(rt);
+<<<<<<< HEAD
         const unsigned lane_bits = (sub_op == 8U || sub_op == 9U || sub_op == 10U) ? 8U :
                                    (sub_op == 4U || sub_op == 5U || sub_op == 6U) ? 16U : 32U;
         const bool compare_greater = sub_op == 2U || sub_op == 6U || sub_op == 10U;
@@ -403,6 +409,69 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         set_reg(rd, compare_equal(reg(rs), reg(rt)));
         set_reg_high(rd, compare_equal(reg_high(rs), reg_high(rt)));
         return true;
+=======
+
+        if (funct == 0x08U) { // MMI0 packed arithmetic and signed comparisons.
+            if (sub_op != 0U && sub_op != 1U && sub_op != 2U && sub_op != 3U &&
+                sub_op != 4U && sub_op != 5U && sub_op != 6U && sub_op != 7U &&
+                sub_op != 8U && sub_op != 9U && sub_op != 10U)
+                return unsupported();
+            const unsigned lane_bits = sub_op >= 8U ? 8U : (sub_op >= 4U ? 16U : 32U);
+            const bool compare_greater = sub_op == 2U || sub_op == 6U || sub_op == 10U;
+            const bool compare_max = sub_op == 3U || sub_op == 7U;
+            const std::uint64_t lane_mask = (std::uint64_t{1} << lane_bits) - 1U;
+            const unsigned lane_count = 64U / lane_bits;
+            const auto packed = [sub_op, lane_bits, lane_mask, lane_count, compare_greater, compare_max](
+                                    std::uint64_t lhs, std::uint64_t rhs) {
+                std::uint64_t result = 0;
+                for (unsigned i = 0; i < lane_count; ++i) {
+                    const unsigned shift = i * lane_bits;
+                    const std::uint64_t a = (lhs >> shift) & lane_mask;
+                    const std::uint64_t b = (rhs >> shift) & lane_mask;
+                    std::uint64_t value = 0;
+                    if (compare_greater) {
+                        const std::uint64_t sign_bit = std::uint64_t{1} << (lane_bits - 1U);
+                        value = ((a ^ sign_bit) > (b ^ sign_bit)) ? lane_mask : 0U;
+                    } else if (compare_max) {
+                        const std::uint64_t sign_bit = std::uint64_t{1} << (lane_bits - 1U);
+                        value = ((a ^ sign_bit) >= (b ^ sign_bit)) ? a : b;
+                    } else {
+                        value = (sub_op == 0U || sub_op == 4U || sub_op == 8U)
+                                    ? (a + b) & lane_mask
+                                    : (a - b) & lane_mask;
+                    }
+                    result |= value << shift;
+                }
+                return result;
+            };
+            set_reg(rd, packed(lhs_low, rhs_low));
+            set_reg_high(rd, packed(lhs_high, rhs_high));
+            return true;
+        }
+
+        if (funct == 0x28U) { // MMI1 packed equality comparisons.
+            if (sub_op != 2U && sub_op != 6U && sub_op != 10U)
+                return unsupported();
+            const unsigned lane_bits = sub_op == 2U ? 32U : (sub_op == 6U ? 16U : 8U);
+            const std::uint64_t lane_mask = (std::uint64_t{1} << lane_bits) - 1U;
+            const unsigned lane_count = 64U / lane_bits;
+            const auto packed_equal = [lane_bits, lane_mask, lane_count](
+                                          std::uint64_t lhs, std::uint64_t rhs) {
+                std::uint64_t result = 0;
+                for (unsigned i = 0; i < lane_count; ++i) {
+                    const unsigned shift = i * lane_bits;
+                    const std::uint64_t a = (lhs >> shift) & lane_mask;
+                    const std::uint64_t b = (rhs >> shift) & lane_mask;
+                    if (a == b) result |= lane_mask << shift;
+                }
+                return result;
+            };
+            set_reg(rd, packed_equal(lhs_low, rhs_low));
+            set_reg_high(rd, packed_equal(lhs_high, rhs_high));
+            return true;
+        }
+        return unsupported();
+>>>>>>> origin/main
     }
     case 0x10: { // Minimal COP0 support: MFC0, MTC0 and ERET.
         const auto read_cop0 = [this](std::uint32_t index, std::uint64_t& value) {
