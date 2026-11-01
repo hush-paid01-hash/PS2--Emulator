@@ -1172,6 +1172,22 @@ int main() {
     check(cpu.step(pcgtb) && cpu.reg(3) == 0x00000000000000FFULL,
           "PCGTB emits an all-ones byte for a positive signed comparison");
 
+    // PMAXW and PMAXH select the signed maximum independently per lane.
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000780000000ULL);
+    cpu.set_reg(2, 0x0000000500000001ULL);
+    const std::uint32_t pmaxw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (3U << 6U) | 0x08U;
+    check(cpu.step(pmaxw) && cpu.reg(3) == 0x0000000700000001ULL,
+          "PMAXW selects signed maxima across independent 32-bit lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x7FFF8000FFFF0001ULL);
+    cpu.set_reg(2, 0x8000000100010002ULL);
+    const std::uint32_t pmaxh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (7U << 6U) | 0x08U;
+    check(cpu.step(pmaxh) && cpu.reg(3) == 0x7FFF000000010002ULL,
+          "PMAXH selects signed maxima across independent 16-bit lanes");
+
     // Packed equality emits an all-ones lane for equality and zero otherwise.
     cpu.reset();
     cpu.set_reg(1, 0x0000000500000005ULL);
