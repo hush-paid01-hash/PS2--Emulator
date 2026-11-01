@@ -349,7 +349,6 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         const std::uint64_t lhs_high = reg_high(rs);
         const std::uint64_t rhs_low = reg(rt);
         const std::uint64_t rhs_high = reg_high(rt);
-
         if (funct == 0x08U) { // MMI0 packed arithmetic and signed comparisons.
             if (sub_op != 0U && sub_op != 1U && sub_op != 2U && sub_op != 3U &&
                 sub_op != 4U && sub_op != 5U && sub_op != 6U && sub_op != 7U &&

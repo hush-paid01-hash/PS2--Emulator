@@ -1197,7 +1197,7 @@ int main() {
               cpu.reg_high(3) == 0x7FFF7FFF00010000ULL,
           "PMAXH selects signed maxima across all eight 16-bit lanes");
 
-    // Packed equality emits an all-ones lane for equality and zero otherwise.
+    // MMI1 packed equality emits an all-ones lane for equality and zero otherwise.
     cpu.reset();
     cpu.set_reg(1, 0x0000000500000005ULL);
     cpu.set_reg_high(1, 0x0000000500000005ULL);
@@ -1208,7 +1208,7 @@ int main() {
     check(cpu.step(pceqw) &&
               cpu.reg(3) == 0xFFFFFFFF00000000ULL &&
               cpu.reg_high(3) == 0x00000000FFFFFFFFULL,
-          "PCEQW compares four independent 32-bit lanes across both GPR halves");
+          "MMI1 PCEQW compares four independent 32-bit lanes across both GPR halves");
     cpu.reset();
     cpu.set_reg(1, 0x0002000100020001ULL);
     cpu.set_reg(2, 0x0002000000020001ULL);
@@ -1216,7 +1216,7 @@ int main() {
                                 (3U << 11U) | (6U << 6U) | 0x28U;
     check(cpu.step(pceqh) && cpu.reg(3) == 0xFFFF0000FFFFFFFFULL &&
               cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
-          "PCEQH compares eight independent 16-bit lanes");
+          "MMI1 PCEQH compares eight independent 16-bit lanes");
     cpu.reset();
     cpu.set_reg(1, 0x0000000004030201ULL);
     cpu.set_reg(2, 0x000000000403FF01ULL);
@@ -1224,7 +1224,7 @@ int main() {
                                 (3U << 11U) | (10U << 6U) | 0x28U;
     check(cpu.step(pceqb) && cpu.reg(3) == 0xFFFFFFFFFFFF00FFULL &&
               cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
-          "PCEQB compares sixteen independent 8-bit lanes");
+          "MMI1 PCEQB compares sixteen independent 8-bit lanes");
 
     // Byte packed operations use sixteen independent 8-bit lanes.
     cpu.reset();
