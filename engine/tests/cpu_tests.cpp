@@ -1185,7 +1185,7 @@ int main() {
     cpu.set_reg(2, 0x8000000100010002ULL);
     const std::uint32_t pmaxh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
                                 (3U << 11U) | (7U << 6U) | 0x08U;
-    check(cpu.step(pmaxh) && cpu.reg(3) == 0x7FFF000000010002ULL,
+    check(cpu.step(pmaxh) && cpu.reg(3) == 0x7FFF000100010002ULL,
           "PMAXH selects signed maxima across independent 16-bit lanes");
 
     // Packed equality emits an all-ones lane for equality and zero otherwise.
@@ -1277,7 +1277,7 @@ int main() {
     // MMI primary opcode rejects unsupported sub-operations rather than
     // accidentally treating unrelated encodings as packed arithmetic.
     cpu.reset();
-    check(!cpu.step((0x1CU << 26U) | (3U << 6U) | 0x08U),
+    check(!cpu.step((0x1CU << 26U) | (31U << 6U) | 0x08U),
           "unsupported MMI function encoding raises Reserved Instruction");
 
     return failures == 0 ? 0 : 1;
