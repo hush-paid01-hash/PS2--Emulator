@@ -41,38 +41,52 @@ int main() {
           "extreme coordinates are rejected");
 
     fb.clear(black);
-    check(rasterizer.draw_line_gouraud(fb, {1, 3}, {5, 3}, red, blue),
+    check(rasterizer.draw_line_gouraud(fb, {1, 2}, {5, 2}, red, blue),
           "Gouraud line rasterizes");
-    check(fb.get_pixel(1, 3, pixel) && pixel == red,
-          "Gouraud line preserves the first endpoint colour");
-    check(fb.get_pixel(5, 3, pixel) && pixel == blue,
-          "Gouraud line preserves the second endpoint colour");
-    check(fb.get_pixel(3, 3, pixel) && pixel.r > 0 && pixel.b > 0 &&
-              pixel.g == 0 && pixel.a == 255,
-          "Gouraud line interpolates colour channels at its midpoint");
-    check(fb.get_pixel(3, 4, pixel) && pixel == black,
+    check(fb.get_pixel(1, 2, pixel) && pixel == red,
+          "Gouraud line preserves its first endpoint color");
+    check(fb.get_pixel(5, 2, pixel) && pixel == blue,
+          "Gouraud line preserves its last endpoint color");
+    check(fb.get_pixel(3, 2, pixel) && pixel.r == 128 &&
+              pixel.g == 0 && pixel.b == 127 && pixel.a == 255,
+          "Gouraud line interpolates midpoint channels");
+    check(fb.get_pixel(3, 3, pixel) && pixel == black,
           "Gouraud line leaves pixels off its path unchanged");
 
     fb.clear(black);
-    check(rasterizer.draw_line_gouraud(fb, {5, 2}, {1, 2}, blue, red),
-          "reversed Gouraud line rasterizes");
-    check(fb.get_pixel(5, 2, pixel) && pixel == blue,
-          "reversed line keeps its first endpoint colour");
-    check(fb.get_pixel(1, 2, pixel) && pixel == red,
-          "reversed line keeps its second endpoint colour");
+    check(rasterizer.draw_line_gouraud(fb, {5, 3}, {1, 3}, blue, red),
+          "reverse-direction Gouraud line rasterizes");
+    check(fb.get_pixel(5, 3, pixel) && pixel == blue,
+          "reversed line preserves its first endpoint color");
+    check(fb.get_pixel(1, 3, pixel) && pixel == red,
+          "reversed line preserves its second endpoint color");
 
     fb.clear(black);
+    check(rasterizer.draw_line_gouraud(fb, {-2, 6}, {2, 6}, red, blue),
+          "partially off-screen Gouraud line clips safely");
+    check(fb.get_pixel(0, 6, pixel) && pixel.r == 128 &&
+              pixel.g == 0 && pixel.b == 127 && pixel.a == 255,
+          "clipped Gouraud line preserves interpolation from original endpoints");
+    check(fb.get_pixel(7, 6, pixel) && pixel == black,
+          "clipped Gouraud line does not write beyond target");
     check(rasterizer.draw_line_gouraud(fb, {4, 4}, {4, 4}, green, blue),
           "zero-length Gouraud line is accepted");
     check(fb.get_pixel(4, 4, pixel) && pixel == green,
-          "zero-length Gouraud line uses its single endpoint colour");
+          "zero-length Gouraud line uses the first endpoint color");
 
     fb.clear(black);
     const retroshelf::GsSoftwareRasterizer::Point a{1, 1};
     const retroshelf::GsSoftwareRasterizer::Point b{6, 1};
     const retroshelf::GsSoftwareRasterizer::Point c{1, 6};
-    check(rasterizer.draw_triangle_gouraud(fb, a, b, c, red, green, blue),
+    check(rasterizer.draw_triangle_gouraud(
+              fb, a, b, c, red, green, blue),
           "Gouraud triangle renders in forward winding");
+    check(fb.get_pixel(a.x, a.y, pixel) && pixel == red,
+          "Gouraud triangle preserves first vertex color");
+    check(fb.get_pixel(b.x, b.y, pixel) && pixel == green,
+          "Gouraud triangle preserves second vertex color");
+    check(fb.get_pixel(c.x, c.y, pixel) && pixel == blue,
+          "Gouraud triangle preserves third vertex color");
     retroshelf::GsFramebuffer::Rgba8 forward{};
     check(fb.get_pixel(2, 2, forward),
           "forward-winding Gouraud sample is readable");
@@ -84,16 +98,6 @@ int main() {
           "reversed-winding Gouraud sample is readable");
     check(forward == reversed,
           "reversing winding with matching vertex colours preserves interpolation");
-
-    fb.clear(black);
-    check(rasterizer.draw_triangle_gouraud(fb, a, b, c, red, green, blue),
-          "Gouraud triangle renders for vertex-colour check");
-    check(fb.get_pixel(1, 1, pixel) && pixel == red,
-          "Gouraud triangle preserves first vertex colour");
-    check(fb.get_pixel(6, 1, pixel) && pixel == green,
-          "Gouraud triangle preserves second vertex colour");
-    check(fb.get_pixel(1, 6, pixel) && pixel == blue,
-          "Gouraud triangle preserves third vertex colour");
 
     return failures == 0 ? 0 : 1;
 }
