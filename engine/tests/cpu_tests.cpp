@@ -27,6 +27,23 @@ int main() {
     cpu.reset();
     check(cpu.reg(8) == 0 && cpu.pc() == 0, "reset clears CPU state");
 
+    // The EE's 128-bit GPR model is currently represented as low/high halves.
+    // Both halves of register zero must remain hardwired to zero.
+    cpu.set_reg_high(0, 0xDEADBEEFCAFEBABEULL);
+    check(cpu.reg_high(0) == 0,
+          "high half of GPR zero remains hardwired to zero");
+    cpu.set_reg(0, 0x0123456789ABCDEFULL);
+    check(cpu.reg(0) == 0,
+          "low half of GPR zero remains hardwired to zero");
+    cpu.set_reg(4, 0x1111222233334444ULL);
+    cpu.set_reg_high(4, 0xAAAABBBBCCCCDDDDULL);
+    check(cpu.reg(4) == 0x1111222233334444ULL &&
+              cpu.reg_high(4) == 0xAAAABBBBCCCCDDDDULL,
+          "ordinary GPR low and high halves retain independent values");
+    cpu.reset();
+    check(cpu.reg(4) == 0 && cpu.reg_high(4) == 0,
+          "reset clears both halves of extended GPR state");
+
     cpu.set_reg(11, 16);
     cpu.set_reg(12, 0x12345678);
     constexpr std::uint32_t sw = (0x2BU << 26U) | (11U << 21U) | (12U << 16U);
@@ -479,6 +496,19 @@ int main() {
     cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
     check(cpu.step(rtype(1, 2, 0, 0x1B)) && cpu.lo() == 0x7FFFFFFFULL && cpu.hi() == 1,
           "DIVU uses only the low 32 bits of each operand");
+
+    cpu.reset(); cpu.set_reg(1, 0x12345678FFFFFFFFULL); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1B)) &&
+          cpu.lo() == 0xFFFFFFFFULL && cpu.hi() == 0xFFFFFFFFULL,
+          "DIVU by zero returns the 32-bit all-ones quotient and low-word dividend remainder");
+    cpu.reset(); cpu.set_reg(1, 7); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1A)) &&
+          cpu.lo() == 0xFFFFFFFFFFFFFFFFULL && cpu.hi() == 7,
+          "DIV by zero with a nonnegative dividend returns minus one and preserves the remainder");
+    cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFFFFFFFF9ULL); cpu.set_reg(2, 0);
+    check(cpu.step(rtype(1, 2, 0, 0x1A)) &&
+          cpu.lo() == 1 && cpu.hi() == 0xFFFFFFFFFFFFFFF9ULL,
+          "DIV by zero with a negative dividend returns one and sign-extends the remainder");
     cpu.reset(); cpu.set_reg(1, 0xFFFFFFFFU); cpu.set_reg(2, 2);
     check(cpu.step(rtype(1, 2, 0, 0x18)) &&
           cpu.lo() == 0xFFFFFFFFFFFFFFFEULL && cpu.hi() == 0xFFFFFFFFFFFFFFFFULL,
@@ -611,6 +641,15 @@ int main() {
     cpu.reset(); cpu.set_reg(1, static_cast<std::uint64_t>(-3LL)); cpu.set_reg(2, static_cast<std::uint64_t>(-7LL));
     check(cpu.step(rtype(1, 2, 0, 0x1C)) && cpu.lo() == 21 && cpu.hi() == 0,
           "DMULT produces the correct positive product for two negative operands");
+    cpu.reset(); cpu.set_reg(1, 3); cpu.set_reg(2, static_cast<std::uint64_t>(-7LL));
+    check(cpu.step(rtype(1, 2, 0, 0x1C)) &&
+              cpu.lo() == 0xFFFFFFFFFFFFFFEBULL &&
+              cpu.hi() == 0xFFFFFFFFFFFFFFFFULL,
+          "DMULT sign-corrects the high half when only the right operand is negative");
+    cpu.reset(); cpu.set_reg(1, 0x8000000000000000ULL); cpu.set_reg(2, static_cast<std::uint64_t>(-1LL));
+    check(cpu.step(rtype(1, 2, 0, 0x1C)) &&
+              cpu.lo() == 0x8000000000000000ULL && cpu.hi() == 0,
+          "DMULT handles the signed minimum multiplied by negative one");
     cpu.reset(); cpu.set_reg(1, 0x123456789ABCDEF0ULL); cpu.set_reg(2, 0x10);
     check(cpu.step(rtype(1, 2, 0, 0x1F)) && cpu.lo() == 0x0123456789ABCDEFULL && cpu.hi() == 0,
           "DDIVU divides a 64-bit dividend without truncating it to 32 bits");
@@ -994,6 +1033,261 @@ int main() {
     check(cpu.step((2U << 16U) | (3U << 11U) | (31U << 6U) | 0x3EU) &&
               cpu.reg(3) == 1,
           "DSRL32 supports the maximum shift amount of 63");
+
+
+    // Sign-extension and comparison edge cases used by ordinary EE integer code.
+    cpu.reset();
+    check(cpu.step(itype(0x09, 0, 6, -1)) &&
+              cpu.reg(6) == 0xFFFFFFFFFFFFFFFFULL,
+          "ADDIU sign-extends a negative immediate");
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000080000000ULL);
+    check(cpu.step(rtype(0, 1, 2, 0x00)) &&
+              cpu.reg(2) == 0xFFFFFFFF80000000ULL,
+          "SLL sign-extends a 32-bit result with bit 31 set");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    cpu.set_reg(2, 1);
+    check(cpu.step(rtype(1, 2, 3, 0x2A)) && cpu.reg(3) == 1,
+          "SLT compares signed 64-bit register values");
+    check(cpu.step(rtype(1, 2, 4, 0x2B)) && cpu.reg(4) == 0,
+          "SLTU compares register values as unsigned 64-bit integers");
+
+    // Immediate logical operations zero-extend their 16-bit operand, while LUI
+    // constructs a 32-bit value and sign-extends it to the EE register width.
+    // SLTI compares against a sign-extended immediate as a signed EE value.
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0A, 1, 2, 1)) && cpu.reg(2) == 1,
+          "SLTI treats all-ones GPR value as signed negative one");
+    cpu.reset();
+    cpu.set_reg(1, 1);
+    check(cpu.step(itype(0x0A, 1, 2, -1)) && cpu.reg(2) == 0,
+          "SLTI sign-extends a negative immediate before signed comparison");
+
+    // SLTIU sign-extends its immediate first, then performs an unsigned comparison.
+    cpu.reset();
+    cpu.set_reg(1, 0x7FFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0B, 1, 2, -1)) && cpu.reg(2) == 1,
+          "SLTIU compares against the sign-extended all-ones immediate as unsigned");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0B, 1, 2, -1)) && cpu.reg(2) == 0,
+          "SLTIU equality with sign-extended negative immediate is false");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0B, 1, 2, 1)) && cpu.reg(2) == 0,
+          "SLTIU treats positive immediate as unsigned positive value");
+
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(itype(0x0C, 1, 2, static_cast<std::int16_t>(0x8001))) &&
+              cpu.reg(2) == 0x8001ULL,
+          "ANDI zero-extends its immediate and clears upper register bits");
+    cpu.reset();
+    cpu.set_reg(1, 0x1234000000000000ULL);
+    check(cpu.step(itype(0x0D, 1, 2, static_cast<std::int16_t>(0xABCD))) &&
+              cpu.reg(2) == 0x123400000000ABCDULL,
+          "ORI zero-extends its immediate without changing upper bits");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFF0000ULL);
+    check(cpu.step(itype(0x0E, 1, 2, static_cast<std::int16_t>(0x00FF))) &&
+              cpu.reg(2) == 0xFFFFFFFFFFFF00FFULL,
+          "XORI zero-extends its immediate");
+    cpu.reset();
+    check(cpu.step(itype(0x0F, 0, 2, static_cast<std::int16_t>(0x8000))) &&
+              cpu.reg(2) == 0xFFFFFFFF80000000ULL,
+          "LUI sign-extends the constructed 32-bit value");
+
+    // Arithmetic-right-shift regression boundaries: sign propagation must
+    // be explicit for 32-bit and 64-bit forms, including the +32 encoding.
+    cpu.reset();
+    cpu.set_reg(1, 0x80000001ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | (1U << 6U) | 0x03U) &&
+              cpu.reg(2) == 0xFFFFFFFFC0000000ULL,
+          "SRA sign-fills a negative 32-bit operand and sign-extends its result");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFF80000000ULL);
+    cpu.set_reg(3, 1);
+    check(cpu.step((3U << 21U) | (1U << 16U) | (2U << 11U) | 0x07U) &&
+              cpu.reg(2) == 0xFFFFFFFFC0000000ULL,
+          "SRAV uses the low five shift-count bits and preserves the sign");
+    cpu.reset();
+    cpu.set_reg(1, 0x8000000000000000ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | (4U << 6U) | 0x3BU) &&
+              cpu.reg(2) == 0xF800000000000000ULL,
+          "DSRA arithmetic-shifts a negative 64-bit operand");
+    cpu.reset();
+    cpu.set_reg(1, 0x8000000000000000ULL);
+    check(cpu.step((1U << 16U) | (2U << 11U) | 0x3FU) &&
+              cpu.reg(2) == 0xFFFFFFFF80000000ULL,
+          "DSRA32 applies the encoded 32-bit shift and sign-fills");
+
+    // MMI0 packed word arithmetic operates independently on all four
+    // 32-bit lanes across the low/high halves of each 128-bit EE GPR.
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFF00000001ULL);
+    cpu.set_reg_high(1, 0x7FFFFFFF80000000ULL);
+    cpu.set_reg(2, 0x0000000100000002ULL);
+    cpu.set_reg_high(2, 0x0000000180000001ULL);
+    const std::uint32_t paddw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | 0x08U;
+    check(cpu.step(paddw) &&
+              cpu.reg(3) == 0x0000000000000003ULL &&
+              cpu.reg_high(3) == 0x8000000000000001ULL,
+          "PADDW wraps independently across all four 32-bit lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000000000001ULL);
+    cpu.set_reg_high(1, 0x8000000000000000ULL);
+    cpu.set_reg(2, 0x0000000000000002ULL);
+    cpu.set_reg_high(2, 0x0000000100000001ULL);
+    const std::uint32_t psubw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | (1U << 6U) | 0x08U;
+    check(cpu.step(psubw) &&
+              cpu.reg(3) == 0x00000000FFFFFFFFULL &&
+              cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
+          "PSUBW wraps independently across all four 32-bit lanes");
+    // Signed packed greater-than compares each lane independently.
+    cpu.reset();
+    cpu.set_reg(1, 0x00000007FFFFFFFFULL);
+    cpu.set_reg_high(1, 0x0000000080000000ULL);
+    cpu.set_reg(2, 0x0000000500000000ULL);
+    cpu.set_reg_high(2, 0x0000000000000001ULL);
+    const std::uint32_t pcgtw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (2U << 6U) | 0x08U;
+    check(cpu.step(pcgtw) &&
+              cpu.reg(3) == 0xFFFFFFFF00000000ULL &&
+              cpu.reg_high(3) == 0x0000000000000000ULL,
+          "PCGTW emits all-ones only for lanes with a greater signed operand");
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000000018000ULL);
+    cpu.set_reg(2, 0x0000000000000001ULL);
+    const std::uint32_t pcgth = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (6U << 6U) | 0x08U;
+    check(cpu.step(pcgth) && cpu.reg(3) == 0x00000000FFFF0000ULL,
+          "PCGTH compares signed halfwords independently and recognizes a positive lane");
+    cpu.reset();
+    cpu.set_reg(1, 0x000000000000007FULL);
+    cpu.set_reg(2, 0x0000000000000001ULL);
+    const std::uint32_t pcgtb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (10U << 6U) | 0x08U;
+    check(cpu.step(pcgtb) && cpu.reg(3) == 0x00000000000000FFULL,
+          "PCGTB emits an all-ones byte for a positive signed comparison");
+
+    // PMAXW and PMAXH select the signed maximum independently per lane
+    // across both 64-bit halves of the EE's 128-bit GPRs.
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000780000000ULL);
+    cpu.set_reg_high(1, 0x800000007FFFFFFFULL);
+    cpu.set_reg(2, 0x0000000500000001ULL);
+    cpu.set_reg_high(2, 0x7FFFFFFF80000000ULL);
+    const std::uint32_t pmaxw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (3U << 6U) | 0x08U;
+    check(cpu.step(pmaxw) &&
+              cpu.reg(3) == 0x0000000700000001ULL &&
+              cpu.reg_high(3) == 0x7FFFFFFF7FFFFFFFULL,
+          "PMAXW selects signed maxima across all four 32-bit lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x7FFF8000FFFF0001ULL);
+    cpu.set_reg_high(1, 0x80007FFF0000FFFFULL);
+    cpu.set_reg(2, 0x8000000100010002ULL);
+    cpu.set_reg_high(2, 0x7FFF800000010000ULL);
+    const std::uint32_t pmaxh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (7U << 6U) | 0x08U;
+    check(cpu.step(pmaxh) &&
+              cpu.reg(3) == 0x7FFF000100010002ULL &&
+              cpu.reg_high(3) == 0x7FFF7FFF00010000ULL,
+          "PMAXH selects signed maxima across all eight 16-bit lanes");
+
+    // MMI1 packed equality emits an all-ones lane for equality and zero otherwise.
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000500000005ULL);
+    cpu.set_reg_high(1, 0x0000000500000005ULL);
+    cpu.set_reg(2, 0x0000000500000004ULL);
+    cpu.set_reg_high(2, 0x0000000400000005ULL);
+    const std::uint32_t pceqw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (2U << 6U) | 0x28U;
+    check(cpu.step(pceqw) &&
+              cpu.reg(3) == 0xFFFFFFFF00000000ULL &&
+              cpu.reg_high(3) == 0x00000000FFFFFFFFULL,
+          "MMI1 PCEQW compares four independent 32-bit lanes across both GPR halves");
+    cpu.reset();
+    cpu.set_reg(1, 0x0002000100020001ULL);
+    cpu.set_reg(2, 0x0002000000020001ULL);
+    const std::uint32_t pceqh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (6U << 6U) | 0x28U;
+    check(cpu.step(pceqh) && cpu.reg(3) == 0xFFFF0000FFFFFFFFULL &&
+              cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
+          "MMI1 PCEQH compares eight independent 16-bit lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000004030201ULL);
+    cpu.set_reg(2, 0x000000000403FF01ULL);
+    const std::uint32_t pceqb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (10U << 6U) | 0x28U;
+    check(cpu.step(pceqb) && cpu.reg(3) == 0xFFFFFFFFFFFF00FFULL &&
+              cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
+          "MMI1 PCEQB compares sixteen independent 8-bit lanes");
+
+    // Byte packed operations use sixteen independent 8-bit lanes.
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    cpu.set_reg_high(1, 0x7F7F7F7F7F7F7F7FULL);
+    cpu.set_reg(2, 0x0101010101010101ULL);
+    cpu.set_reg_high(2, 0x0101010101010101ULL);
+    const std::uint32_t paddb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (8U << 6U) | 0x08U;
+    check(cpu.step(paddb) &&
+              cpu.reg(3) == 0x0000000000000000ULL &&
+              cpu.reg_high(3) == 0x8080808080808080ULL,
+          "PADDB wraps independently across sixteen 8-bit lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x0000000000000000ULL);
+    cpu.set_reg_high(1, 0x8080808080808080ULL);
+    cpu.set_reg(2, 0x0101010101010101ULL);
+    cpu.set_reg_high(2, 0x0101010101010101ULL);
+    const std::uint32_t psubb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (9U << 6U) | 0x08U;
+    check(cpu.step(psubb) &&
+              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
+              cpu.reg_high(3) == 0x7F7F7F7F7F7F7F7FULL,
+          "PSUBB wraps independently across sixteen 8-bit lanes");
+
+    // Halfword packed operations use eight independent 16-bit lanes.
+    cpu.reset();
+    cpu.set_reg(1, 0x7FFF8000FFFF0001ULL);
+    cpu.set_reg_high(1, 0x0001000200030004ULL);
+    cpu.set_reg(2, 0x0001FFFF00010002ULL);
+    cpu.set_reg_high(2, 0x0001000200030004ULL);
+    const std::uint32_t paddh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (4U << 6U) | 0x08U;
+    check(cpu.step(paddh) &&
+              cpu.reg(3) == 0x80007FFF00000003ULL &&
+              cpu.reg_high(3) == 0x0002000400060008ULL,
+          "PADDH wraps independently across eight 16-bit lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x0001000000000000ULL);
+    cpu.set_reg_high(1, 0x8000000000000000ULL);
+    cpu.set_reg(2, 0x0002000100010001ULL);
+    cpu.set_reg_high(2, 0x0001000100010001ULL);
+    const std::uint32_t psubh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                                (3U << 11U) | (5U << 6U) | 0x08U;
+    check(cpu.step(psubh) &&
+              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
+              cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
+          "PSUBH wraps independently across eight 16-bit lanes");
+
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFFFFFFFFFFULL);
+    cpu.set_reg_high(1, 0xFFFFFFFFFFFFFFFFULL);
+    cpu.set_reg(2, 1U);
+    cpu.set_reg_high(2, 1U);
+    const std::uint32_t paddw_zero = (1U << 21U) | (2U << 16U) | 0x08U;
+    check(cpu.step(paddw_zero) && cpu.reg(0) == 0U && cpu.reg_high(0) == 0U,
+          "PADDW targeting GPR zero preserves both zero-register halves");
+
+    // MMI primary opcode rejects unsupported sub-operations rather than
+    // accidentally treating unrelated encodings as packed arithmetic.
+    cpu.reset();
+    check(!cpu.step((0x1CU << 26U) | (31U << 6U) | 0x08U),
+          "unsupported MMI function encoding raises Reserved Instruction");
 
     return failures == 0 ? 0 : 1;
 }

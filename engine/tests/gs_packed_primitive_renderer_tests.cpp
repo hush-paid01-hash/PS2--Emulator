@@ -147,6 +147,25 @@ int main() {
 
     renderer.reset();
     framebuffer.clear();
+    // PRIM.IIP interpolates RGBAQ values between the two line vertices.
+    assert(renderer.consume({{0x0, 0x9},
+                             {0x1, 0xFF0000FFULL},
+                             {0x5, xyz(1U << 4U, 2U << 4U)},
+                             {0x1, 0xFFFF0000ULL},
+                             {0x5, xyz(5U << 4U, 2U << 4U)}}, framebuffer));
+    GsFramebuffer::Rgba8 gouraud_line_start{};
+    GsFramebuffer::Rgba8 gouraud_line_mid{};
+    GsFramebuffer::Rgba8 gouraud_line_end{};
+    assert(framebuffer.get_pixel(1, 2, gouraud_line_start));
+    assert(framebuffer.get_pixel(3, 2, gouraud_line_mid));
+    assert(framebuffer.get_pixel(5, 2, gouraud_line_end));
+    assert(gouraud_line_start.r == 255 && gouraud_line_start.b == 0);
+    assert(gouraud_line_mid.r > 0 && gouraud_line_mid.b > 0);
+    assert(gouraud_line_end.r == 0 && gouraud_line_end.b == 255);
+
+
+    renderer.reset();
+    framebuffer.clear();
     // A malformed/oversized strip must fail safely instead of growing state forever.
     std::vector<Write> oversized_strip;
     oversized_strip.reserve(65538U);
