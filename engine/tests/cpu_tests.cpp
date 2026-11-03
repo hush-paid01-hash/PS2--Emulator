@@ -1423,5 +1423,45 @@ int main() {
               cpu.reg_high(3) == 0x000000001FFFFFFFULL,
           "PSRAVW arithmetically shifts two words with independent counts");
 
+
+    // VU0 COP2 macro-mode transfers preserve all 128 VF bits. VF00 is the
+    // architectural constant vector (0, 0, 0, 1.0), and VI registers are 16-bit.
+    cpu.reset();
+    cpu.set_reg(4, 0x89ABCDEF01234567ULL);
+    cpu.set_reg_high(4, 0x76543210FEDCBA98ULL);
+    const std::uint32_t qmtc2 = (0x12U << 26U) | (0x05U << 21U) |
+                                (4U << 16U) | (7U << 11U);
+    check(cpu.step(qmtc2), "QMTC2 transfers a 128-bit EE GPR into VU0 VF7");
+    const std::uint32_t qmfc2 = (0x12U << 26U) | (0x01U << 21U) |
+                                (5U << 16U) | (7U << 11U);
+    check(cpu.step(qmfc2) &&
+              cpu.reg(5) == 0x89ABCDEF01234567ULL &&
+              cpu.reg_high(5) == 0x76543210FEDCBA98ULL,
+          "QMFC2 returns all four 32-bit lanes from VU0 VF7");
+    cpu.reset();
+    const std::uint32_t qmfc2_vf0 = (0x12U << 26U) | (0x01U << 21U) |
+                                    (6U << 16U);
+    check(cpu.step(qmfc2_vf0) && cpu.reg(6) == 0x3F80000000000000ULL &&
+              cpu.reg_high(6) == 0,
+          "VU0 VF00 reads as the architectural constant (0,0,0,1.0)");
+    cpu.reset();
+    cpu.set_reg(8, 0x1234ABCD5678EF01ULL);
+    const std::uint32_t ctc2_vi = (0x12U << 26U) | (0x06U << 21U) |
+                                  (8U << 16U) | (3U << 11U);
+    const std::uint32_t cfc2_vi = (0x12U << 26U) | (0x02U << 21U) |
+                                  (9U << 16U) | (3U << 11U);
+    check(cpu.step(ctc2_vi) && cpu.step(cfc2_vi) &&
+              cpu.reg(9) == 0xEF01ULL,
+          "CTC2/CFC2 transfer VI registers as zero-extended 16-bit values");
+    cpu.reset();
+    cpu.set_reg(10, 0x89ABCDEFULL);
+    const std::uint32_t ctc2_ctrl = (0x12U << 26U) | (0x06U << 21U) |
+                                    (10U << 16U) | (20U << 11U);
+    const std::uint32_t cfc2_ctrl = (0x12U << 26U) | (0x02U << 21U) |
+                                    (11U << 16U) | (20U << 11U);
+    check(cpu.step(ctc2_ctrl) && cpu.step(cfc2_ctrl) &&
+              cpu.reg(11) == 0xFFFFFFFF89ABCDEFULL,
+          "CTC2/CFC2 preserve sign-extended 32-bit VU0 control-register values");
+
     return failures == 0 ? 0 : 1;
 }
