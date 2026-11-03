@@ -1345,5 +1345,47 @@ int main() {
                   retroshelf::Cpu::ExcReservedInstruction,
           "packed immediate shift rejects a nonzero reserved rs field");
 
+    // MMI2/MMI3 bitwise instructions transform the full 128-bit GPR.
+    const auto mmi_bitwise = [](std::uint32_t sub_op, std::uint32_t funct) {
+        return (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+               (3U << 11U) | (sub_op << 6U) | funct;
+    };
+    cpu.reset();
+    cpu.set_reg(1, 0xF0F00F0FAAAA5555ULL);
+    cpu.set_reg_high(1, 0x123456789ABCDEF0ULL);
+    cpu.set_reg(2, 0x0FF0FF0F5555AAAAULL);
+    cpu.set_reg_high(2, 0xFFFF0000FFFF0000ULL);
+    check(cpu.step(mmi_bitwise(0x12U, 0x09U)) &&
+              cpu.reg(3) == 0x00F00F0F00000000ULL &&
+              cpu.reg_high(3) == 0x123400009ABC0000ULL,
+          "PAND performs bitwise AND across the full 128-bit GPR");
+    cpu.reset();
+    cpu.set_reg(1, 0xF0F00F0FAAAA5555ULL);
+    cpu.set_reg_high(1, 0x123456789ABCDEF0ULL);
+    cpu.set_reg(2, 0x0FF0FF0F5555AAAAULL);
+    cpu.set_reg_high(2, 0xFFFF0000FFFF0000ULL);
+    check(cpu.step(mmi_bitwise(0x13U, 0x09U)) &&
+              cpu.reg(3) == 0xFF00F000FFFFFFFFULL &&
+              cpu.reg_high(3) == 0xEDCB56786543DEF0ULL,
+          "PXOR performs bitwise XOR across the full 128-bit GPR");
+    cpu.reset();
+    cpu.set_reg(1, 0xF0F00F0FAAAA5555ULL);
+    cpu.set_reg_high(1, 0x123456789ABCDEF0ULL);
+    cpu.set_reg(2, 0x0FF0FF0F5555AAAAULL);
+    cpu.set_reg_high(2, 0xFFFF0000FFFF0000ULL);
+    check(cpu.step(mmi_bitwise(0x12U, 0x29U)) &&
+              cpu.reg(3) == 0xFFF0FF0FFFFFFFFFULL &&
+              cpu.reg_high(3) == 0xFFFF5678FFFFDEF0ULL,
+          "POR performs bitwise OR across the full 128-bit GPR");
+    cpu.reset();
+    cpu.set_reg(1, 0xF0F00F0FAAAA5555ULL);
+    cpu.set_reg_high(1, 0x123456789ABCDEF0ULL);
+    cpu.set_reg(2, 0x0FF0FF0F5555AAAAULL);
+    cpu.set_reg_high(2, 0xFFFF0000FFFF0000ULL);
+    check(cpu.step(mmi_bitwise(0x13U, 0x29U)) &&
+              cpu.reg(3) == 0x000F00F000000000ULL &&
+              cpu.reg_high(3) == 0x0000A9870000210FULL,
+          "PNOR complements the OR result across the full 128-bit GPR");
+
     return failures == 0 ? 0 : 1;
 }
