@@ -408,6 +408,54 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             set_reg_high(rd, packed_equal(lhs_high, rhs_high));
             return true;
         }
+        // MMI2/MMI3 provide bitwise operations over the complete 128-bit GPR.
+        if ((funct == 0x09U || funct == 0x29U) &&
+            (sub_op == 0x12U || sub_op == 0x13U)) {
+            const auto bitwise = [funct, sub_op](std::uint64_t lhs, std::uint64_t rhs) {
+                if (funct == 0x09U)
+                    return sub_op == 0x12U ? (lhs & rhs) : (lhs ^ rhs); // PAND / PXOR
+                return sub_op == 0x12U ? (lhs | rhs) : ~(lhs | rhs); // POR / PNOR
+            };
+            set_reg(rd, bitwise(lhs_low, rhs_low));
+            set_reg_high(rd, bitwise(lhs_high, rhs_high));
+            return true;
+        }
+
+        // The EE also has fixed-count packed shifts over all eight halfwords
+        // or four words in a 128-bit GPR. These encodings use rs=0 and the
+        // five-bit shift amount field (SA).
+        if (funct == 0x34U || funct == 0x36U || funct == 0x37U ||
+            funct == 0x3CU || funct == 0x3EU || funct == 0x3FU) {
+            if (rs != 0U) return unsupported();
+            const bool halfword = funct == 0x34U || funct == 0x36U || funct == 0x37U;
+            const bool left = funct == 0x34U || funct == 0x3CU;
+            const bool arithmetic = funct == 0x37U || funct == 0x3FU;
+            const unsigned lane_bits = halfword ? 16U : 32U;
+            const unsigned shift = (instruction >> 6U) & (lane_bits - 1U);
+            const std::uint64_t lane_mask = (std::uint64_t{1} << lane_bits) - 1U;
+            const std::uint64_t sign_bit = std::uint64_t{1} << (lane_bits - 1U);
+            const unsigned lane_count = 64U / lane_bits;
+            const auto shift_lanes = [=](std::uint64_t source) {
+                std::uint64_t result = 0;
+                for (unsigned lane = 0; lane < lane_count; ++lane) {
+                    const unsigned offset = lane * lane_bits;
+                    const std::uint64_t value = (source >> offset) & lane_mask;
+                    std::uint64_t shifted = 0;
+                    if (left) {
+                        shifted = (value << shift) & lane_mask;
+                    } else {
+                        shifted = value >> shift;
+                        if (arithmetic && shift != 0U && (value & sign_bit) != 0U)
+                            shifted |= lane_mask << (lane_bits - shift);
+                    }
+                    result |= (shifted & lane_mask) << offset;
+                }
+                return result;
+            };
+            set_reg(rd, shift_lanes(reg(rt)));
+            set_reg_high(rd, shift_lanes(reg_high(rt)));
+            return true;
+        }
         return unsupported();
     }
     case 0x10: { // Minimal COP0 support: MFC0, MTC0 and ERET.
