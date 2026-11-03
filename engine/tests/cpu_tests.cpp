@@ -1454,6 +1454,14 @@ int main() {
               cpu.reg(9) == 0xEF01ULL,
           "CTC2/CFC2 transfer VI registers as zero-extended 16-bit values");
     cpu.reset();
+    cpu.set_reg(12, 0xFFFFFFFFFFFFFFFFULL);
+    const std::uint32_t ctc2_vi0 = (0x12U << 26U) | (0x06U << 21U) |
+                                   (12U << 16U);
+    const std::uint32_t cfc2_vi0 = (0x12U << 26U) | (0x02U << 21U) |
+                                   (13U << 16U);
+    check(cpu.step(ctc2_vi0) && cpu.step(cfc2_vi0) && cpu.reg(13) == 0,
+          "VU0 VI00 remains hardwired to zero after CTC2");
+    cpu.reset();
     cpu.set_reg(10, 0x89ABCDEFULL);
     const std::uint32_t ctc2_ctrl = (0x12U << 26U) | (0x06U << 21U) |
                                     (10U << 16U) | (20U << 11U);
