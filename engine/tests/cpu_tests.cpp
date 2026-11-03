@@ -1471,5 +1471,48 @@ int main() {
               cpu.reg(11) == 0xFFFFFFFF89ABCDEFULL,
           "CTC2/CFC2 preserve sign-extended 32-bit VU0 control-register values");
 
+    // VU0 LQC2/SQC2 move one aligned quadword between EE memory and VF registers.
+    cpu.reset();
+    check(ee_memory.write128(0x240, 0x0123456789ABCDEFULL,
+                              0xFEDCBA9876543210ULL, &error),
+          "seed aligned VU0 quadword memory");
+    cpu.set_reg(1, 0x240);
+    check(run_ee_instruction(itype(0x36, 1, 7, 0)),
+          "LQC2 loads an aligned quadword into VU0 VF7");
+    const std::uint32_t qmfc2_vf7 = (0x12U << 26U) | (0x01U << 21U) |
+                                    (6U << 16U) | (7U << 11U);
+    check(cpu.step(qmfc2_vf7) &&
+              cpu.reg(6) == 0x0123456789ABCDEFULL &&
+              cpu.reg_high(6) == 0xFEDCBA9876543210ULL,
+          "LQC2 preserves all four 32-bit VF lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x240);
+    cpu.set_reg(4, 0xAABBCCDDEEFF0011ULL);
+    cpu.set_reg_high(4, 0x1122334455667788ULL);
+    const std::uint32_t qmtc2_vf4 = (0x12U << 26U) | (0x05U << 21U) |
+                                    (4U << 16U) | (4U << 11U);
+    check(cpu.step(qmtc2_vf4), "seed VU0 VF4 through QMTC2");
+    check(run_ee_instruction(itype(0x3E, 1, 4, 0)),
+          "SQC2 stores an aligned VU0 quadword");
+    std::uint64_t vu_store_low = 0, vu_store_high = 0;
+    check(ee_memory.read128(0x240, vu_store_low, vu_store_high, &error) &&
+              vu_store_low == 0xAABBCCDDEEFF0011ULL &&
+              vu_store_high == 0x1122334455667788ULL,
+          "SQC2 writes all four VF lanes to EE memory");
+    cpu.reset();
+    cpu.set_reg(1, 0x240);
+    error.clear();
+    check(!run_ee_instruction(itype(0x36, 1, 7, 4)) && !error.empty(),
+          "misaligned LQC2 raises an address exception");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorLoad,
+          "misaligned LQC2 records AdEL");
+    cpu.reset();
+    cpu.set_reg(1, 0x240);
+    error.clear();
+    check(!run_ee_instruction(itype(0x3E, 1, 7, 4)) && !error.empty(),
+          "misaligned SQC2 raises an address exception");
+    check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorStore,
+          "misaligned SQC2 records AdES");
+
     return failures == 0 ? 0 : 1;
 }
