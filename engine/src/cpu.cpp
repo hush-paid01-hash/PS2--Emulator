@@ -509,15 +509,18 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
         case 0x02: { // CFC2 rt, id: VI registers are zero-extended 16-bit values.
-            const std::uint32_t value = index < 16U
-                ? (vu0_control_[index] & 0xFFFFU) : vu0_control_[index];
+            // VI00 is the architectural integer zero register.
+            const std::uint32_t value = index == 0U ? 0U : (index < 16U
+                ? (vu0_control_[index] & 0xFFFFU) : vu0_control_[index]);
             set_reg(rt, static_cast<std::uint64_t>(
                 static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
             return true;
         }
         case 0x06: { // CTC2 rt, id: VI registers retain only their low 16 bits.
             const std::uint32_t value = static_cast<std::uint32_t>(reg(rt));
-            vu0_control_[index] = index < 16U ? (value & 0xFFFFU) : value;
+            if (index != 0U) {
+                vu0_control_[index] = index < 16U ? (value & 0xFFFFU) : value;
+            }
             return true;
         }
         default: return unsupported();
