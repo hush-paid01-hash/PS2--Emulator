@@ -408,6 +408,19 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             set_reg_high(rd, packed_equal(lhs_high, rhs_high));
             return true;
         }
+        // MMI2/MMI3 provide bitwise operations over the complete 128-bit GPR.
+        if ((funct == 0x09U || funct == 0x29U) &&
+            (sub_op == 0x12U || sub_op == 0x13U)) {
+            const auto bitwise = [funct, sub_op](std::uint64_t lhs, std::uint64_t rhs) {
+                if (funct == 0x09U)
+                    return sub_op == 0x12U ? (lhs & rhs) : (lhs ^ rhs); // PAND / PXOR
+                return sub_op == 0x12U ? (lhs | rhs) : ~(lhs | rhs); // POR / PNOR
+            };
+            set_reg(rd, bitwise(lhs_low, rhs_low));
+            set_reg_high(rd, bitwise(lhs_high, rhs_high));
+            return true;
+        }
+
         // The EE also has fixed-count packed shifts over all eight halfwords
         // or four words in a 128-bit GPR. These encodings use rs=0 and the
         // five-bit shift amount field (SA).
