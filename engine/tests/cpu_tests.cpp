@@ -1289,5 +1289,61 @@ int main() {
     check(!cpu.step((0x1CU << 26U) | (31U << 6U) | 0x08U),
           "unsupported MMI function encoding raises Reserved Instruction");
 
+    // Fixed-count EE MMI shifts operate independently on every lane in
+    // both 64-bit halves of the 128-bit source GPR.
+    const auto packed_shift = [](std::uint32_t rt, std::uint32_t rd,
+                                 std::uint32_t sa, std::uint32_t funct) {
+        return (0x1CU << 26U) | (rt << 16U) | (rd << 11U) |
+               (sa << 6U) | funct;
+    };
+    cpu.reset();
+    cpu.set_reg(2, 0x8001400000020001ULL);
+    cpu.set_reg_high(2, 0xFFFF7FFF00010002ULL);
+    check(cpu.step(packed_shift(2, 3, 1, 0x34U)) &&
+              cpu.reg(3) == 0x0002800000040002ULL &&
+              cpu.reg_high(3) == 0xFFFE24680000FFFEULL,
+          "PSLLH shifts all eight halfword lanes independently");
+    cpu.reset();
+    cpu.set_reg(2, 0x8001400000020001ULL);
+    cpu.set_reg_high(2, 0xFFFF7FFF00010002ULL);
+    check(cpu.step(packed_shift(2, 3, 1, 0x36U)) &&
+              cpu.reg(3) == 0x4000200000010000ULL &&
+              cpu.reg_high(3) == 0x7FFF3FFF00000001ULL,
+          "PSRLH zero-fills all eight halfword lanes");
+    cpu.reset();
+    cpu.set_reg(2, 0x80007FFFFFFF0001ULL);
+    cpu.set_reg_high(2, 0x7FFF80000001FFFFULL);
+    check(cpu.step(packed_shift(2, 3, 1, 0x37U)) &&
+              cpu.reg(3) == 0x0000FFFF3FFFC000ULL &&
+              cpu.reg_high(3) == 0xFFFF0000C0003FFFULL,
+          "PSRAH sign-fills each of the eight halfword lanes");
+    cpu.reset();
+    cpu.set_reg(2, 0x8000000112345678ULL);
+    cpu.set_reg_high(2, 0x7FFFFFFFFFFFFFFFULL);
+    check(cpu.step(packed_shift(2, 3, 3, 0x3CU)) &&
+              cpu.reg(3) == 0x0000000891A2B3C0ULL &&
+              cpu.reg_high(3) == 0xFFFFFFF8FFFFFFF8ULL,
+          "PSLLW shifts all four word lanes independently");
+    cpu.reset();
+    cpu.set_reg(2, 0x8000000112345678ULL);
+    cpu.set_reg_high(2, 0xFEDCBA980000000FULL);
+    check(cpu.step(packed_shift(2, 3, 4, 0x3EU)) &&
+              cpu.reg(3) == 0x0800000001234567ULL &&
+              cpu.reg_high(3) == 0x0FEDCBA900000000ULL,
+          "PSRLW zero-fills all four word lanes");
+    cpu.reset();
+    cpu.set_reg(2, 0x800000007FFFFFFFULL);
+    cpu.set_reg_high(2, 0xFFFFFFFF00000001ULL);
+    check(cpu.step(packed_shift(2, 3, 1, 0x3FU)) &&
+              cpu.reg(3) == 0xC00000003FFFFFFFULL &&
+              cpu.reg_high(3) == 0xFFFFFFFF00000000ULL,
+          "PSRAW sign-fills all four word lanes");
+    cpu.reset();
+    check(!cpu.step((0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+                    (3U << 11U) | (1U << 6U) | 0x34U) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) ==
+                  retroshelf::Cpu::ExcReservedInstruction,
+          "packed immediate shift rejects a nonzero reserved rs field");
+
     return failures == 0 ? 0 : 1;
 }
