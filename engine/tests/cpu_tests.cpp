@@ -1301,7 +1301,7 @@ int main() {
     cpu.set_reg_high(2, 0xFFFF7FFF00010002ULL);
     check(cpu.step(packed_shift(2, 3, 1, 0x34U)) &&
               cpu.reg(3) == 0x0002800000040002ULL &&
-              cpu.reg_high(3) == 0xFFFE24680000FFFEULL,
+              cpu.reg_high(3) == 0xFFFEFFFE00020004ULL,
           "PSLLH shifts all eight halfword lanes independently");
     cpu.reset();
     cpu.set_reg(2, 0x8001400000020001ULL);
@@ -1314,8 +1314,8 @@ int main() {
     cpu.set_reg(2, 0x80007FFFFFFF0001ULL);
     cpu.set_reg_high(2, 0x7FFF80000001FFFFULL);
     check(cpu.step(packed_shift(2, 3, 1, 0x37U)) &&
-              cpu.reg(3) == 0x0000FFFF3FFFC000ULL &&
-              cpu.reg_high(3) == 0xFFFF0000C0003FFFULL,
+              cpu.reg(3) == 0xC0003FFFFFFF0000ULL &&
+              cpu.reg_high(3) == 0x3FFFC0000000FFFFULL,
           "PSRAH sign-fills each of the eight halfword lanes");
     cpu.reset();
     cpu.set_reg(2, 0x8000000112345678ULL);
