@@ -58,6 +58,10 @@ public:
 
 private:
     std::array<std::uint64_t, RegisterCount> gpr_{};
+    // VU0 macro-mode register file: 32 x 128-bit VF registers and 32 COP2
+    // control-register slots (VI0-VI15 occupy the low 16 bits of slots 0-15).
+    std::array<std::array<std::uint32_t, 4>, 32> vu0_vf_{};
+    std::array<std::uint32_t, 32> vu0_control_{};
     std::array<std::uint64_t, RegisterCount> gpr_high_{};
     std::array<std::uint8_t, TestMemorySize> memory_{};
     void raise_exception(std::uint32_t code, std::uint64_t fault_pc, bool in_delay_slot);
