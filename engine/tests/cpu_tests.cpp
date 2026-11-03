@@ -1514,5 +1514,31 @@ int main() {
     check(((cpu.cop0_cause() >> 2U) & 0x1FU) == retroshelf::Cpu::ExcAddressErrorStore,
           "misaligned SQC2 records AdES");
 
+    // The same instructions must reach the EE scratchpad, not only main RAM.
+    cpu.reset();
+    check(ee_memory.write128(0x70000010U, 0x1020304050607080ULL,
+                              0x90A0B0C0D0E0F000ULL, &error),
+          "seed VU0 quadword in EE scratchpad");
+    cpu.set_reg(1, 0x70000010U);
+    check(run_ee_instruction(itype(0x36, 1, 9, 0)),
+          "LQC2 loads a quadword from EE scratchpad");
+    const std::uint32_t qmfc2_vf9 = (0x12U << 26U) | (0x01U << 21U) |
+                                    (10U << 16U) | (9U << 11U);
+    check(cpu.step(qmfc2_vf9) &&
+              cpu.reg(10) == 0x1020304050607080ULL &&
+              cpu.reg_high(10) == 0x90A0B0C0D0E0F000ULL,
+          "scratchpad LQC2 preserves all four vector lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0x70000010U);
+    cpu.set_reg(4, 0xFFEEDDCCBBAA9988ULL);
+    cpu.set_reg_high(4, 0x7766554433221100ULL);
+    check(cpu.step(qmtc2_vf4), "seed VU0 VF4 for scratchpad SQC2");
+    check(run_ee_instruction(itype(0x3E, 1, 4, 0)),
+          "SQC2 stores a quadword to EE scratchpad");
+    check(ee_memory.read128(0x70000010U, vu_store_low, vu_store_high, &error) &&
+              vu_store_low == 0xFFEEDDCCBBAA9988ULL &&
+              vu_store_high == 0x7766554433221100ULL,
+          "scratchpad SQC2 writes all four vector lanes");
+
     return failures == 0 ? 0 : 1;
 }
