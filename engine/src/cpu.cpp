@@ -421,6 +421,32 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
 
+        // Variable word shifts use the low word of each 64-bit half as
+        // the value and shift count, then sign-extend each 32-bit result.
+        if ((funct == 0x09U && (sub_op == 0x02U || sub_op == 0x03U)) ||
+            (funct == 0x29U && sub_op == 0x03U)) {
+            const bool left = funct == 0x09U && sub_op == 0x02U;
+            const bool arithmetic = funct == 0x29U;
+            const auto shift_word = [left, arithmetic](std::uint32_t value,
+                                                       unsigned amount) {
+                if (left) return static_cast<std::uint32_t>(value << amount);
+                if (arithmetic) {
+                    const auto signed_value = static_cast<std::int32_t>(value);
+                    return static_cast<std::uint32_t>(signed_value >> amount);
+                }
+                return static_cast<std::uint32_t>(value >> amount);
+            };
+            const auto result_low = shift_word(static_cast<std::uint32_t>(rhs_low),
+                                               static_cast<unsigned>(lhs_low & 0x1FU));
+            const auto result_high = shift_word(static_cast<std::uint32_t>(rhs_high),
+                                                static_cast<unsigned>(lhs_high & 0x1FU));
+            set_reg(rd, static_cast<std::uint64_t>(
+                            static_cast<std::int64_t>(static_cast<std::int32_t>(result_low))));
+            set_reg_high(rd, static_cast<std::uint64_t>(
+                                 static_cast<std::int64_t>(static_cast<std::int32_t>(result_high))));
+            return true;
+        }
+
         // The EE also has fixed-count packed shifts over all eight halfwords
         // or four words in a 128-bit GPR. These encodings use rs=0 and the
         // five-bit shift amount field (SA).
