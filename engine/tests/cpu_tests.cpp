@@ -1441,8 +1441,8 @@ int main() {
     cpu.reset();
     const std::uint32_t qmfc2_vf0 = (0x12U << 26U) | (0x01U << 21U) |
                                     (6U << 16U);
-    check(cpu.step(qmfc2_vf0) && cpu.reg(6) == 0x3F80000000000000ULL &&
-              cpu.reg_high(6) == 0,
+    check(cpu.step(qmfc2_vf0) && cpu.reg(6) == 0 &&
+              cpu.reg_high(6) == 0x3F80000000000000ULL,
           "VU0 VF00 reads as the architectural constant (0,0,0,1.0)");
     cpu.reset();
     cpu.set_reg(8, 0x1234ABCD5678EF01ULL);
