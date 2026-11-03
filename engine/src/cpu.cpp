@@ -20,7 +20,7 @@ std::uint64_t arithmetic_shift_right(std::uint64_t value, unsigned amount) {
 
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
-    gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
+    gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); vu0_vf_ = {}; vu0_control_.fill(0); vu0_vf_[0][3] = 0x3F800000U; active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
     delay_slot_pending_ = false; delay_branch_pc_ = 0; cop0_regs_.fill(0); status_ = 0; cause_ = 0; epc_ = 0; bad_vaddr_ = 0; hi_ = 0; lo_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
@@ -483,6 +483,45 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
         return unsupported();
+    }
+    case 0x12: { // VU0 COP2 macro-mode register transfers (no VU micro execution yet).
+        // Bits 10:1 are reserved in the transfer encodings; bit 0 selects
+        // the documented interlock form. This interpreter has no VU pipeline,
+        // so both interlock encodings currently observe the same completed state.
+        if ((instruction & 0x7FEU) != 0U) return unsupported();
+        const auto index = rd;
+        switch (rs) {
+        case 0x01: { // QMFC2 rt, vf[rd]: copy all 128 bits to the EE GPR.
+            set_reg(rt, static_cast<std::uint64_t>(vu0_vf_[index][0]) |
+                        (static_cast<std::uint64_t>(vu0_vf_[index][1]) << 32U));
+            set_reg_high(rt, static_cast<std::uint64_t>(vu0_vf_[index][2]) |
+                             (static_cast<std::uint64_t>(vu0_vf_[index][3]) << 32U));
+            return true;
+        }
+        case 0x05: { // QMTC2 rt, vf[rd]: copy all 128 bits from the EE GPR.
+            if (index != 0U) {
+                const auto low = reg(rt), high = reg_high(rt);
+                vu0_vf_[index][0] = static_cast<std::uint32_t>(low);
+                vu0_vf_[index][1] = static_cast<std::uint32_t>(low >> 32U);
+                vu0_vf_[index][2] = static_cast<std::uint32_t>(high);
+                vu0_vf_[index][3] = static_cast<std::uint32_t>(high >> 32U);
+            }
+            return true;
+        }
+        case 0x02: { // CFC2 rt, id: VI registers are zero-extended 16-bit values.
+            const std::uint32_t value = index < 16U
+                ? (vu0_control_[index] & 0xFFFFU) : vu0_control_[index];
+            set_reg(rt, static_cast<std::uint64_t>(
+                static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
+            return true;
+        }
+        case 0x06: { // CTC2 rt, id: VI registers retain only their low 16 bits.
+            const std::uint32_t value = static_cast<std::uint32_t>(reg(rt));
+            vu0_control_[index] = index < 16U ? (value & 0xFFFFU) : value;
+            return true;
+        }
+        default: return unsupported();
+        }
     }
     case 0x10: { // Minimal COP0 support: MFC0, MTC0 and ERET.
         const auto read_cop0 = [this](std::uint32_t index, std::uint64_t& value) {
