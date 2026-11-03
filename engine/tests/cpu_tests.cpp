@@ -1387,5 +1387,41 @@ int main() {
               cpu.reg_high(3) == 0x0000A9870000210FULL,
           "PNOR complements the OR result across the full 128-bit GPR");
 
+    // Variable word shifts use the low word of each 64-bit half for
+    // both the source value and its independent shift count.
+    const auto packed_variable_shift = [](std::uint32_t rs, std::uint32_t rt,
+                                          std::uint32_t rd, std::uint32_t sub_op,
+                                          std::uint32_t funct) {
+        return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
+               (rd << 11U) | (sub_op << 6U) | funct;
+    };
+    cpu.reset();
+    cpu.set_reg(1, 1U);
+    cpu.set_reg_high(1, 2U);
+    cpu.set_reg(2, 0x80000001U);
+    cpu.set_reg_high(2, 0x7FFFFFFFU);
+    check(cpu.step(packed_variable_shift(1, 2, 3, 0x02U, 0x09U)) &&
+              cpu.reg(3) == 0x0000000000000002ULL &&
+              cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFCULL,
+          "PSLLVW shifts the two low words and sign-extends both results");
+    cpu.reset();
+    cpu.set_reg(1, 1U);
+    cpu.set_reg_high(1, 2U);
+    cpu.set_reg(2, 0x80000001U);
+    cpu.set_reg_high(2, 0xFFFFFFFFU);
+    check(cpu.step(packed_variable_shift(1, 2, 3, 0x03U, 0x09U)) &&
+              cpu.reg(3) == 0x0000000040000000ULL &&
+              cpu.reg_high(3) == 0x000000003FFFFFFFULL,
+          "PSRLVW logically shifts two words and sign-extends their results");
+    cpu.reset();
+    cpu.set_reg(1, 1U);
+    cpu.set_reg_high(1, 2U);
+    cpu.set_reg(2, 0x80000001U);
+    cpu.set_reg_high(2, 0x7FFFFFFFU);
+    check(cpu.step(packed_variable_shift(1, 2, 3, 0x03U, 0x29U)) &&
+              cpu.reg(3) == 0xFFFFFFFFC0000000ULL &&
+              cpu.reg_high(3) == 0x000000001FFFFFFFULL,
+          "PSRAVW arithmetically shifts two words with independent counts");
+
     return failures == 0 ? 0 : 1;
 }
