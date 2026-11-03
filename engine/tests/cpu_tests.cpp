@@ -1540,5 +1540,38 @@ int main() {
               vu_store_high == 0x7766554433221100ULL,
           "scratchpad SQC2 writes all four vector lanes");
 
+    // LQC2/SQC2 address faults in a branch delay slot must preserve the
+    // branch address in EPC and set Cause.BD, just like scalar EE memory faults.
+    constexpr std::uint32_t branch_to_delay = (0x04U << 26U) | 1U;
+    constexpr std::uint32_t lqc2_misaligned_delay = (0x36U << 26U) | (1U << 21U) | (9U << 16U) | 4U;
+    constexpr std::uint32_t sqc2_misaligned_delay = (0x3EU << 26U) | (1U << 21U) | (9U << 16U) | 4U;
+    check(ee_memory.write(0x300, 4, branch_to_delay, &error) &&
+              ee_memory.write(0x304, 4, lqc2_misaligned_delay, &error),
+          "write branch and misaligned LQC2 delay-slot instructions");
+    cpu.reset(); cpu.set_reg(1, 0x240);
+    cpu.set_pc(0x300);
+    check(cpu.step_from_ee_memory(ee_memory, &error) && cpu.in_delay_slot(),
+          "BEQ schedules LQC2 as its delay-slot instruction");
+    error.clear();
+    check(!cpu.step_from_ee_memory(ee_memory, &error) &&
+              cpu.cop0_epc() == 0x300 &&
+              (cpu.cop0_cause() & Cpu::CauseBd) != 0U &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorLoad,
+          "misaligned LQC2 delay-slot fault records branch EPC and Cause.BD");
+
+    check(ee_memory.write(0x300, 4, branch_to_delay, &error) &&
+              ee_memory.write(0x304, 4, sqc2_misaligned_delay, &error),
+          "write branch and misaligned SQC2 delay-slot instructions");
+    cpu.reset(); cpu.set_reg(1, 0x240);
+    cpu.set_pc(0x300);
+    check(cpu.step_from_ee_memory(ee_memory, &error) && cpu.in_delay_slot(),
+          "BEQ schedules SQC2 as its delay-slot instruction");
+    error.clear();
+    check(!cpu.step_from_ee_memory(ee_memory, &error) &&
+              cpu.cop0_epc() == 0x300 &&
+              (cpu.cop0_cause() & Cpu::CauseBd) != 0U &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorStore,
+          "misaligned SQC2 delay-slot fault records branch EPC and Cause.BD");
+
     return failures == 0 ? 0 : 1;
 }
