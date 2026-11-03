@@ -46,7 +46,7 @@ int main() {
     assert(zero.trace.empty());
 
     // The trace captures the exact unsupported instruction before the CPU traps.
-    constexpr std::uint32_t unsupported = 0x3EU << 26U;
+    constexpr std::uint32_t unsupported = 0x3DU << 26U;
     assert(memory.write(start + 12U, 4, unsupported, &error));
     const auto stopped = runner.run(1);
     assert(stopped.instructions_executed == 0);

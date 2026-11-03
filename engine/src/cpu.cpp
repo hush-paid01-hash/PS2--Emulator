@@ -772,6 +772,44 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return fault("Unmapped EE RAM doubleword-merge store");
         return true;
     }
+    case 0x36: case 0x3E: { // LQC2/SQC2: 128-bit aligned VU0 vector transfers.
+        const bool store = opcode == 0x3E;
+        const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
+        const auto fault = [&](const char* message) {
+            if (error) *error = message;
+            bad_vaddr_ = address;
+            raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
+            return false;
+        };
+        if (active_ee_memory_ == nullptr)
+            return fault("LQC2/SQC2 require the mapped EE memory interface");
+        if (address > 0xFFFFFFFFULL)
+            return fault("VU0 quadword effective address exceeds 32-bit EE address space");
+        if ((address & 0xFU) != 0U)
+            return fault("Misaligned VU0 LQC2/SQC2 access");
+        if (store) {
+            const auto& vf = vu0_vf_[rt];
+            const std::uint64_t low = static_cast<std::uint64_t>(vf[0]) |
+                                      (static_cast<std::uint64_t>(vf[1]) << 32U);
+            const std::uint64_t high = static_cast<std::uint64_t>(vf[2]) |
+                                       (static_cast<std::uint64_t>(vf[3]) << 32U);
+            if (!active_ee_memory_->write128(static_cast<std::uint32_t>(address),
+                                              low, high, nullptr))
+                return fault("Unmapped EE LQC2/SQC2 store");
+        } else {
+            std::uint64_t low = 0, high = 0;
+            if (!active_ee_memory_->read128(static_cast<std::uint32_t>(address),
+                                             low, high, nullptr))
+                return fault("Unmapped EE LQC2/SQC2 load");
+            if (rt != 0U) {
+                vu0_vf_[rt][0] = static_cast<std::uint32_t>(low);
+                vu0_vf_[rt][1] = static_cast<std::uint32_t>(low >> 32U);
+                vu0_vf_[rt][2] = static_cast<std::uint32_t>(high);
+                vu0_vf_[rt][3] = static_cast<std::uint32_t>(high >> 32U);
+            }
+        }
+        return true;
+    }
     case 0x1E: case 0x1F: { // LQ/SQ: 128-bit aligned EE GPR transfers
         const bool store = opcode == 0x1F;
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
