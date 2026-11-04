@@ -516,9 +516,6 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         // COP2 transfer forms use the rs field; bit 0 selects the
         // documented interlock form. This interpreter has no VU pipeline,
         // so both interlock encodings currently observe the same completed state.
-        // Bits 10:1 are reserved in the transfer encodings; bit 0 selects
-        // the documented interlock form. This interpreter has no VU pipeline,
-        // so both interlock encodings currently observe the same completed state.
         if ((instruction & 0x7FEU) != 0U) return unsupported();
         const auto index = rd;
         switch (rs) {
