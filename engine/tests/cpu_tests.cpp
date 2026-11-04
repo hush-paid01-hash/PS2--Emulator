@@ -1450,6 +1450,11 @@ int main() {
               cpu.reg(6) == 0x4000000041300000ULL &&
               cpu.reg_high(6) == 0x4080000042040000ULL,
           "VADD updates selected lanes and preserves masked-off lanes");
+    if (cpu.reg(6) != 0x4000000041300000ULL ||
+        cpu.reg_high(6) != 0x4080000042040000ULL) {
+        std::cerr << "VADD actual low=0x" << std::hex << cpu.reg(6)
+                  << " high=0x" << cpu.reg_high(6) << std::dec << "\\n";
+    }
     check(cpu.step(encode_vadd(0, 1, 2, 0x0FU)),
           "VADD targeting VF00 is accepted as a constant-register no-op");
     const std::uint32_t read_vf00_after_vadd =
