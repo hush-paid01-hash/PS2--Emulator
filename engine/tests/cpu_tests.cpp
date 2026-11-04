@@ -1573,5 +1573,27 @@ int main() {
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcAddressErrorStore,
           "misaligned SQC2 delay-slot fault records branch EPC and Cause.BD");
 
+    // VF00 is read-only and must remain the architectural (0,0,0,1.0)
+    // constant even when memory-transfer instructions target or source it.
+    cpu.reset();
+    check(ee_memory.write128(0x260, 0xFFFFFFFFFFFFFFFFULL,
+                              0xFFFFFFFFFFFFFFFFULL, &error),
+          "seed memory before VF00 LQC2 constant-register check");
+    cpu.set_reg(1, 0x260);
+    check(run_ee_instruction(itype(0x36, 1, 0, 0)),
+          "LQC2 targeting VF00 completes without fault");
+    cpu.set_reg(6, 0x260);
+    check(run_ee_instruction((0x12U << 26U) | (0x01U << 21U) |
+                             (7U << 16U) | (0U << 11U)),
+          "QMFC2 can read VF00 after attempted LQC2 write");
+    check(cpu.reg(7) == 0 && cpu.reg_high(7) == 0x3F80000000000000ULL,
+          "LQC2 cannot modify the VF00 architectural constant");
+    check(run_ee_instruction(itype(0x3E, 1, 0, 0)),
+          "SQC2 can store the VF00 architectural constant");
+    std::uint64_t vf00_low = 0, vf00_high = 0;
+    check(ee_memory.read128(0x260, vf00_low, vf00_high, &error) &&
+              vf00_low == 0 && vf00_high == 0x3F80000000000000ULL,
+          "SQC2 stores VF00 as (0,0,0,1.0)");
+
     return failures == 0 ? 0 : 1;
 }
