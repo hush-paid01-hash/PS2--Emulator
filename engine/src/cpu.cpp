@@ -1,6 +1,7 @@
 #include "retroshelf/cpu.hpp"
 #include "retroshelf/ps2_ee_memory_map.hpp"
 
+#include <cstring>
 #include <sstream>
 #include <vector>
 
@@ -484,9 +485,36 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
         return unsupported();
     }
-    case 0x12: { // VU0 COP2 macro-mode register transfers (no VU micro execution yet).
-        // Bits 10:1 are reserved in the transfer encodings; bit 0 selects
-        // the documented interlock form. This interpreter has no VU pipeline,
+    case 0x12: {
+        // MacroOP field-type 1 upper instruction: VADD.dest fd, fs, ft.
+        // The four-bit destination mask is x/y/z/w = 8/4/2/1.
+        // This first arithmetic path deliberately covers ordinary finite
+        // single-precision values only; VU MAC/status flags, special-value
+        // handling, and the VU-specific rounding model remain unimplemented.
+        if ((instruction & (1U << 25U)) != 0U) {
+            const auto vector_opcode = instruction & 0x3FU;
+            if (vector_opcode != 0x28U) return unsupported(); // VADD
+            const unsigned dest_mask = (instruction >> 21U) & 0x0FU;
+            const unsigned ft = (instruction >> 16U) & 0x1FU;
+            const unsigned fs = (instruction >> 11U) & 0x1FU;
+            const unsigned fd = (instruction >> 6U) & 0x1FU;
+            if (fd == 0U || dest_mask == 0U) return true; // VF00 is constant.
+            static_assert(sizeof(float) == sizeof(std::uint32_t),
+                          "VU0 requires 32-bit float storage");
+            for (unsigned lane = 0; lane < 4U; ++lane) {
+                const unsigned lane_mask = 1U << (3U - lane);
+                if ((dest_mask & lane_mask) == 0U) continue;
+                float lhs = 0.0F, rhs = 0.0F;
+                std::memcpy(&lhs, &vu0_vf_[fs][lane], sizeof(lhs));
+                std::memcpy(&rhs, &vu0_vf_[ft][lane], sizeof(rhs));
+                const float sum = lhs + rhs;
+                std::memcpy(&vu0_vf_[fd][lane], &sum, sizeof(sum));
+            }
+            return true;
+        }
+
+        // COP2 transfer forms use the rs field; bit 0 selects the
+        // documented interlock form. This interpreter has no VU pipeline,
         // so both interlock encodings currently observe the same completed state.
         if ((instruction & 0x7FEU) != 0U) return unsupported();
         const auto index = rd;

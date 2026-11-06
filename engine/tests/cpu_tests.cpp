@@ -1424,6 +1424,45 @@ int main() {
           "PSRAVW arithmetically shifts two words with independent counts");
 
 
+    // VU0 macro-mode VADD performs masked four-lane vector addition.
+    const auto encode_vadd = [](std::uint32_t fd, std::uint32_t fs,
+                                std::uint32_t ft, std::uint32_t dest) {
+        return (0x12U << 26U) | (1U << 25U) | (dest << 21U) |
+               (ft << 16U) | (fs << 11U) | (fd << 6U) | 0x28U;
+    };
+    cpu.reset();
+    // VF1 = (1,2,3,4); VF2 = (10,20,30,40), in x/y/z/w lane order.
+    cpu.set_reg(4, 0x400000003F800000ULL);
+    cpu.set_reg_high(4, 0x4080000040400000ULL);
+    const std::uint32_t seed_vf1 =
+        (0x12U << 26U) | (0x05U << 21U) | (4U << 16U) | (1U << 11U);
+    cpu.set_reg(5, 0x41A0000041200000ULL);
+    cpu.set_reg_high(5, 0x4220000041F00000ULL);
+    const std::uint32_t seed_vf2 =
+        (0x12U << 26U) | (0x05U << 21U) | (5U << 16U) | (2U << 11U);
+    check(cpu.step(seed_vf1) && cpu.step(seed_vf2),
+          "QMTC2 seeds VU0 source vectors for VADD");
+    const std::uint32_t seed_vf3 =
+        (0x12U << 26U) | (0x05U << 21U) | (4U << 16U) | (3U << 11U);
+    check(cpu.step(seed_vf3),
+          "QMTC2 initializes the VADD destination lanes before masked write");
+    check(cpu.step(encode_vadd(3, 1, 2, 0x0AU)),
+          "VADD executes with an x/z destination mask");
+    const std::uint32_t read_vf3 =
+        (0x12U << 26U) | (0x01U << 21U) | (6U << 16U) | (3U << 11U);
+    check(cpu.step(read_vf3) &&
+              cpu.reg(6) == 0x4000000041300000ULL &&
+              cpu.reg_high(6) == 0x4080000042040000ULL,
+          "VADD updates selected lanes and preserves masked-off lanes");
+    check(cpu.step(encode_vadd(0, 1, 2, 0x0FU)),
+          "VADD targeting VF00 is accepted as a constant-register no-op");
+    const std::uint32_t read_vf00_after_vadd =
+        (0x12U << 26U) | (0x01U << 21U) | (7U << 16U);
+    check(cpu.step(read_vf00_after_vadd) &&
+              cpu.reg(7) == 0 &&
+              cpu.reg_high(7) == 0x3F80000000000000ULL,
+          "VADD cannot modify the architectural VF00 constant");
+
     // VU0 COP2 macro-mode transfers preserve all 128 VF bits. VF00 is the
     // architectural constant vector (0, 0, 0, 1.0), and VI registers are 16-bit.
     cpu.reset();
