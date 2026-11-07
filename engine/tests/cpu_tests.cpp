@@ -1463,6 +1463,42 @@ int main() {
               cpu.reg_high(7) == 0x3F80000000000000ULL,
           "VADD cannot modify the architectural VF00 constant");
 
+    // VU0 macro-mode VSUB performs masked four-lane vector subtraction.
+    const auto encode_vsub = [](std::uint32_t fd, std::uint32_t fs,
+                                std::uint32_t ft, std::uint32_t dest) {
+        return (0x12U << 26U) | (1U << 25U) | (dest << 21U) |
+               (ft << 16U) | (fs << 11U) | (fd << 6U) | 0x2AU;
+    };
+    cpu.reset();
+    cpu.set_reg(4, 0x400000003F800000ULL);
+    cpu.set_reg_high(4, 0x4080000040400000ULL);
+    const std::uint32_t sub_seed_vf1 =
+        (0x12U << 26U) | (0x05U << 21U) | (4U << 16U) | (1U << 11U);
+    cpu.set_reg(5, 0x41A0000041200000ULL);
+    cpu.set_reg_high(5, 0x4220000041F00000ULL);
+    const std::uint32_t sub_seed_vf2 =
+        (0x12U << 26U) | (0x05U << 21U) | (5U << 16U) | (2U << 11U);
+    check(cpu.step(sub_seed_vf1) && cpu.step(sub_seed_vf2),
+          "QMTC2 seeds VU0 source vectors for VSUB");
+    check(cpu.step(sub_seed_vf1 | (3U << 11U)),
+          "QMTC2 initializes the VSUB destination vector");
+    check(cpu.step(encode_vsub(3, 1, 2, 0x0AU)),
+          "VSUB executes with an x/z destination mask");
+    const std::uint32_t read_vf3_after_sub =
+        (0x12U << 26U) | (0x01U << 21U) | (6U << 16U) | (3U << 11U);
+    check(cpu.step(read_vf3_after_sub) &&
+              cpu.reg(6) == 0x40000000C1100000ULL &&
+              cpu.reg_high(6) == 0x40800000C1D80000ULL,
+          "VSUB updates selected lanes and preserves masked-off lanes");
+    check(cpu.step(encode_vsub(0, 1, 2, 0x0FU)),
+          "VSUB targeting VF00 is accepted as a constant-register no-op");
+    const std::uint32_t read_vf00_after_vsub =
+        (0x12U << 26U) | (0x01U << 21U) | (7U << 16U);
+    check(cpu.step(read_vf00_after_vsub) &&
+              cpu.reg(7) == 0 &&
+              cpu.reg_high(7) == 0x3F80000000000000ULL,
+          "VSUB cannot modify the architectural VF00 constant");
+
     // VU0 COP2 macro-mode transfers preserve all 128 VF bits. VF00 is the
     // architectural constant vector (0, 0, 0, 1.0), and VI registers are 16-bit.
     cpu.reset();
