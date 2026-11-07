@@ -493,7 +493,8 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         // handling, and the VU-specific rounding model remain unimplemented.
         if ((instruction & (1U << 25U)) != 0U) {
             const auto vector_opcode = instruction & 0x3FU;
-            if (vector_opcode != 0x28U) return unsupported(); // VADD
+            if (vector_opcode != 0x28U && vector_opcode != 0x2AU)
+                return unsupported(); // VADD / VSUB
             const unsigned dest_mask = (instruction >> 21U) & 0x0FU;
             const unsigned ft = (instruction >> 16U) & 0x1FU;
             const unsigned fs = (instruction >> 11U) & 0x1FU;
@@ -507,8 +508,10 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
                 float lhs = 0.0F, rhs = 0.0F;
                 std::memcpy(&lhs, &vu0_vf_[fs][lane], sizeof(lhs));
                 std::memcpy(&rhs, &vu0_vf_[ft][lane], sizeof(rhs));
-                const float sum = lhs + rhs;
-                std::memcpy(&vu0_vf_[fd][lane], &sum, sizeof(sum));
+                const float result = vector_opcode == 0x28U
+                    ? lhs + rhs
+                    : lhs - rhs;
+                std::memcpy(&vu0_vf_[fd][lane], &result, sizeof(result));
             }
             return true;
         }
