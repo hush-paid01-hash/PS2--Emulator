@@ -350,6 +350,23 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         const std::uint64_t lhs_high = reg_high(rs);
         const std::uint64_t rhs_low = reg(rt);
         const std::uint64_t rhs_high = reg_high(rt);
+        if (funct == 0x28U && sub_op == 0x10U) { // PADDUW: four unsigned saturated word additions.
+            const std::uint64_t lhs[2] = {lhs_low, lhs_high};
+            const std::uint64_t rhs[2] = {rhs_low, rhs_high};
+            std::uint64_t out[2] = {0, 0};
+            for (unsigned lane = 0; lane < 4U; ++lane) {
+                const unsigned half = lane / 2U;
+                const unsigned shift = (lane % 2U) * 32U;
+                const std::uint64_t a = (lhs[half] >> shift) & 0xFFFFFFFFULL;
+                const std::uint64_t b = (rhs[half] >> shift) & 0xFFFFFFFFULL;
+                const std::uint64_t sum = a + b;
+                const std::uint64_t saturated = sum > 0xFFFFFFFFULL ? 0xFFFFFFFFULL : sum;
+                out[half] |= saturated << shift;
+            }
+            set_reg(rd, out[0]);
+            set_reg_high(rd, out[1]);
+            return true;
+        }
         if (funct == 0x08U) { // MMI0 packed arithmetic and signed comparisons.
             if (sub_op != 0U && sub_op != 1U && sub_op != 2U && sub_op != 3U &&
                 sub_op != 4U && sub_op != 5U && sub_op != 6U && sub_op != 7U &&

@@ -192,6 +192,20 @@ int main() {
     check(cpu.step(itype(0x0E, 1, 3, 0x00FF)) && cpu.reg(3) == 0x12345687,
           "XORI zero-extends mask and toggles bits");
 
+    // First MMI instruction observed at the real-disc entry point: PADDUW.
+    cpu.reset();
+    cpu.set_reg(1, 0x00000002FFFFFFFFULL);
+    cpu.set_reg_high(1, 0x0000000400000005ULL);
+    cpu.set_reg(2, 0x0000000100000002ULL);
+    cpu.set_reg_high(2, 0xFFFFFFFF00000003ULL);
+    constexpr std::uint32_t padduw_instruction =
+        (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+        (3U << 11U) | (0x10U << 6U) | 0x28U;
+    check(cpu.step(padduw_instruction), "MMI1 PADDUW executes");
+    check(cpu.reg(3) == 0x00000003FFFFFFFFULL &&
+              cpu.reg_high(3) == 0xFFFFFFFF00000008ULL,
+          "MMI1 PADDUW adds four lanes with unsigned saturation");
+
     // CACHE/PREF are hints in this functional interpreter: no cache hierarchy is modeled.
     cpu.reset(); cpu.set_reg(1, 0x1000);
     check(cpu.step(itype(0x2F, 1, 0x1A, 0x20)) && cpu.pc() == 4,
