@@ -23,16 +23,37 @@ EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget)
 
     for (std::size_t i = 0; i < instruction_budget; ++i) {
         const std::uint64_t instruction_pc = cpu_.pc();
+        const bool delay_slot = cpu_.in_delay_slot();
         std::uint64_t raw_instruction = 0;
         std::string fetch_error;
         const bool fetched = instruction_pc <= 0xFFFFFFFFULL &&
             memory_.read(static_cast<std::uint32_t>(instruction_pc), 4, raw_instruction, &fetch_error);
-        if (result.trace.size() < TraceCapacity) {
-            result.trace.push_back({instruction_pc, static_cast<std::uint32_t>(raw_instruction), fetched});
-        }
 
         std::string error;
-        if (!cpu_.step_from_ee_memory(memory_, &error)) {
+        const bool instruction_completed = cpu_.step_from_ee_memory(memory_, &error);
+        const bool exception_taken = !instruction_completed &&
+            instruction_pc != Cpu::GeneralExceptionVector &&
+            cpu_.pc() == Cpu::GeneralExceptionVector &&
+            (cpu_.cop0_status() & Cpu::StatusExl) != 0U;
+        const std::uint32_t cause = cpu_.cop0_cause();
+        if (result.trace.size() < TraceCapacity) {
+            TraceEntry entry;
+            entry.pc = instruction_pc;
+            entry.instruction = static_cast<std::uint32_t>(raw_instruction);
+            entry.fetched = fetched;
+            entry.delay_slot = delay_slot;
+            entry.instruction_completed = instruction_completed;
+            entry.exception_taken = exception_taken;
+            entry.exception_code = exception_taken ? ((cause >> 2U) & 0x1FU) : 0U;
+            entry.exception_in_delay_slot = exception_taken && ((cause & Cpu::CauseBd) != 0U);
+            entry.exception_epc = exception_taken ? cpu_.cop0_epc() : 0U;
+            entry.bad_vaddr = exception_taken ? cpu_.cop0_bad_vaddr() : 0U;
+            entry.next_pc = cpu_.next_pc();
+            entry.cop0_status = cpu_.cop0_status();
+            result.trace.push_back(entry);
+        }
+
+        if (!instruction_completed) {
             // A fetched instruction can raise an architected exception (for
             // example SYSCALL, BREAK, or an address fault). The CPU has already
             // moved PC to the exception vector; let the handler execute within
