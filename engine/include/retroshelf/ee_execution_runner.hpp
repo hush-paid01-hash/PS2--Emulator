@@ -27,6 +27,15 @@ public:
         std::uint64_t pc{0};
         std::uint32_t instruction{0};
         bool fetched{false};
+        bool delay_slot{false};
+        bool instruction_completed{false};
+        bool exception_taken{false};
+        std::uint32_t exception_code{0};
+        bool exception_in_delay_slot{false};
+        std::uint64_t exception_epc{0};
+        std::uint64_t bad_vaddr{0};
+        std::uint64_t next_pc{0};
+        std::uint32_t cop0_status{0};
     };
 
     static constexpr std::size_t TraceCapacity = 256;

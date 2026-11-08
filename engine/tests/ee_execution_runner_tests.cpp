@@ -79,6 +79,14 @@ int main() {
     assert(syscall_handler.trace.size() == 2U);
     assert(syscall_handler.trace[0].pc == start + 16U && syscall_handler.trace[0].fetched);
     assert(syscall_handler.trace[0].instruction == syscall_instruction);
+    assert(!syscall_handler.trace[0].delay_slot);
+    assert(!syscall_handler.trace[0].instruction_completed);
+    assert(syscall_handler.trace[0].exception_taken);
+    assert(syscall_handler.trace[0].exception_code == retroshelf::Cpu::ExcSyscall);
+    assert(!syscall_handler.trace[0].exception_in_delay_slot);
+    assert(syscall_handler.trace[0].exception_epc == start + 16U);
+    assert(syscall_handler.trace[0].next_pc == exception_vector + 4U);
+    assert((syscall_handler.trace[0].cop0_status & retroshelf::Cpu::StatusExl) != 0U);
     assert(syscall_handler.trace[1].pc == exception_vector && syscall_handler.trace[1].fetched);
     assert(syscall_handler.final_pc == exception_vector + 4U);
 
@@ -165,6 +173,24 @@ int main() {
     assert(delay_slot_branch.message.find("delay slot") != std::string::npos);
     assert(delay_slot_branch.trace.size() == 1 && delay_slot_branch.trace[0].fetched);
 
+
+    // An exception in a branch delay slot must be visible in the trace,
+    // including Cause.BD and EPC pointing back to the branch instruction.
+    cpu.reset();
+    cpu.set_pc(start);
+    constexpr std::uint32_t delay_slot_syscall = 0x0000000CU;
+    assert(memory.write(start, 4, beq_zero_zero_one, &error));
+    assert(memory.write(start + 4U, 4, delay_slot_syscall, &error));
+    const auto delay_slot_exception = runner.run(2U);
+    assert(delay_slot_exception.instructions_executed == 2U);
+    assert(delay_slot_exception.trace.size() == 2U);
+    assert(delay_slot_exception.trace[1].pc == start + 4U);
+    assert(delay_slot_exception.trace[1].delay_slot);
+    assert(delay_slot_exception.trace[1].exception_taken);
+    assert(delay_slot_exception.trace[1].exception_code == retroshelf::Cpu::ExcSyscall);
+    assert(delay_slot_exception.trace[1].exception_in_delay_slot);
+    assert(delay_slot_exception.trace[1].exception_epc == start);
+    assert((cpu.cop0_cause() & retroshelf::Cpu::CauseBd) != 0U);
 
     // Exercise the complete runner + memory-map path from the real EE BIOS
     // reset-vector alias, rather than testing BIOS reads only through Cpu.
