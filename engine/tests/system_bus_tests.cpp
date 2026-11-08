@@ -1,4 +1,5 @@
 #include "retroshelf/system_bus.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <string>
