@@ -449,8 +449,13 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
                                                        unsigned amount) {
                 if (left) return static_cast<std::uint32_t>(value << amount);
                 if (arithmetic) {
-                    const auto signed_value = static_cast<std::int32_t>(value);
-                    return static_cast<std::uint32_t>(signed_value >> amount);
+                    // Avoid implementation-defined right-shift behavior for
+                    // negative signed integers; use the interpreter's
+                    // explicitly sign-propagating 64-bit helper.
+                    const auto sign_extended = static_cast<std::uint64_t>(
+                        static_cast<std::int64_t>(static_cast<std::int32_t>(value)));
+                    return static_cast<std::uint32_t>(
+                        arithmetic_shift_right(sign_extended, amount));
                 }
                 return static_cast<std::uint32_t>(value >> amount);
             };
