@@ -1720,5 +1720,20 @@ int main() {
               vf00_low == 0 && vf00_high == 0x3F80000000000000ULL,
           "SQC2 stores VF00 as (0,0,0,1.0)");
 
+    // PSRAVW must sign-propagate each 32-bit lane without relying on
+    // implementation-defined right-shift behavior for negative signed values.
+    cpu.reset();
+    cpu.set_reg(1, 1U);
+    cpu.set_reg_high(1, 2U);
+    cpu.set_reg(2, 0x80000000U);
+    cpu.set_reg_high(2, 0xC0000000U);
+    constexpr std::uint32_t psravw =
+        (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
+        (3U << 11U) | (0x03U << 6U) | 0x29U;
+    check(cpu.step(psravw), "MMI PSRAVW executes");
+    check(cpu.reg(3) == 0xFFFFFFFFC0000000ULL &&
+              cpu.reg_high(3) == 0xFFFFFFFFF0000000ULL,
+          "MMI PSRAVW sign-extends each arithmetic-shifted word lane");
+
     return failures == 0 ? 0 : 1;
 }
