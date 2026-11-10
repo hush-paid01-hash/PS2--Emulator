@@ -57,6 +57,25 @@ int main() {
               pixel.r == 255 && pixel.g == 0 && pixel.b == 0 && pixel.a == 255,
           "runtime framebuffer contains the rendered triangle pixel");
 
+    // The same GIF stream must be fetchable through the EE KSEG0 RAM alias
+    // when DMA is connected to the architectural memory map.
+    {
+        retroshelf::Ps2EeMemoryMap memory(256);
+        memory.main_ram() = ram;
+        retroshelf::EeGifGsRuntime mapped_runtime(memory, 8, 8);
+        mapped_runtime.dma().registers.chcr = 1U << 8U;
+        mapped_runtime.dma().registers.madr = retroshelf::Ps2EeMemoryMap::Kseg0Base;
+        mapped_runtime.dma().registers.qwc = 10;
+        check(mapped_runtime.run_frame(), mapped_runtime.error().empty()
+                                             ? "GIF DMA reads through EE KSEG0 memory alias"
+                                             : mapped_runtime.error().c_str());
+        retroshelf::GsFramebuffer::Rgba8 mapped_pixel{};
+        check(mapped_runtime.framebuffer().get_pixel(2, 2, mapped_pixel) &&
+                  mapped_pixel.r == 255 && mapped_pixel.g == 0 &&
+                  mapped_pixel.b == 0 && mapped_pixel.a == 255,
+              "mapped EE RAM DMA renders the same GS triangle");
+    }
+
     // Exercise the complete EE RAM -> GIF DMA -> packet parser -> GS
     // transfer-register setup -> IMAGE payload -> swizzled local-memory path.
     std::vector<std::uint8_t> upload_ram(256, 0);
