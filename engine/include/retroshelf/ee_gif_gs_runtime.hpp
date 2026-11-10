@@ -10,6 +10,7 @@
 #include "retroshelf/gs_gif_pipeline.hpp"
 #include "retroshelf/gs_local_memory.hpp"
 #include "retroshelf/gs_packet_processor.hpp"
+#include "retroshelf/ps2_ee_memory_map.hpp"
 #include "retroshelf/system_bus.hpp"
 
 namespace retroshelf {
@@ -19,6 +20,8 @@ namespace retroshelf {
 class EeGifGsRuntime {
 public:
     explicit EeGifGsRuntime(std::vector<std::uint8_t>& ee_ram,
+                            std::size_t width = 640, std::size_t height = 448);
+    explicit EeGifGsRuntime(Ps2EeMemoryMap& ee_memory,
                             std::size_t width = 640, std::size_t height = 448);
 
     // Starts the configured DMA transfer, finalizes the GIF stream, and renders
