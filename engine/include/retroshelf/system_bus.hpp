@@ -7,9 +7,12 @@
 
 namespace retroshelf {
 
+class Ps2EeMemoryMap;
+
 class SystemBus {
 public:
     explicit SystemBus(std::vector<std::uint8_t>& ee_ram);
+    explicit SystemBus(Ps2EeMemoryMap& ee_memory);
 
     bool read(std::uint32_t address, std::size_t size, std::vector<std::uint8_t>& data,
               std::string* error = nullptr) const;
@@ -20,7 +23,8 @@ public:
 private:
     bool valid_range(std::uint32_t address, std::size_t size) const;
 
-    std::vector<std::uint8_t>& ee_ram_;
+    std::vector<std::uint8_t>* ee_ram_ = nullptr;
+    Ps2EeMemoryMap* ee_memory_ = nullptr;
 };
 
 } // namespace retroshelf
