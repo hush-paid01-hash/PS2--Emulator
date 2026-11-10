@@ -19,6 +19,20 @@ EeGifGsRuntime::EeGifGsRuntime(std::vector<std::uint8_t>& ee_ram,
     }
 }
 
+EeGifGsRuntime::EeGifGsRuntime(Ps2EeMemoryMap& ee_memory,
+                               std::size_t width, std::size_t height)
+    : bus_(ee_memory),
+      dma_(bus_,
+           [this](const std::vector<std::uint8_t>& payload) {
+               if (!parser_.submit(payload)) {
+                   throw std::runtime_error(parser_.error());
+               }
+           }) {
+    if (!framebuffer_.resize(width, height)) {
+        error_ = "Invalid GS framebuffer dimensions";
+    }
+}
+
 bool EeGifGsRuntime::run_frame() {
     error_.clear();
     if (framebuffer_.empty()) {
