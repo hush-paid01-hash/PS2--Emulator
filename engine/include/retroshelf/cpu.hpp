@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace retroshelf { class Ps2EeMemoryMap; }
+namespace retroshelf { class Ps2EeMemoryMap; class SystemBus; }
 
 namespace retroshelf {
 
@@ -25,6 +25,8 @@ public:
                        std::string* error = nullptr);
     bool step_from_ee_memory(Ps2EeMemoryMap& memory,
                              std::string* error = nullptr);
+    bool step_from_ee_bus(Ps2EeMemoryMap& memory, SystemBus& bus,
+                          std::string* error = nullptr);
 
     std::uint64_t reg(std::size_t index) const;
     void set_reg(std::size_t index, std::uint64_t value);
@@ -68,6 +70,7 @@ private:
     std::vector<std::uint8_t>* active_ram_{nullptr};
     std::uint32_t active_ram_base_{0};
     Ps2EeMemoryMap* active_ee_memory_{nullptr};
+    SystemBus* active_system_bus_{nullptr};
 
     std::uint64_t pc_{0};
     std::uint64_t next_pc_{4};
