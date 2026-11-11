@@ -50,5 +50,30 @@ int main() {
     assert(runner.run(1).instructions_executed == 1U);
     assert(cpu.reg(10) == 4U);
 
+    // A sign-extended KSEG1 address must resolve to the same physical INTC.
+    constexpr std::uint32_t kernel_program = program + 0x20U;
+    constexpr std::uint32_t kernel_instructions[] = {
+        0x3C08B001U, // LUI t0, 0xB001 -> sign-extended KSEG1 address
+        0x24090008U, // ADDIU t1, zero, 8
+        0xAD09F010U, // SW t1, -4080(t0) -> 0xB000F010
+        0x8D0AF010U  // LW t2, -4080(t0)
+    };
+    for (std::size_t i = 0; i < 4; ++i)
+        assert(memory.write(kernel_program + static_cast<std::uint32_t>(i * 4U),
+                            4, kernel_instructions[i], &error));
+    cpu.reset();
+    cpu.set_pc(kernel_program);
+    const auto kernel_result = runner.run(4);
+    assert(kernel_result.instructions_executed == 4U);
+    assert(intc->mask() == 12U);
+    assert(cpu.reg(10) == 12U);
+
+    // Direct KSEG0 and KSEG1 bus accesses share the same mapped device.
+    std::vector<std::uint8_t> mask_bytes;
+    assert(bus.read(0x9000F010U, 4, mask_bytes, &error));
+    assert(mask_bytes.size() == 4U);
+    assert(bus.read(0xB000F010U, 4, mask_bytes, &error));
+    assert(mask_bytes.size() == 4U);
+
     return 0;
 }
