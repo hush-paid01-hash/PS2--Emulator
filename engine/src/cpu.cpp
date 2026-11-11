@@ -596,13 +596,15 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             default: return false;
             }
         };
-        if (rs == 0x00) { // MFC0 rt, rd
+        if (rs == 0x00) { // MFC0 rt, rd (only select 0 is currently modelled)
+            if ((instruction & 0x7FFU) != 0U) return unsupported();
             std::uint64_t value = 0;
             if (!read_cop0(rd, value)) return unsupported();
             set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int32_t>(value))));
             return true;
         }
-        if (rs == 0x04) { // MTC0 rt, rd
+        if (rs == 0x04) { // MTC0 rt, rd (only select 0 is currently modelled)
+            if ((instruction & 0x7FFU) != 0U) return unsupported();
             switch (rd) {
             case 0: case 2: case 3: case 4: case 5: case 6: case 7:
             case 9: case 10: case 11: case 16: case 23: case 24:
