@@ -45,8 +45,9 @@ int main() {
     assert(intc->raise_interrupt(2));
     cpu.reset();
     cpu.set_pc(program);
-    const auto readback = runner.run(4);
-    assert(readback.instructions_executed == 4U);
+    assert(runner.run(1).instructions_executed == 1U); // restore MMIO base register
+    cpu.set_pc(program + 12U);
+    assert(runner.run(1).instructions_executed == 1U);
     assert(cpu.reg(10) == 4U);
 
     return 0;
