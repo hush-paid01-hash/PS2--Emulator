@@ -195,11 +195,11 @@ int main() {
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcReservedInstruction,
           "MFC0 rejects an unimplemented nonzero COP0 register select");
     cpu.reset();
-    cpu.set_reg(1, Cpu::StatusExl);
+    cpu.set_reg(1, 0x10000000U);
     constexpr std::uint32_t malformed_mtc0_select =
         (0x10U << 26U) | (0x04U << 21U) | (1U << 16U) | (12U << 11U) | 1U;
     check(!cpu.step(malformed_mtc0_select) &&
-              cpu.cop0_status() == 0U &&
+              cpu.cop0_status() == Cpu::StatusExl &&
               ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcReservedInstruction,
           "MTC0 rejects an unimplemented select without modifying Status");
 
