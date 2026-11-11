@@ -7,6 +7,15 @@
 
 namespace retroshelf {
 
+namespace {
+std::uint32_t mmio_physical_address(std::uint32_t address) {
+    // KSEG0/KSEG1 are direct-mapped aliases of the same physical EE bus.
+    if (address >= 0x80000000U && address < 0xC0000000U)
+        return address & 0x1FFFFFFFU;
+    return address;
+}
+} // namespace
+
 SystemBus::SystemBus(std::vector<std::uint8_t>& ee_ram) : ee_ram_(&ee_ram) {}
 SystemBus::SystemBus(Ps2EeMemoryMap& ee_memory) : ee_memory_(&ee_memory) {}
 
