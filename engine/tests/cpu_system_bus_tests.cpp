@@ -1,4 +1,5 @@
 #include "retroshelf/cpu.hpp"
+#include "retroshelf/ee_execution_runner.hpp"
 #include "retroshelf/ee_interrupt_controller.hpp"
 #include "retroshelf/ps2_ee_memory_map.hpp"
 #include "retroshelf/system_bus.hpp"
@@ -32,9 +33,10 @@ int main() {
 
     retroshelf::Cpu cpu;
     cpu.set_pc(program);
-    for (std::size_t i = 0; i < 4; ++i)
-        assert(cpu.step_from_ee_bus(memory, bus, &error));
-
+    retroshelf::EeExecutionRunner runner(cpu, memory, bus);
+    const auto result = runner.run(4);
+    assert(result.instructions_executed == 4U);
+    assert(result.reason == retroshelf::EeExecutionRunner::StopReason::InstructionLimit);
     assert(intc->mask() == 4U);
     assert(cpu.reg(10) == 4U);
     assert(cpu.pc() == program + 16U);
@@ -43,9 +45,8 @@ int main() {
     assert(intc->raise_interrupt(2));
     cpu.reset();
     cpu.set_pc(program);
-    assert(cpu.step_from_ee_bus(memory, bus, &error)); // restore t0 = 0x10010000
-    cpu.set_pc(program + 12U);
-    assert(cpu.step_from_ee_bus(memory, bus, &error));
+    const auto readback = runner.run(4);
+    assert(readback.instructions_executed == 4U);
     assert(cpu.reg(10) == 4U);
 
     return 0;
