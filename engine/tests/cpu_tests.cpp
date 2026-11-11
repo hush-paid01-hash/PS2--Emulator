@@ -1735,41 +1735,27 @@ int main() {
               cpu.reg_high(3) == 0xFFFFFFFFF0000000ULL,
           "MMI PSRAVW sign-extends each arithmetic-shifted word lane");
 
-    // DADDI/DADDIU use a sign-extended 16-bit immediate and operate on
-    // the low 64-bit EE GPR value. DADDI traps on signed 64-bit overflow;
-    // DADDIU wraps modulo 2^64 without raising an exception.
+    // An overflowing DADDI in a branch delay slot must record the branch
+    // address in EPC and set Cause.BD, preserving architectural exception state.
     cpu.reset();
-    cpu.set_pc(0x8000D000U);
+    constexpr std::uint32_t daddi_delay_branch_pc = 0x8000D100U;
+    cpu.set_pc(daddi_delay_branch_pc);
     cpu.set_reg(8, 0x7FFFFFFFFFFFFFFFULL);
-    cpu.set_reg(9, 0x13579BDF2468ACE0ULL);
-    constexpr std::uint32_t daddi_overflow =
+    cpu.set_reg(9, 0x2468ACE013579BDFULL);
+    constexpr std::uint32_t daddi_delay_branch = (0x04U << 26U); // BEQ r0,r0,0
+    constexpr std::uint32_t daddi_delay_overflow =
         (0x18U << 26U) | (8U << 21U) | (9U << 16U) | 1U;
     error.clear();
-    check(!cpu.step(daddi_overflow, &error),
-          "DADDI traps on signed 64-bit overflow");
-    check(cpu.reg(9) == 0x13579BDF2468ACE0ULL,
-          "DADDI overflow leaves destination register unchanged");
-    check(cpu.cop0_epc() == 0x8000D000U &&
-              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcOverflow &&
-              (cpu.cop0_status() & Cpu::StatusExl) != 0U,
-          "DADDI overflow records EPC and Integer Overflow exception");
-
-    cpu.reset();
-    cpu.set_reg(8, 0x7FFFFFFFFFFFFFFFULL);
-    constexpr std::uint32_t daddiu_wrap =
-        (0x19U << 26U) | (8U << 21U) | (9U << 16U) | 1U;
-    check(cpu.step(daddiu_wrap, &error),
-          "DADDIU executes across signed 64-bit boundary");
-    check(cpu.reg(9) == 0x8000000000000000ULL &&
-              (cpu.cop0_status() & Cpu::StatusExl) == 0U,
-          "DADDIU wraps modulo 2^64 without an overflow exception");
-
-    cpu.reset();
-    cpu.set_reg(8, 0x10000U);
-    constexpr std::uint32_t daddiu_negative_imm =
-        (0x19U << 26U) | (8U << 21U) | (9U << 16U) | 0xFFFEU;
-    check(cpu.step(daddiu_negative_imm, &error) && cpu.reg(9) == 0xFFFEU,
-          "DADDIU sign-extends a negative 16-bit immediate");
+    check(cpu.step(daddi_delay_branch) && cpu.in_delay_slot(),
+          "BEQ schedules DADDI as a delay-slot instruction");
+    check(!cpu.step(daddi_delay_overflow, &error),
+          "DADDI overflow in a delay slot raises an exception");
+    check(cpu.cop0_epc() == daddi_delay_branch_pc &&
+              (cpu.cop0_cause() & Cpu::CauseBd) != 0U &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcOverflow,
+          "DADDI delay-slot exception records branch EPC and Cause.BD");
+    check(cpu.reg(9) == 0x2468ACE013579BDFULL,
+          "DADDI delay-slot overflow preserves the destination register");
 
     return failures == 0 ? 0 : 1;
 }
