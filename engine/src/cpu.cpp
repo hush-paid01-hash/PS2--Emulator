@@ -18,6 +18,22 @@ std::uint64_t arithmetic_shift_right(std::uint64_t value, unsigned amount) {
         result |= (~std::uint64_t{0}) << (64U - amount);
     return result;
 }
+
+// EE kernel segment addresses are commonly sign-extended to 64 bits by
+// ADDIU/LUI. Accept those canonical 32-bit forms without truncating arbitrary
+// 64-bit addresses into an unrelated physical location.
+bool normalize_ee_address(std::uint64_t address, std::uint32_t& normalized) {
+    if (address <= 0xFFFFFFFFULL) {
+        normalized = static_cast<std::uint32_t>(address);
+        return true;
+    }
+    if ((address >> 32U) == 0xFFFFFFFFULL &&
+        (address & 0x80000000ULL) != 0U) {
+        normalized = static_cast<std::uint32_t>(address);
+        return true;
+    }
+    return false;
+}
 } // namespace
 
 Cpu::Cpu() { reset(); }
@@ -788,8 +804,6 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     case 0x22: case 0x26: case 0x2A: case 0x2E: { // LWL/LWR/SWL/SWR (little-endian word merges)
         const bool store = opcode == 0x2A || opcode == 0x2E;
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
-        const std::uint64_t aligned = address & ~std::uint64_t{3};
-        const unsigned lane = static_cast<unsigned>(address & 3U);
         const auto fault = [&](const char* message) {
             if (error) *error = message;
             bad_vaddr_ = address;
@@ -798,10 +812,13 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         };
         if (active_ee_memory_ == nullptr && active_system_bus_ == nullptr)
             return fault("LWL/LWR/SWL/SWR require the mapped EE memory interface");
-        if (aligned > 0xFFFFFFFFULL)
+        std::uint32_t normalized_address = 0;
+        if (!normalize_ee_address(address, normalized_address))
             return fault("EE RAM effective address exceeds 32-bit address space");
+        const std::uint32_t aligned = normalized_address & ~std::uint32_t{3};
+        const unsigned lane = normalized_address & 3U;
         std::uint64_t memory_value = 0;
-        if (!ee_read(static_cast<std::uint32_t>(aligned), 4, memory_value))
+        if (!ee_read(aligned, 4, memory_value))
             return fault("Unmapped EE RAM word-merge access");
         const std::uint32_t mem = static_cast<std::uint32_t>(memory_value);
         const std::uint32_t old_rt = static_cast<std::uint32_t>(reg(rt));
@@ -829,27 +846,28 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             const std::uint32_t mask = 0xFFFFFFFFU << shift;
             result = (mem & ~mask) | (old_rt << shift);
         }
-        if (!ee_write(static_cast<std::uint32_t>(aligned), 4, result))
+        if (!ee_write(aligned, 4, result))
             return fault("Unmapped EE RAM word-merge store");
         return true;
     }
     case 0x1A: case 0x1B: case 0x2C: case 0x2D: { // LDL/LDR/SDL/SDR (little-endian doubleword merges)
         const bool store = opcode == 0x2C || opcode == 0x2D;
         const std::uint64_t address = reg(rs) + static_cast<std::uint64_t>(simm);
-        const std::uint64_t aligned = address & ~std::uint64_t{7};
-        const unsigned lane = static_cast<unsigned>(address & 7U);
         const auto fault = [&](const char* message) {
             if (error) *error = message;
             bad_vaddr_ = address;
             raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
             return false;
         };
-        if (active_ee_memory_ == nullptr)
+        if (active_ee_memory_ == nullptr && active_system_bus_ == nullptr)
             return fault("LDL/LDR/SDL/SDR require the mapped EE memory interface");
-        if (aligned > 0xFFFFFFFFULL)
+        std::uint32_t normalized_address = 0;
+        if (!normalize_ee_address(address, normalized_address))
             return fault("EE RAM doubleword-merge address exceeds 32-bit address space");
+        const std::uint32_t aligned = normalized_address & ~std::uint32_t{7};
+        const unsigned lane = normalized_address & 7U;
         std::uint64_t mem = 0;
-        if (!ee_read(static_cast<std::uint32_t>(aligned), 8, mem))
+        if (!ee_read(aligned, 8, mem))
             return fault("Unmapped EE RAM doubleword-merge access");
         const std::uint64_t old_rt = reg(rt);
         std::uint64_t result = old_rt;
@@ -876,7 +894,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             const std::uint64_t mask = UINT64_MAX << shift;
             result = (mem & ~mask) | (old_rt << shift);
         }
-        if (!ee_write(static_cast<std::uint32_t>(aligned), 8, result))
+        if (!ee_write(aligned, 8, result))
             return fault("Unmapped EE RAM doubleword-merge store");
         return true;
     }
@@ -889,11 +907,12 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
             return false;
         };
-        if (active_ee_memory_ == nullptr)
+        if (active_ee_memory_ == nullptr && active_system_bus_ == nullptr)
             return fault("LQC2/SQC2 require the mapped EE memory interface");
-        if (address > 0xFFFFFFFFULL)
+        std::uint32_t normalized_address = 0;
+        if (!normalize_ee_address(address, normalized_address))
             return fault("VU0 quadword effective address exceeds 32-bit EE address space");
-        if ((address & 0xFU) != 0U)
+        if ((normalized_address & 0xFU) != 0U)
             return fault("Misaligned VU0 LQC2/SQC2 access");
         if (store) {
             const auto& vf = vu0_vf_[rt];
@@ -901,11 +920,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
                                       (static_cast<std::uint64_t>(vf[1]) << 32U);
             const std::uint64_t high = static_cast<std::uint64_t>(vf[2]) |
                                        (static_cast<std::uint64_t>(vf[3]) << 32U);
-            if (!ee_write128(static_cast<std::uint32_t>(address), low, high))
+            if (!ee_write128(normalized_address, low, high))
                 return fault("Unmapped EE LQC2/SQC2 store");
         } else {
             std::uint64_t low = 0, high = 0;
-            if (!ee_read128(static_cast<std::uint32_t>(address), low, high))
+            if (!ee_read128(normalized_address, low, high))
                 return fault("Unmapped EE LQC2/SQC2 load");
             if (rt != 0U) {
                 vu0_vf_[rt][0] = static_cast<std::uint32_t>(low);
@@ -925,18 +944,19 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
             return false;
         };
-        if (active_ee_memory_ == nullptr)
+        if (active_ee_memory_ == nullptr && active_system_bus_ == nullptr)
             return fault("LQ/SQ require the mapped EE memory interface");
-        if (address > 0xFFFFFFFFULL)
+        std::uint32_t normalized_address = 0;
+        if (!normalize_ee_address(address, normalized_address))
             return fault("EE LQ/SQ effective address exceeds 32-bit address space");
-        if ((address & 0xFU) != 0U)
+        if ((normalized_address & 0xFU) != 0U)
             return fault("Misaligned EE LQ/SQ access");
         if (store) {
-            if (!ee_write128(static_cast<std::uint32_t>(address), reg(rt), reg_high(rt)))
+            if (!ee_write128(normalized_address, reg(rt), reg_high(rt)))
                 return fault("Unmapped EE LQ/SQ store");
         } else {
             std::uint64_t low = 0, high = 0;
-            if (!ee_read128(static_cast<std::uint32_t>(address), low, high))
+            if (!ee_read128(normalized_address, low, high))
                 return fault("Unmapped EE LQ/SQ load");
             set_reg(rt, low);
             set_reg_high(rt, high);
@@ -959,16 +979,17 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return false;
         };
         if (active_ee_memory_ != nullptr || active_system_bus_ != nullptr) {
-            // The current EE memory-map API accepts 32-bit guest addresses. Never
-            // truncate a wider effective address into a different mapped location.
-            if (address > 0xFFFFFFFFULL)
+            // Accept zero-extended physical addresses and sign-extended 32-bit
+            // KSEG addresses, but reject unrelated wider guest addresses.
+            std::uint32_t normalized_address = 0;
+            if (!normalize_ee_address(address, normalized_address))
                 return fault("EE RAM effective address exceeds 32-bit address space");
             std::uint64_t value = 0;
             if (store) {
-                if (!ee_write(static_cast<std::uint32_t>(address), width, reg(rt)))
+                if (!ee_write(normalized_address, width, reg(rt)))
                     return fault("Unaligned or unmapped EE RAM store");
             } else {
-                if (!ee_read(static_cast<std::uint32_t>(address), width, value))
+                if (!ee_read(normalized_address, width, value))
                     return fault("Unaligned or unmapped EE RAM load");
                 if (opcode == 0x20) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int8_t>(value))));
                 else if (opcode == 0x21) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int16_t>(value))));
