@@ -344,24 +344,6 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         default: break;
         }
         break;
-    case 0x18: { // DADDI: signed 64-bit add immediate with overflow exception.
-        const std::uint64_t lhs = reg(rs);
-        const std::uint64_t rhs = static_cast<std::uint64_t>(simm);
-        const std::uint64_t sum = lhs + rhs;
-        constexpr std::uint64_t SignBit = std::uint64_t{1} << 63U;
-        if (((lhs ^ sum) & (rhs ^ sum) & SignBit) != 0U) {
-            if (error) *error = "Signed DADDI overflow";
-            raise_exception(ExcOverflow, cur_pc, in_delay);
-            return false;
-        }
-        set_reg(rt, sum);
-        return true;
-    }
-    case 0x19: { // DADDIU: signed immediate, modulo 64-bit addition without overflow trap.
-        const std::uint64_t rhs = static_cast<std::uint64_t>(simm);
-        set_reg(rt, reg(rs) + rhs);
-        return true;
-    }
     case 0x1C: {
         const unsigned sub_op = (instruction >> 6U) & 0x1FU;
         const std::uint64_t lhs_low = reg(rs);
