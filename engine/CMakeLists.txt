@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(RETROSHELF_ENGINE_SOURCES
     src/cpu.cpp
+    src/ee_interrupt_controller.cpp
     src/ee_execution_runner.cpp
     src/system_bus.cpp
     src/ee_interrupt_controller.cpp
@@ -51,6 +52,12 @@ add_executable(engine-c-api-tests tests/engine_c_api_tests.cpp)
 target_link_libraries(engine-c-api-tests PRIVATE retroshelf_engine)
 target_compile_options(engine-c-api-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME engine-c-api-tests COMMAND engine-c-api-tests)
+
+add_executable(cpu-system-bus-tests tests/cpu_system_bus_tests.cpp
+    src/cpu.cpp src/ee_interrupt_controller.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
+target_include_directories(cpu-system-bus-tests PRIVATE include)
+target_compile_options(cpu-system-bus-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME cpu-system-bus-tests COMMAND cpu-system-bus-tests)
 
 add_executable(cpu-tests tests/cpu_tests.cpp src/cpu.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(cpu-tests PRIVATE include)
