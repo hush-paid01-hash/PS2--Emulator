@@ -7,7 +7,7 @@ This folder is the first portable C++ milestone for the original PS2-emulator pr
 - A tiny instruction interpreter for a limited MIPS-style subset.
 - General-purpose register state and a simple program counter.
 - An EE GIF DMA channel model with normal transfers and DMA chain tags.
-- A bounds-checked system-bus interface over the current EE RAM allocation.
+- A system-bus interface that supports either a bounded EE-RAM vector or the EE memory map's implemented main-RAM address aliases.
 - A stateful GIF-tag packet parser for PACKED, REGLIST, IMAGE, and IMAGE2 streams.
 - A partial GS pipeline with register-state decoding, local-memory/image-upload foundations, and a software framebuffer/rasterizer for supported primitive paths.
 - A synthetic GIF-to-framebuffer demo used to check the graphics path, plus automated tests.
@@ -53,9 +53,11 @@ an iOS app. The C ABI smoke test verifies the exported functions from C++ CI.
 
 This is **not yet a complete PlayStation 2 emulator** and cannot boot or play games. The PS2 Emotion Engine and surrounding hardware require substantial additional work, including accurate CPU behavior, exceptions and memory/bus handling, COP0/COP1/COP2, vector units, timers, DMA arbitration, full Graphics Synthesizer behavior, texture sampling/blending, sound hardware, interrupts, and BIOS integration. This initial subset is for testing the build workflow and code structure only.
 
-`SystemBus` currently bounds reads and writes to the supplied EE-RAM vector; it is not a
-PS2 memory map or an address-aliasing implementation. GIF DMA reads both chain tags and
-payloads through that bus interface and submits payloads to `GsPacketProcessor`, which
+`SystemBus` can use either the legacy bounded EE-RAM vector or `Ps2EeMemoryMap`.
+In map-backed mode, GIF DMA reads and writes use the memory map's supported main-RAM
+aliases (including KSEG0/KSEG1); BIOS ROM, scratchpad, MMIO, TLB translation, and device
+side effects are not thereby implemented. GIF DMA reads both chain tags and payloads
+through that bus interface and submits payloads to `GsPacketProcessor`, which
 parses GIF-tag framing and preserves complete packet bytes in a drainable queue bounded
 to 64 MiB. It feeds the current partial GS pipeline; this is not complete GS hardware emulation. The software renderer supports only a limited set of primitive paths and is not yet driven by a complete running game. Incomplete streams are reported by `finish_stream()`.
 
