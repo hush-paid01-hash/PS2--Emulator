@@ -60,7 +60,8 @@ jobs:
       - name: Record built core libraries
         if: always()
         run: |
-          find third_party/ARMSX2/platforms/ios/build/core-device -type f \\( -name "*.a" -o -name "*.dylib" \\) -print 2>/dev/null | sort || true
+          find third_party/ARMSX2/platforms/ios/build/core-device -type f -name '*.a' -print 2>/dev/null | sort || true
+          find third_party/ARMSX2/platforms/ios/build/core-device -type f -name '*.dylib' -print 2>/dev/null | sort || true
 
 # This workflow compiles the pinned upstream core only. It does not yet link
 # that core into the Hush app and is not a gameplay or installability test.
