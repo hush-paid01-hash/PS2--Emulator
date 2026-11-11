@@ -94,7 +94,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         return active_ee_memory_ != nullptr &&
                active_ee_memory_->write(address, width, value, nullptr);
     };
-    const auto ee_read128 = [this, &ee_read](std::uint32_t address,
+    const auto ee_read128 = [this](std::uint32_t address,
                                              std::uint64_t& low, std::uint64_t& high) {
         if (active_system_bus_ == nullptr)
             return active_ee_memory_ != nullptr &&
