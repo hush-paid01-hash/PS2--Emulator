@@ -1,0 +1,66 @@
+name: Build pinned ARMSX2 iOS ARM64 core
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".gitmodules"
+      - "third_party/ARMSX2"
+      - ".github/workflows/armsx2-ios-core.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".gitmodules"
+      - "third_party/ARMSX2"
+      - ".github/workflows/armsx2-ios-core.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios-arm64-core:
+    name: Compile ARMSX2 iOS device core
+    runs-on: macos-15
+    steps:
+      - name: Check out Hush and pinned submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Install build tools
+        run: |
+          brew update
+          brew install cmake ninja
+          cmake --version
+          ninja --version
+
+      - name: Verify pinned upstream revision
+        working-directory: third_party/ARMSX2
+        run: |
+          EXPECTED="0f24a1e68571e4db59bdeb592facc3cee019a001"
+          ACTUAL="$(git rev-parse HEAD)"
+          echo "Expected ARMSX2 revision: $EXPECTED"
+          echo "Checked out ARMSX2 revision: $ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+          test -f COPYING.GPLv3
+          test -f platforms/ios/COPYING.GPLv3
+          test -f platforms/ios/scripts/build-ios-core.sh
+
+      - name: Build native iOS ARM64 core
+        working-directory: third_party/ARMSX2
+        run: |
+          ./platforms/ios/scripts/build-ios-core.sh device
+
+      - name: Record built core libraries
+        if: always()
+        run: |
+          find third_party/ARMSX2/platforms/ios/build/core-device -type f \\( -name "*.a" -o -name "*.dylib" \\) -print 2>/dev/null | sort || true
+
+# This workflow compiles the pinned upstream core only. It does not yet link
+# that core into the Hush app and is not a gameplay or installability test.
