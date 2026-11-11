@@ -1735,5 +1735,22 @@ int main() {
               cpu.reg_high(3) == 0xFFFFFFFFF0000000ULL,
           "MMI PSRAVW sign-extends each arithmetic-shifted word lane");
 
+    // Reserved COP0 fields must not be silently accepted as ERET.
+    // Setting rd[1] produces a malformed ERET-shaped instruction and must
+    // raise Reserved Instruction rather than returning through EPC.
+    cpu.reset();
+    constexpr std::uint32_t malformed_eret_pc = 0x8000E000U;
+    cpu.set_pc(malformed_eret_pc);
+    constexpr std::uint32_t malformed_eret =
+        (0x10U << 26U) | (0x10U << 21U) | (1U << 11U) | 0x18U;
+    error.clear();
+    check(!cpu.step(malformed_eret, &error),
+          "malformed ERET encoding raises Reserved Instruction");
+    check(cpu.pc() == Cpu::GeneralExceptionVector &&
+              (cpu.cop0_status() & Cpu::StatusExl) != 0U &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcReservedInstruction &&
+              cpu.cop0_epc() == malformed_eret_pc,
+          "malformed ERET records the faulting PC and reserved-instruction exception");
+
     return failures == 0 ? 0 : 1;
 }
