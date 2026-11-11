@@ -9,6 +9,7 @@ set(RETROSHELF_ENGINE_SOURCES
     src/cpu.cpp
     src/ee_execution_runner.cpp
     src/system_bus.cpp
+    src/ee_interrupt_controller.cpp
     src/ee_gif_dma.cpp
     src/ee_gif_gs_runtime.cpp
     src/gs_packet_processor.cpp
@@ -70,6 +71,12 @@ add_executable(system-bus-tests tests/system_bus_tests.cpp src/system_bus.cpp
 target_include_directories(system-bus-tests PRIVATE include)
 target_compile_options(system-bus-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME system-bus-tests COMMAND system-bus-tests)
+
+add_executable(ee-intc-tests tests/ee_interrupt_controller_tests.cpp
+    src/ee_interrupt_controller.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
+target_include_directories(ee-intc-tests PRIVATE include)
+target_compile_options(ee-intc-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ee-intc-tests COMMAND ee-intc-tests)
 
 add_executable(gs-packet-processor-tests tests/gs_packet_processor_tests.cpp
     src/gs_packet_processor.cpp)
