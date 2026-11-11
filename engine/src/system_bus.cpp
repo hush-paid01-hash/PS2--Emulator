@@ -23,7 +23,9 @@ bool SystemBus::valid_range(std::uint32_t address, std::size_t size) const {
 bool SystemBus::read(std::uint32_t address, std::size_t size,
                      std::vector<std::uint8_t>& data, std::string* error) const {
     if (!valid_range(address, size)) {
-        if (error != nullptr) *error = "read is outside EE address space";
+        if (error != nullptr)
+            *error = ee_memory_ != nullptr ? "read is outside EE address space"
+                                           : "read is outside EE RAM";
         data.clear();
         return false;
     }
@@ -59,7 +61,9 @@ bool SystemBus::read(std::uint32_t address, std::size_t size,
 bool SystemBus::write(std::uint32_t address, const std::vector<std::uint8_t>& data,
                       std::string* error) {
     if (!valid_range(address, data.size())) {
-        if (error != nullptr) *error = "write is outside EE address space";
+        if (error != nullptr)
+            *error = ee_memory_ != nullptr ? "write is outside EE address space"
+                                           : "write is outside EE RAM";
         return false;
     }
 

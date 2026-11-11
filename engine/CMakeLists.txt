@@ -57,7 +57,7 @@ target_compile_options(cpu-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-tests COMMAND cpu-tests)
 
 add_executable(ee-gif-dma-tests tests/ee_gif_dma_tests.cpp src/system_bus.cpp
-    src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_gif_pipeline.cpp
+    src/ps2_ee_memory_map.cpp src/ee_gif_dma.cpp src/gs_packet_processor.cpp src/gs_gif_pipeline.cpp
     src/gs_register_decoder.cpp src/gs_register_state.cpp src/gs_local_memory.cpp
     src/gs_packed_primitive_renderer.cpp src/gs_software_rasterizer.cpp
     src/gs_framebuffer.cpp src/gs_transfer_state.cpp src/gs_image_upload_stager.cpp)
@@ -65,7 +65,8 @@ target_include_directories(ee-gif-dma-tests PRIVATE include)
 target_compile_options(ee-gif-dma-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-gif-dma-tests COMMAND ee-gif-dma-tests)
 
-add_executable(system-bus-tests tests/system_bus_tests.cpp src/system_bus.cpp)
+add_executable(system-bus-tests tests/system_bus_tests.cpp src/system_bus.cpp
+    src/ps2_ee_memory_map.cpp)
 target_include_directories(system-bus-tests PRIVATE include)
 target_compile_options(system-bus-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME system-bus-tests COMMAND system-bus-tests)
