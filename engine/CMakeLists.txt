@@ -10,7 +10,6 @@ set(RETROSHELF_ENGINE_SOURCES
     src/ee_interrupt_controller.cpp
     src/ee_execution_runner.cpp
     src/system_bus.cpp
-    src/ee_interrupt_controller.cpp
     src/ee_gif_dma.cpp
     src/ee_gif_gs_runtime.cpp
     src/gs_packet_processor.cpp
