@@ -1,5 +1,6 @@
 #include "retroshelf/cpu.hpp"
 #include "retroshelf/ps2_ee_memory_map.hpp"
+#include "retroshelf/system_bus.hpp"
 
 #include <cstring>
 #include <sstream>
@@ -21,7 +22,7 @@ std::uint64_t arithmetic_shift_right(std::uint64_t value, unsigned amount) {
 
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
-    gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); vu0_vf_ = {}; vu0_control_.fill(0); vu0_vf_[0][3] = 0x3F800000U; active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; pc_ = 0; next_pc_ = 4;
+    gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); vu0_vf_ = {}; vu0_control_.fill(0); vu0_vf_[0][3] = 0x3F800000U; active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; active_system_bus_ = nullptr; pc_ = 0; next_pc_ = 4;
     delay_slot_pending_ = false; delay_branch_pc_ = 0; cop0_regs_.fill(0); status_ = 0; cause_ = 0; epc_ = 0; bad_vaddr_ = 0; hi_ = 0; lo_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
@@ -67,6 +68,59 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     const auto imm = static_cast<std::int16_t>(instruction & 0xFFFFU);
     const auto simm = static_cast<std::int64_t>(imm);
     const auto sreg = [this](std::size_t i) { return static_cast<std::int64_t>(reg(i)); };
+
+    const auto ee_read = [this](std::uint32_t address, std::size_t width,
+                                std::uint64_t& value) {
+        if (active_system_bus_ != nullptr) {
+            std::vector<std::uint8_t> data;
+            if (!active_system_bus_->read(address, width, data, nullptr) || data.size() != width)
+                return false;
+            value = 0;
+            for (std::size_t i = 0; i < width; ++i)
+                value |= static_cast<std::uint64_t>(data[i]) << (8U * i);
+            return true;
+        }
+        return active_ee_memory_ != nullptr &&
+               active_ee_memory_->read(address, width, value, nullptr);
+    };
+    const auto ee_write = [this](std::uint32_t address, std::size_t width,
+                                 std::uint64_t value) {
+        if (active_system_bus_ != nullptr) {
+            std::vector<std::uint8_t> data(width);
+            for (std::size_t i = 0; i < width; ++i)
+                data[i] = static_cast<std::uint8_t>((value >> (8U * i)) & 0xFFU);
+            return active_system_bus_->write(address, data, nullptr);
+        }
+        return active_ee_memory_ != nullptr &&
+               active_ee_memory_->write(address, width, value, nullptr);
+    };
+    const auto ee_read128 = [this, &ee_read](std::uint32_t address,
+                                             std::uint64_t& low, std::uint64_t& high) {
+        if (active_system_bus_ == nullptr)
+            return active_ee_memory_ != nullptr &&
+                   active_ee_memory_->read128(address, low, high, nullptr);
+        std::vector<std::uint8_t> data;
+        if (!active_system_bus_->read(address, 16, data, nullptr) || data.size() != 16)
+            return false;
+        low = 0; high = 0;
+        for (std::size_t i = 0; i < 8; ++i) {
+            low |= static_cast<std::uint64_t>(data[i]) << (8U * i);
+            high |= static_cast<std::uint64_t>(data[i + 8]) << (8U * i);
+        }
+        return true;
+    };
+    const auto ee_write128 = [this](std::uint32_t address,
+                                    std::uint64_t low, std::uint64_t high) {
+        if (active_system_bus_ == nullptr)
+            return active_ee_memory_ != nullptr &&
+                   active_ee_memory_->write128(address, low, high, nullptr);
+        std::vector<std::uint8_t> data(16);
+        for (std::size_t i = 0; i < 8; ++i) {
+            data[i] = static_cast<std::uint8_t>((low >> (8U * i)) & 0xFFU);
+            data[i + 8] = static_cast<std::uint8_t>((high >> (8U * i)) & 0xFFU);
+        }
+        return active_system_bus_->write(address, data, nullptr);
+    };
 
     const std::uint64_t cur_pc = pc_;
     const bool in_delay = delay_slot_pending_;
@@ -742,12 +796,12 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
             return false;
         };
-        if (active_ee_memory_ == nullptr)
+        if (active_ee_memory_ == nullptr && active_system_bus_ == nullptr)
             return fault("LWL/LWR/SWL/SWR require the mapped EE memory interface");
         if (aligned > 0xFFFFFFFFULL)
             return fault("EE RAM effective address exceeds 32-bit address space");
         std::uint64_t memory_value = 0;
-        if (!active_ee_memory_->read(static_cast<std::uint32_t>(aligned), 4, memory_value, nullptr))
+        if (!ee_read(static_cast<std::uint32_t>(aligned), 4, memory_value))
             return fault("Unmapped EE RAM word-merge access");
         const std::uint32_t mem = static_cast<std::uint32_t>(memory_value);
         const std::uint32_t old_rt = static_cast<std::uint32_t>(reg(rt));
@@ -775,7 +829,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             const std::uint32_t mask = 0xFFFFFFFFU << shift;
             result = (mem & ~mask) | (old_rt << shift);
         }
-        if (!active_ee_memory_->write(static_cast<std::uint32_t>(aligned), 4, result, nullptr))
+        if (!ee_write(static_cast<std::uint32_t>(aligned), 4, result))
             return fault("Unmapped EE RAM word-merge store");
         return true;
     }
@@ -795,7 +849,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         if (aligned > 0xFFFFFFFFULL)
             return fault("EE RAM doubleword-merge address exceeds 32-bit address space");
         std::uint64_t mem = 0;
-        if (!active_ee_memory_->read(static_cast<std::uint32_t>(aligned), 8, mem, nullptr))
+        if (!ee_read(static_cast<std::uint32_t>(aligned), 8, mem))
             return fault("Unmapped EE RAM doubleword-merge access");
         const std::uint64_t old_rt = reg(rt);
         std::uint64_t result = old_rt;
@@ -822,7 +876,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             const std::uint64_t mask = UINT64_MAX << shift;
             result = (mem & ~mask) | (old_rt << shift);
         }
-        if (!active_ee_memory_->write(static_cast<std::uint32_t>(aligned), 8, result, nullptr))
+        if (!ee_write(static_cast<std::uint32_t>(aligned), 8, result))
             return fault("Unmapped EE RAM doubleword-merge store");
         return true;
     }
@@ -847,13 +901,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
                                       (static_cast<std::uint64_t>(vf[1]) << 32U);
             const std::uint64_t high = static_cast<std::uint64_t>(vf[2]) |
                                        (static_cast<std::uint64_t>(vf[3]) << 32U);
-            if (!active_ee_memory_->write128(static_cast<std::uint32_t>(address),
-                                              low, high, nullptr))
+            if (!ee_write128(static_cast<std::uint32_t>(address), low, high))
                 return fault("Unmapped EE LQC2/SQC2 store");
         } else {
             std::uint64_t low = 0, high = 0;
-            if (!active_ee_memory_->read128(static_cast<std::uint32_t>(address),
-                                             low, high, nullptr))
+            if (!ee_read128(static_cast<std::uint32_t>(address), low, high))
                 return fault("Unmapped EE LQC2/SQC2 load");
             if (rt != 0U) {
                 vu0_vf_[rt][0] = static_cast<std::uint32_t>(low);
@@ -880,13 +932,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         if ((address & 0xFU) != 0U)
             return fault("Misaligned EE LQ/SQ access");
         if (store) {
-            if (!active_ee_memory_->write128(static_cast<std::uint32_t>(address),
-                                              reg(rt), reg_high(rt), nullptr))
+            if (!ee_write128(static_cast<std::uint32_t>(address), reg(rt), reg_high(rt)))
                 return fault("Unmapped EE LQ/SQ store");
         } else {
             std::uint64_t low = 0, high = 0;
-            if (!active_ee_memory_->read128(static_cast<std::uint32_t>(address),
-                                             low, high, nullptr))
+            if (!ee_read128(static_cast<std::uint32_t>(address), low, high))
                 return fault("Unmapped EE LQ/SQ load");
             set_reg(rt, low);
             set_reg_high(rt, high);
@@ -908,17 +958,17 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             raise_exception(store ? ExcAddressErrorStore : ExcAddressErrorLoad, cur_pc, in_delay);
             return false;
         };
-        if (active_ee_memory_ != nullptr) {
+        if (active_ee_memory_ != nullptr || active_system_bus_ != nullptr) {
             // The current EE memory-map API accepts 32-bit guest addresses. Never
             // truncate a wider effective address into a different mapped location.
             if (address > 0xFFFFFFFFULL)
                 return fault("EE RAM effective address exceeds 32-bit address space");
             std::uint64_t value = 0;
             if (store) {
-                if (!active_ee_memory_->write(static_cast<std::uint32_t>(address), width, reg(rt), nullptr))
+                if (!ee_write(static_cast<std::uint32_t>(address), width, reg(rt)))
                     return fault("Unaligned or unmapped EE RAM store");
             } else {
-                if (!active_ee_memory_->read(static_cast<std::uint32_t>(address), width, value, nullptr))
+                if (!ee_read(static_cast<std::uint32_t>(address), width, value))
                     return fault("Unaligned or unmapped EE RAM load");
                 if (opcode == 0x20) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int8_t>(value))));
                 else if (opcode == 0x21) set_reg(rt, static_cast<std::uint64_t>(static_cast<std::int64_t>(static_cast<std::int16_t>(value))));
@@ -1026,6 +1076,36 @@ bool Cpu::step_from_ee_memory(Ps2EeMemoryMap& memory, std::string* error) {
     }
     active_ee_memory_ = &memory;
     const bool succeeded = step(static_cast<std::uint32_t>(fetched), error);
+
+    active_ee_memory_ = nullptr;
+    return succeeded;
+}
+
+bool Cpu::step_from_ee_bus(Ps2EeMemoryMap& memory, SystemBus& bus,
+                           std::string* error) {
+    if ((pc_ & 3U) != 0U) {
+        if (error) *error = "Unaligned instruction fetch";
+        bad_vaddr_ = pc_;
+        raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
+        return false;
+    }
+    if (pc_ > 0xFFFFFFFFULL) {
+        if (error) *error = "Instruction fetch exceeds 32-bit EE address space";
+        bad_vaddr_ = pc_;
+        raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
+        return false;
+    }
+    std::uint64_t fetched = 0;
+    if (!memory.read(static_cast<std::uint32_t>(pc_), 4, fetched, error)) {
+        bad_vaddr_ = pc_;
+        if (error && error->empty()) *error = "Instruction fetch is outside mapped EE memory";
+        raise_exception(ExcAddressErrorLoad, pc_, delay_slot_pending_);
+        return false;
+    }
+    active_ee_memory_ = &memory;
+    active_system_bus_ = &bus;
+    const bool succeeded = step(static_cast<std::uint32_t>(fetched), error);
+    active_system_bus_ = nullptr;
     active_ee_memory_ = nullptr;
     return succeeded;
 }
