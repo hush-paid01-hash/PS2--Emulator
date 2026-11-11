@@ -42,6 +42,8 @@ int main() {
     // The same mapped device must be reached by a load after its write.
     assert(intc->raise_interrupt(2));
     cpu.reset();
+    cpu.set_pc(program);
+    assert(cpu.step_from_ee_bus(memory, bus, &error)); // restore t0 = 0x10010000
     cpu.set_pc(program + 12U);
     assert(cpu.step_from_ee_bus(memory, bus, &error));
     assert(cpu.reg(10) == 4U);
