@@ -53,7 +53,7 @@ target_compile_options(engine-c-api-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME engine-c-api-tests COMMAND engine-c-api-tests)
 
 add_executable(cpu-system-bus-tests tests/cpu_system_bus_tests.cpp
-    src/cpu.cpp src/ee_interrupt_controller.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
+    src/cpu.cpp src/ee_execution_runner.cpp src/ee_interrupt_controller.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(cpu-system-bus-tests PRIVATE include)
 target_compile_options(cpu-system-bus-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-system-bus-tests COMMAND cpu-system-bus-tests)
