@@ -185,6 +185,24 @@ int main() {
               (cpu.cop0_status() & Cpu::StatusExl) != 0U,
           "ERET selects ErrorEPC and clears ERL before considering EXL");
 
+    // This core currently implements only COP0 register select 0. Reject
+    // MFC0/MTC0 encodings that request an unimplemented select or set reserved
+    // low fields instead of silently aliasing them to select 0.
+    cpu.reset();
+    constexpr std::uint32_t malformed_mfc0_select =
+        (0x10U << 26U) | (1U << 16U) | (14U << 11U) | 1U;
+    check(!cpu.step(malformed_mfc0_select) &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcReservedInstruction,
+          "MFC0 rejects an unimplemented nonzero COP0 register select");
+    cpu.reset();
+    cpu.set_reg(1, Cpu::StatusExl);
+    constexpr std::uint32_t malformed_mtc0_select =
+        (0x10U << 26U) | (0x04U << 21U) | (1U << 16U) | (12U << 11U) | 1U;
+    check(!cpu.step(malformed_mtc0_select) &&
+              cpu.cop0_status() == 0U &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcReservedInstruction,
+          "MTC0 rejects an unimplemented select without modifying Status");
+
     // Immediate logical operations zero-extend their 16-bit masks.
     cpu.reset(); cpu.set_reg(1, 0x12345678);
     check(cpu.step(itype(0x0C, 1, 2, 0x00FF)) && cpu.reg(2) == 0x78,
