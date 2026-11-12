@@ -75,5 +75,31 @@ int main() {
     assert(bus.read(0xB000F010U, 4, mask_bytes, &error));
     assert(mask_bytes.size() == 4U);
 
+    // The INTC output must reach COP0 Cause.IP2 and take an interrupt when
+    // global IE and the matching interrupt mask are enabled.
+    constexpr std::uint32_t interrupt_program = program + 0x40U;
+    constexpr std::uint32_t interrupt_instructions[] = {
+        0x24080401U, // ADDIU t0, zero, 0x401 (IE + IM2)
+        0x40886000U, // MTC0 t0, Status
+        0x00000000U, // NOP: external interrupt is accepted before this step
+        0x00000000U
+    };
+    for (std::size_t i = 0; i < 4; ++i)
+        assert(memory.write(interrupt_program + static_cast<std::uint32_t>(i * 4U),
+                            4, interrupt_instructions[i], &error));
+    assert(memory.write(static_cast<std::uint32_t>(retroshelf::Cpu::GeneralExceptionVector),
+                        4, 0U, &error));
+    cpu.reset();
+    cpu.set_pc(interrupt_program);
+    retroshelf::EeExecutionRunner interrupt_runner(cpu, memory, bus, *intc);
+    const auto interrupt_result = interrupt_runner.run(4U);
+    assert(interrupt_result.trace.size() == 4U);
+    assert(interrupt_result.trace[2].exception_taken);
+    assert(interrupt_result.trace[2].exception_code == 0U);
+    assert(cpu.pc() == retroshelf::Cpu::GeneralExceptionVector + 4U);
+    assert(cpu.cop0_epc() == interrupt_program + 8U);
+    assert((cpu.cop0_status() & retroshelf::Cpu::StatusExl) != 0U);
+    assert((cpu.cop0_cause() & retroshelf::Cpu::CauseEeInterruptPending) != 0U);
+
     return 0;
 }
