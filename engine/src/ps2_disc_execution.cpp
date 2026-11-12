@@ -30,7 +30,7 @@ Ps2DiscExecutionResult load_and_execute_ps2_disc(const Iso9660Disc& disc,
         result.image_loaded = false;
         return result;
     }
-    EeExecutionRunner runner(cpu, memory, bus);
+    EeExecutionRunner runner(cpu, memory, bus, *intc);
     result.execution = runner.run(instruction_budget);
     return result;
 }
