@@ -1,4 +1,8 @@
 #include "retroshelf/ps2_disc_execution.hpp"
+#include "retroshelf/ee_interrupt_controller.hpp"
+#include "retroshelf/system_bus.hpp"
+
+#include <memory>
 
 namespace retroshelf {
 
@@ -16,7 +20,17 @@ Ps2DiscExecutionResult load_and_execute_ps2_disc(const Iso9660Disc& disc,
     result.image_loaded = true;
     cpu.reset();
     cpu.set_pc(result.entry_point);
-    EeExecutionRunner runner(cpu, memory);
+    // Give the guest CPU a shared MMIO bus. The INTC register block is the
+    // first device wired into this execution path; interrupt sources and COP0
+    // delivery are still implemented separately.
+    SystemBus bus(memory);
+    auto intc = std::make_shared<EeInterruptController>();
+    if (!bus.map_mmio(EeInterruptController::RegisterBase,
+                      EeInterruptController::RegisterSize, intc, &result.error)) {
+        result.image_loaded = false;
+        return result;
+    }
+    EeExecutionRunner runner(cpu, memory, bus, *intc);
     result.execution = runner.run(instruction_budget);
     return result;
 }
