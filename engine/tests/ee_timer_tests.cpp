@@ -73,7 +73,7 @@ int main() {
     check(timers->count(1) == 0 &&
               (timers->mode(1) & retroshelf::EeTimerBlock::ModeOverflowFlag) != 0U,
           "counter wrap sets OVFF");
-    check(!bus.read(base + 4U, 4, *new std::vector<std::uint8_t>(), &error),
+    std::vector<std::uint8_t> invalid_read;\n    check(!bus.read(base + 4U, 4, invalid_read, &error) && invalid_read.empty(),
           "rejects unimplemented register offsets");
     check(!bus.write(base + 1U, word(1), &error),
           "rejects unaligned timer register writes");
