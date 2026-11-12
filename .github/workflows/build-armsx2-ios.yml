@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-26
     steps:
       - name: Check out ARMSX2 source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ARMSX2/ARMSX2
           path: armsx2
