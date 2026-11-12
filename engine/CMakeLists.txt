@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(RETROSHELF_ENGINE_SOURCES
     src/cpu.cpp
     src/ee_interrupt_controller.cpp
+    src/ee_timer.cpp
     src/ee_execution_runner.cpp
     src/system_bus.cpp
     src/ee_gif_dma.cpp
@@ -83,6 +84,11 @@ add_executable(ee-intc-tests tests/ee_interrupt_controller_tests.cpp
 target_include_directories(ee-intc-tests PRIVATE include)
 target_compile_options(ee-intc-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-intc-tests COMMAND ee-intc-tests)
+
+add_executable(ee-timer-tests tests/ee_timer_tests.cpp src/ee_timer.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
+target_include_directories(ee-timer-tests PRIVATE include)
+target_compile_options(ee-timer-tests PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME ee-timer-tests COMMAND ee-timer-tests)
 
 add_executable(gs-packet-processor-tests tests/gs_packet_processor_tests.cpp
     src/gs_packet_processor.cpp)
