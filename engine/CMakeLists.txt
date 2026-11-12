@@ -197,7 +197,8 @@ target_compile_options(bios-image-validator-tests PRIVATE -Wall -Wextra -Wpedant
 add_test(NAME bios-image-validator-tests COMMAND bios-image-validator-tests)
 
 add_executable(ee-execution-runner-tests tests/ee_execution_runner_tests.cpp
-    src/ee_execution_runner.cpp src/cpu.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
+    src/ee_execution_runner.cpp src/ee_interrupt_controller.cpp src/cpu.cpp
+    src/system_bus.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(ee-execution-runner-tests PRIVATE include)
 target_compile_options(ee-execution-runner-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-execution-runner-tests COMMAND ee-execution-runner-tests)
