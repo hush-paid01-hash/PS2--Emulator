@@ -62,6 +62,10 @@ bool Cpu::in_delay_slot() const { return delay_slot_pending_; }
 std::uint64_t Cpu::next_pc() const { return next_pc_; }
 std::uint64_t Cpu::hi() const { return hi_; }
 std::uint64_t Cpu::lo() const { return lo_; }
+void Cpu::set_ee_interrupt_pending(bool pending) {
+    if (pending) cause_ |= CauseEeInterruptPending;
+    else cause_ &= ~CauseEeInterruptPending;
+}
 
 void Cpu::raise_exception(std::uint32_t code, std::uint64_t fault_pc, bool in_delay_slot) {
     if ((status_ & StatusExl) == 0U) {
@@ -141,6 +145,14 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
     const std::uint64_t cur_pc = pc_;
     const bool in_delay = delay_slot_pending_;
     const std::uint64_t branch_base = pc_ + 4; // branch/jump targets are relative to the delay slot
+    constexpr std::uint32_t InterruptMask = 0x0000FF00U;
+    if ((status_ & StatusInterruptEnable) != 0U &&
+        (status_ & (StatusExl | StatusErl)) == 0U &&
+        (status_ & cause_ & InterruptMask) != 0U) {
+        if (error) *error = "EE external interrupt";
+        raise_exception(0U, cur_pc, in_delay);
+        return false;
+    }
 
     const bool is_jr = opcode == 0x00 && (funct == 0x08 || funct == 0x09);
     // REGIMM also contains immediate trap instructions (TGEI/TGEIU/TLTI/
