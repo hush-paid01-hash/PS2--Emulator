@@ -7,6 +7,15 @@
 
 namespace retroshelf {
 
+namespace {
+std::uint32_t mmio_physical_address(std::uint32_t address) {
+    // KSEG0/KSEG1 are direct-mapped aliases of the same physical EE bus.
+    if (address >= 0x80000000U && address < 0xC0000000U)
+        return address & 0x1FFFFFFFU;
+    return address;
+}
+} // namespace
+
 SystemBus::SystemBus(std::vector<std::uint8_t>& ee_ram) : ee_ram_(&ee_ram) {}
 SystemBus::SystemBus(Ps2EeMemoryMap& ee_memory) : ee_memory_(&ee_memory) {}
 
@@ -77,12 +86,13 @@ bool SystemBus::valid_mmio_access(std::uint32_t address, std::size_t size,
 
 bool SystemBus::read(std::uint32_t address, std::size_t size,
                      std::vector<std::uint8_t>& data, std::string* error) const {
-    if (const auto* mapping = find_mmio(address, size)) {
+    const std::uint32_t device_address = mmio_physical_address(address);
+    if (const auto* mapping = find_mmio(device_address, size)) {
         if (!valid_mmio_access(address, size, error)) {
             data.clear();
             return false;
         }
-        if (!mapping->device->read(address - mapping->base, size, data, error) ||
+        if (!mapping->device->read(device_address - mapping->base, size, data, error) ||
             data.size() != size) {
             if (error != nullptr && error->empty())
                 *error = "MMIO device returned an invalid read width";
@@ -94,7 +104,7 @@ bool SystemBus::read(std::uint32_t address, std::size_t size,
     }
 
     for (const auto& mapping : mmio_mappings_) {
-        if (address >= mapping.base && static_cast<std::uint64_t>(address) < mapping.end) {
+        if (device_address >= mapping.base && static_cast<std::uint64_t>(device_address) < mapping.end) {
             data.clear();
             if (error != nullptr) *error = "read crosses the end of an MMIO mapping";
             return false;
@@ -139,15 +149,16 @@ bool SystemBus::read(std::uint32_t address, std::size_t size,
 
 bool SystemBus::write(std::uint32_t address, const std::vector<std::uint8_t>& data,
                       std::string* error) {
-    if (const auto* mapping = find_mmio(address, data.size())) {
+    const std::uint32_t device_address = mmio_physical_address(address);
+    if (const auto* mapping = find_mmio(device_address, data.size())) {
         if (!valid_mmio_access(address, data.size(), error)) return false;
-        if (!mapping->device->write(address - mapping->base, data, error)) return false;
+        if (!mapping->device->write(device_address - mapping->base, data, error)) return false;
         if (error != nullptr) error->clear();
         return true;
     }
 
     for (const auto& mapping : mmio_mappings_) {
-        if (address >= mapping.base && static_cast<std::uint64_t>(address) < mapping.end) {
+        if (device_address >= mapping.base && static_cast<std::uint64_t>(device_address) < mapping.end) {
             if (error != nullptr) *error = "write crosses the end of an MMIO mapping";
             return false;
         }

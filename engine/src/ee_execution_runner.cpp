@@ -1,9 +1,18 @@
 #include "retroshelf/ee_execution_runner.hpp"
+#include "retroshelf/system_bus.hpp"
+#include "retroshelf/ee_interrupt_controller.hpp"
 
 namespace retroshelf {
 
 EeExecutionRunner::EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory)
     : cpu_(cpu), memory_(memory) {}
+
+EeExecutionRunner::EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory, SystemBus& bus)
+    : cpu_(cpu), memory_(memory), bus_(&bus) {}
+
+EeExecutionRunner::EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory,
+                                     SystemBus& bus, EeInterruptController& intc)
+    : cpu_(cpu), memory_(memory), bus_(&bus), intc_(&intc) {}
 
 EeExecutionRunner::Result EeExecutionRunner::run_from_bios_reset_vector(std::size_t instruction_budget) {
     cpu_.reset();
@@ -30,7 +39,10 @@ EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget)
             memory_.read(static_cast<std::uint32_t>(instruction_pc), 4, raw_instruction, &fetch_error);
 
         std::string error;
-        const bool instruction_completed = cpu_.step_from_ee_memory(memory_, &error);
+        cpu_.set_ee_interrupt_pending(intc_ != nullptr && intc_->active_pending() != 0U);
+        const bool instruction_completed = bus_ != nullptr
+            ? cpu_.step_from_ee_bus(memory_, *bus_, &error)
+            : cpu_.step_from_ee_memory(memory_, &error);
         const bool exception_taken = !instruction_completed &&
             instruction_pc != Cpu::GeneralExceptionVector &&
             cpu_.pc() == Cpu::GeneralExceptionVector &&
