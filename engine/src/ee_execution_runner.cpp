@@ -1,6 +1,7 @@
 #include "retroshelf/ee_execution_runner.hpp"
 #include "retroshelf/system_bus.hpp"
 #include "retroshelf/ee_interrupt_controller.hpp"
+#include "retroshelf/ee_timer.hpp"
 
 namespace retroshelf {
 
@@ -13,6 +14,11 @@ EeExecutionRunner::EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory, SystemBus
 EeExecutionRunner::EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory,
                                      SystemBus& bus, EeInterruptController& intc)
     : cpu_(cpu), memory_(memory), bus_(&bus), intc_(&intc) {}
+
+EeExecutionRunner::EeExecutionRunner(Cpu& cpu, Ps2EeMemoryMap& memory,
+                                     SystemBus& bus, EeInterruptController& intc,
+                                     EeTimerBlock& timers)
+    : cpu_(cpu), memory_(memory), bus_(&bus), intc_(&intc), timers_(&timers) {}
 
 EeExecutionRunner::Result EeExecutionRunner::run_from_bios_reset_vector(std::size_t instruction_budget) {
     cpu_.reset();
@@ -43,6 +49,19 @@ EeExecutionRunner::Result EeExecutionRunner::run(std::size_t instruction_budget)
         const bool instruction_completed = bus_ != nullptr
             ? cpu_.step_from_ee_bus(memory_, *bus_, &error)
             : cpu_.step_from_ee_memory(memory_, &error);
+        // The subset interpreter has no per-opcode cycle table yet. Charge
+        // one deterministic EE cycle per attempted instruction until timing
+        // metadata exists; this wires events without claiming clock accuracy.
+        if (timers_ != nullptr) {
+            timers_->advance_cycles(1U);
+            if (intc_ != nullptr) {
+                const std::uint32_t pending = timers_->pending_interrupts();
+                for (std::uint32_t channel = 0; channel < 4U; ++channel) {
+                    if ((pending & (1U << channel)) != 0U)
+                        intc_->raise_interrupt(9U + channel);
+                }
+            }
+        }
         const bool exception_taken = !instruction_completed &&
             instruction_pc != Cpu::GeneralExceptionVector &&
             cpu_.pc() == Cpu::GeneralExceptionVector &&
