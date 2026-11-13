@@ -129,10 +129,9 @@ std::uint32_t EeTimerBlock::pending_interrupts() const {
     std::uint32_t pending = 0;
     for (std::uint32_t i = 0; i < ChannelCount; ++i) {
         const std::uint32_t m = timers_[i].mode;
-        if ((m & ModeCompareEnable) != 0U && (m & ModeCompareFlag) != 0U)
-            pending |= 1U << (i * 2U);
-        if ((m & ModeOverflowEnable) != 0U && (m & ModeOverflowFlag) != 0U)
-            pending |= 1U << (i * 2U + 1U);
+        if (((m & ModeCompareEnable) != 0U && (m & ModeCompareFlag) != 0U) ||
+            ((m & ModeOverflowEnable) != 0U && (m & ModeOverflowFlag) != 0U))
+            pending |= 1U << i;
     }
     return pending;
 }

@@ -54,7 +54,7 @@ target_compile_options(engine-c-api-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME engine-c-api-tests COMMAND engine-c-api-tests)
 
 add_executable(cpu-system-bus-tests tests/cpu_system_bus_tests.cpp
-    src/cpu.cpp src/ee_execution_runner.cpp src/ee_interrupt_controller.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
+    src/cpu.cpp src/ee_execution_runner.cpp src/ee_interrupt_controller.cpp src/ee_timer.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(cpu-system-bus-tests PRIVATE include)
 target_compile_options(cpu-system-bus-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME cpu-system-bus-tests COMMAND cpu-system-bus-tests)
@@ -85,7 +85,7 @@ target_include_directories(ee-intc-tests PRIVATE include)
 target_compile_options(ee-intc-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-intc-tests COMMAND ee-intc-tests)
 
-add_executable(ee-timer-tests tests/ee_timer_tests.cpp src/ee_timer.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
+add_executable(ee-timer-tests tests/ee_timer_tests.cpp src/ee_timer.cpp src/ee_execution_runner.cpp src/ee_interrupt_controller.cpp src/cpu.cpp src/system_bus.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(ee-timer-tests PRIVATE include)
 target_compile_options(ee-timer-tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ee-timer-tests COMMAND ee-timer-tests)
@@ -152,7 +152,7 @@ add_test(NAME elf32-mips-tests COMMAND elf32-mips-tests)
 add_executable(ps2-boot-image-tests tests/ps2_boot_image_tests.cpp
     src/iso9660_disc.cpp src/ps2_boot_config.cpp src/ps2_disc_boot_loader.cpp
     src/elf32_mips.cpp src/ps2_boot_image.cpp src/ps2_disc_execution.cpp src/ee_execution_runner.cpp
-    src/ee_interrupt_controller.cpp src/system_bus.cpp
+    src/ee_interrupt_controller.cpp src/ee_timer.cpp src/system_bus.cpp
     src/elf_memory_staging.cpp src/elf_ram_loader.cpp src/cpu.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(ps2-boot-image-tests PRIVATE include)
 target_compile_options(ps2-boot-image-tests PRIVATE -Wall -Wextra -Wpedantic)
@@ -203,7 +203,7 @@ target_compile_options(bios-image-validator-tests PRIVATE -Wall -Wextra -Wpedant
 add_test(NAME bios-image-validator-tests COMMAND bios-image-validator-tests)
 
 add_executable(ee-execution-runner-tests tests/ee_execution_runner_tests.cpp
-    src/ee_execution_runner.cpp src/ee_interrupt_controller.cpp src/cpu.cpp
+    src/ee_execution_runner.cpp src/ee_interrupt_controller.cpp src/ee_timer.cpp src/cpu.cpp
     src/system_bus.cpp src/ps2_ee_memory_map.cpp)
 target_include_directories(ee-execution-runner-tests PRIVATE include)
 target_compile_options(ee-execution-runner-tests PRIVATE -Wall -Wextra -Wpedantic)
