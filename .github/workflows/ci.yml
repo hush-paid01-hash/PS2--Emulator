@@ -30,19 +30,18 @@ jobs:
           username: ${{ env.DOCKER_USER }}
           password: ${{ env.DOCKER_PAT }}
 
-      # Docker Build Cloud requires Docker Hub credentials. Without them,
-      # use the standard Buildx builder so pull requests and first-time setup
-      # can still compile and validate the image without publishing it.
-      - name: Set up Docker Buildx Cloud
+      # Use Docker Build Cloud when credentials are configured.
+      # Otherwise, use the standard Buildx driver to build without publishing.
+      - name: Docker Setup Buildx Cloud
         if: env.DOCKER_USER != '' && env.DOCKER_PAT != ''
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4.4.1
         with:
           driver: cloud
           endpoint: hushpaid01/hush
 
-      - name: Set up standard Docker Buildx
+      - name: Docker Setup Buildx
         if: env.DOCKER_USER == '' || env.DOCKER_PAT == ''
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4.4.1
 
       - name: Build and push
         uses: docker/build-push-action@v6
