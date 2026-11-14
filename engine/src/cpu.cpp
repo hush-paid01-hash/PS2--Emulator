@@ -668,6 +668,31 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         }
 
         if (funct == 0x28U) { // MMI1 packed absolute, minimum, and unsigned saturation.
+            if (sub_op == 4U) { // PADSBH: subtract low four, add high four halfwords.
+                const auto add_sub_halfwords = [](std::uint64_t lhs,
+                                                   std::uint64_t rhs,
+                                                   unsigned lane_base) {
+                    std::uint64_t result = 0;
+                    for (unsigned lane = 0; lane < 4U; ++lane) {
+                        const unsigned shift = lane * 16U;
+                        const std::uint32_t a = static_cast<std::uint32_t>(
+                            (lhs >> shift) & 0xFFFFU);
+                        const std::uint32_t b = static_cast<std::uint32_t>(
+                            (rhs >> shift) & 0xFFFFU);
+                        const std::uint32_t value =
+                            (lane_base + lane) < 4U ? (a - b) & 0xFFFFU
+                                                     : (a + b) & 0xFFFFU;
+                        result |= static_cast<std::uint64_t>(value) << shift;
+                    }
+                    return result;
+                };
+                // lane_base distinguishes the lower and upper 64-bit halves:
+                // low half contains subtract lanes; high half contains add lanes.
+                set_reg(rd, add_sub_halfwords(lhs_low, rhs_low, 0U));
+                set_reg_high(rd, add_sub_halfwords(lhs_high, rhs_high, 4U));
+                return true;
+            }
+
             if (sub_op == 1U || sub_op == 5U) { // PABSW / PABSH (unary rt).
                 const unsigned lane_bits = sub_op == 1U ? 32U : 16U;
                 const std::uint64_t lane_mask =
