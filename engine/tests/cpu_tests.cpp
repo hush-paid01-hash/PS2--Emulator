@@ -212,6 +212,25 @@ int main() {
         return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
                (rd << 11U) | (sub_op << 6U) | 0x28U;
     };
+    // PEXTU extracts and interleaves the upper 64 bits of each source.
+    cpu.reset();
+    cpu.set_reg(1, 0x1122334455667788ULL);
+    cpu.set_reg_high(1, 0x99AABBCCDDEEFF00ULL);
+    cpu.set_reg(2, 0x0123456789ABCDEFULL);
+    cpu.set_reg_high(2, 0xFEDCBA9876543210ULL);
+    check(cpu.step(mmi1(1, 2, 3, 0x12U)) &&
+              cpu.reg(3) == 0xDDEEFF0076543210ULL &&
+              cpu.reg_high(3) == 0x99AABBCCFEDCBA98ULL,
+          "PEXTUW interleaves upper words from rt and rs");
+    check(cpu.step(mmi1(1, 2, 3, 0x16U)) &&
+              cpu.reg(3) == 0xEEFF76540010BA98ULL &&
+              cpu.reg_high(3) == 0xDDEEFF0076543210ULL,
+          "PEXTUH interleaves upper halfwords from rt and rs");
+    check(cpu.step(mmi1(1, 2, 3, 0x1AU)) &&
+              cpu.reg(3) == 0xEF76DC105498BA32ULL &&
+              cpu.reg_high(3) == 0xED76DC105498BA32ULL,
+          "PEXTUB interleaves upper bytes from rt and rs");
+
     cpu.reset();
     cpu.set_reg(1, 0x800000007FFFFFFFULL);
     cpu.set_reg_high(1, 0xFFFFFFFF80000001ULL);
