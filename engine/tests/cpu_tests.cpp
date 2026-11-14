@@ -1969,5 +1969,37 @@ int main() {
               cpu.reg_high(3) == 0,
           "PPAC5 restores the four packed pixels and clears unused upper lanes");
 
+    // SA is a dedicated EE register: MTSAB sets a byte-aligned bit count,
+    // MFSA exposes it for context save, and QFSRV consumes it.
+    cpu.reset();
+    cpu.set_reg(1, 5U);
+    check(cpu.step(itype(0x01U, 1U, 0x18U, 3)),
+          "MTSAB sets byte shift amount");
+    check(cpu.step(rtype(0U, 0U, 4U, 0x28U)) && cpu.reg(4) == 16U,
+          "MFSA reads the SA value established by MTSAB");
+    cpu.set_reg(2, 0xFFEEDDCCBBAA9988ULL);
+    cpu.set_reg_high(2, 0x7766554433221100ULL);
+    cpu.set_reg(3, 0x0123456789ABCDEFULL);
+    cpu.set_reg_high(3, 0xFEDCBA9876543210ULL);
+    constexpr std::uint32_t qfsrv =
+        (0x1CU << 26U) | (3U << 21U) | (2U << 16U) |
+        (5U << 11U) | (0x1BU << 6U) | 0x08U;
+    check(cpu.step(qfsrv), "QFSRV executes with the byte shift amount");
+    check(cpu.reg(5) == 0x1100FFEEDDCCBBAAULL &&
+              cpu.reg_high(5) == 0xCDEF776655443322ULL,
+          "QFSRV shifts the concatenated 256-bit source right by 16 bits");
+
+    cpu.reset();
+    cpu.set_reg(1, 5U);
+    check(cpu.step(itype(0x01U, 1U, 0x19U, 2)),
+          "MTSAH sets halfword shift amount");
+    check(cpu.step(rtype(0U, 0U, 4U, 0x28U)) && cpu.reg(4) == 112U,
+          "MTSAH uses the low three XOR bits multiplied by 16");
+    cpu.set_reg(1, 112U);
+    check(cpu.step(rtype(1U, 0U, 0U, 0x29U)),
+          "MTSA restores the saved SA value");
+    check(cpu.step(rtype(0U, 0U, 4U, 0x28U)) && cpu.reg(4) == 112U,
+          "MFSA observes MTSA-restored SA state");
+
     return failures == 0 ? 0 : 1;
 }
