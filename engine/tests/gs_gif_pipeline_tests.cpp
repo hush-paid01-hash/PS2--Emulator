@@ -321,5 +321,38 @@ int main() {
               "TRXPOS reverse X/Y map source pixels to reversed GS destination coordinates");
     }
 
+    {
+        // IIP enables Gouraud interpolation: three independently coloured
+        // vertices should produce a predictable interpolated interior pixel.
+        const std::uint8_t addresses[] = {0x0, 0x1, 0x5, 0x1, 0x5, 0x1, 0x5};
+        const std::uint64_t values[] = {
+            0x0BULL, // PRIM: triangle list with IIP=1 (Gouraud shading).
+            0xFF0000FFULL, // RGBAQ: opaque red.
+            (1ULL << 4U) | (1ULL << 20U),
+            0xFF00FF00ULL, // RGBAQ: opaque green.
+            (6ULL << 4U) | (1ULL << 20U),
+            0xFFFF0000ULL, // RGBAQ: opaque blue.
+            (1ULL << 4U) | (6ULL << 20U)
+        };
+        std::vector<std::uint8_t> bytes(7U * 32U, 0);
+        for (std::size_t i = 0; i < 7U; ++i) {
+            const std::size_t offset = i * 32U;
+            const std::uint64_t tag = 1ULL | ((i == 6U) ? (1ULL << 15U) : 0ULL) |
+                                      (1ULL << 60U);
+            write_u64(bytes, offset, tag);
+            write_u64(bytes, offset + 8U, addresses[i]);
+            write_u64(bytes, offset + 16U, values[i]);
+        }
+        retroshelf::GsGifPipeline pipeline;
+        retroshelf::GsFramebuffer framebuffer;
+        check(framebuffer.resize(8, 8), "framebuffer is allocated for Gouraud triangle test");
+        check(pipeline.consume_and_render({retroshelf::GifPacket{bytes, 1}}, framebuffer),
+              "GIF pipeline renders a Gouraud-shaded PACKED triangle");
+        retroshelf::GsFramebuffer::Rgba8 pixel{};
+        check(framebuffer.get_pixel(2, 2, pixel) && pixel.r == 153 &&
+                  pixel.g == 51 && pixel.b == 51 && pixel.a == 255,
+              "Gouraud triangle interpolates red, green and blue vertex colours");
+    }
+
     return failures == 0 ? 0 : 1;
 }

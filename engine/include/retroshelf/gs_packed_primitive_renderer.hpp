@@ -10,8 +10,8 @@
 
 namespace retroshelf {
 
-// Minimal GS PACKED-write consumer for bring-up. Supports flat-colour triangle
-// lists, strips, fans, and sprites (PRIM, RGBAQ, XYZ2); other types are ignored.
+// Minimal GS PACKED-write consumer for bring-up. Supports flat and Gouraud-colour
+// lines, triangle lists/strips/fans, and sprites (PRIM, RGBAQ, XYZ2); other types are ignored.
 class GsPackedPrimitiveRenderer {
 public:
     bool consume(const std::vector<GsRegisterDecoder::Write>& writes,
