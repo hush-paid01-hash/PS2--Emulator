@@ -223,12 +223,12 @@ int main() {
               cpu.reg_high(3) == 0x99AABBCCFEDCBA98ULL,
           "PEXTUW interleaves upper words from rt and rs");
     check(cpu.step(mmi1(1, 2, 3, 0x16U)) &&
-              cpu.reg(3) == 0xEEFF76540010BA98ULL &&
-              cpu.reg_high(3) == 0xDDEEFF0076543210ULL,
+              cpu.reg(3) == 0xDDEE7654FF003210ULL &&
+              cpu.reg_high(3) == 0x99AAFEDCBBCCBA98ULL,
           "PEXTUH interleaves upper halfwords from rt and rs");
     check(cpu.step(mmi1(1, 2, 3, 0x1AU)) &&
-              cpu.reg(3) == 0xEF76DC105498BA32ULL &&
-              cpu.reg_high(3) == 0xED76DC105498BA32ULL,
+              cpu.reg(3) == 0xDD76EE54FF320010ULL &&
+              cpu.reg_high(3) == 0x99FEAADCBBBACC98ULL,
           "PEXTUB interleaves upper bytes from rt and rs");
 
     cpu.reset();
