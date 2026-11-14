@@ -86,6 +86,8 @@ private:
     std::uint64_t bad_vaddr_{0};
     std::uint64_t hi_{0};
     std::uint64_t lo_{0};
+    // EE Shift Amount register used by MTSAB/MTSAH/MTSA and QFSRV.
+    std::uint32_t sa_{0};
 };
 
 } // namespace retroshelf
