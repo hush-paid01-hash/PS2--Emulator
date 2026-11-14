@@ -219,8 +219,8 @@ int main() {
     cpu.set_reg(2, 0x1112131421222324ULL);
     cpu.set_reg_high(2, 0x3132333441424344ULL);
     check(cpu.step(mmi0_pack(1, 2, 3, 19U)) &&
-              cpu.reg(3) == 0x0000001400000024ULL &&
-              cpu.reg_high(3) == 0x000000A1000000B1ULL,
+              cpu.reg(3) == 0x4142434421222324ULL &&
+              cpu.reg_high(3) == 0xD1D2D3D4B1B2B3B4ULL,
           "PPACW packs low word of each doubleword from rt and rs");
 
     cpu.reset();
@@ -229,8 +229,8 @@ int main() {
     cpu.set_reg(2, 0x1112131421222324ULL);
     cpu.set_reg_high(2, 0x3132333441424344ULL);
     check(cpu.step(mmi0_pack(1, 2, 3, 23U)) &&
-              cpu.reg(3) == 0x0022002400120014ULL &&
-              cpu.reg_high(3) == 0x00B200B400A200A4ULL,
+              cpu.reg(3) == 0x3334434413142324ULL &&
+              cpu.reg_high(3) == 0xC3C4D3D4A3A4B3B4ULL,
           "PPACH packs low halfword of each word from rt and rs");
 
     cpu.reset();
@@ -239,8 +239,8 @@ int main() {
     cpu.set_reg(2, 0x1112131421222324ULL);
     cpu.set_reg_high(2, 0x3132333441424344ULL);
     check(cpu.step(mmi0_pack(1, 2, 3, 27U)) &&
-              cpu.reg(3) == 0x22B224B212A214B4ULL &&
-              cpu.reg_high(3) == 0xA2D2B2D2A1D1B1D1ULL,
+              cpu.reg(3) == 0x3234424412142224ULL &&
+              cpu.reg_high(3) == 0xC2C4D2D4A2A4B2B4ULL,
           "PPACB packs low byte of each halfword from rt and rs");
 
     // PEXTL operations interleave the low 64-bit source halves into all
