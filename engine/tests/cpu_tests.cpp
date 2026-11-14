@@ -1852,8 +1852,8 @@ int main() {
     cpu.set_reg_high(1, 0xFFFFFFFFFFFFFFFFULL);
     check(cpu.step(mmi0_color(1, 2, 30U)),
           "PEXT5 expands four packed 1-5-5-5 pixels");
-    check(cpu.reg(2) == 0xF80000F800F800F8ULL &&
-              cpu.reg_high(2) == 0xF800F800F800F800ULL,
+    check(cpu.reg(2) == 0x800000808F8F8F80ULL &&
+              cpu.reg_high(2) == 0x0F000F80000F8000ULL,
           "PEXT5 places alpha and 5-bit color channels in 8-8-8-8 words");
     check(cpu.step(mmi0_color(2, 3, 31U)),
           "PPAC5 packs four 8-8-8-8 words into 1-5-5-5 halfwords");
