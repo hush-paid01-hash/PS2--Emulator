@@ -258,6 +258,20 @@ int main() {
           "PSUBUW saturates unsigned word underflow at zero");
 
     cpu.reset();
+    cpu.set_reg(1, 0xFFFF0001FFFF8000ULL);
+    cpu.set_reg(2, 0x0001FFFF00018001ULL);
+    cpu.set_reg_high(1, 0x7FFF800000010000ULL);
+    cpu.set_reg_high(2, 0x800100010001FFFFULL);
+    check(cpu.step(mmi1(1, 2, 3, 0x14U)) &&
+              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
+              cpu.reg_high(3) == 0xFFFF80010002FFFFULL,
+          "PADDUH saturates unsigned halfword additions at 65535");
+    check(cpu.step(mmi1(1, 2, 3, 0x15U)) &&
+              cpu.reg(3) == 0xFFFE0000FFFE0000ULL &&
+              cpu.reg_high(3) == 0x00007FFF00000000ULL,
+          "PSUBUH saturates unsigned halfword underflow at zero");
+
+    cpu.reset();
     cpu.set_reg(1, 0xFF0100FE7F8001FFULL);
     cpu.set_reg(2, 0x0102FF020102FF01ULL);
     cpu.set_reg_high(1, 0xFFFFFFFF00000000ULL);
