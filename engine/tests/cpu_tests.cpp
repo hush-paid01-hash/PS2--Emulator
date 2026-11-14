@@ -206,6 +206,85 @@ int main() {
               cpu.reg_high(3) == 0xFFFFFFFF00000008ULL,
           "MMI1 PADDUW adds four lanes with unsigned saturation");
 
+    // MMI1 signed absolute/minimum and unsigned saturating arithmetic.
+    const auto mmi1 = [](std::uint32_t rs, std::uint32_t rt,
+                         std::uint32_t rd, std::uint32_t sub_op) {
+        return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
+               (rd << 11U) | (sub_op << 6U) | 0x28U;
+    };
+    cpu.reset();
+    cpu.set_reg(1, 0x800000007FFFFFFFULL);
+    cpu.set_reg_high(1, 0xFFFFFFFF80000001ULL);
+    check(cpu.step(mmi1(0, 1, 2, 1U)) &&
+              cpu.reg(2) == 0x7FFFFFFF7FFFFFFFULL &&
+              cpu.reg_high(2) == 0x000000017FFFFFFFULL,
+          "PABSW computes four signed absolute values and saturates INT_MIN");
+    cpu.reset();
+    cpu.set_reg(1, 0x80017FFF8000FFFFULL);
+    cpu.set_reg_high(1, 0xFFFF000180007FFFULL);
+    check(cpu.step(mmi1(0, 1, 2, 5U)) &&
+              cpu.reg(2) == 0x7FFF7FFF7FFF0001ULL &&
+              cpu.reg_high(2) == 0x000100017FFF7FFFULL,
+          "PABSH computes eight signed absolute values and saturates -32768");
+
+    cpu.reset();
+    cpu.set_reg(1, 0x800000007FFFFFFFULL);
+    cpu.set_reg_high(1, 0xFFFFFFFF00000001ULL);
+    cpu.set_reg(2, 0x7FFFFFFF80000000ULL);
+    cpu.set_reg_high(2, 0x00000002FFFFFFFFULL);
+    check(cpu.step(mmi1(1, 2, 3, 3U)) &&
+              cpu.reg(3) == 0x8000000080000000ULL &&
+              cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
+          "PMINW selects the signed minimum independently in all four lanes");
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFF00017FFF8000ULL);
+    cpu.set_reg(2, 0x0000FFFF80007FFFULL);
+    check(cpu.step(mmi1(1, 2, 3, 7U)) &&
+              cpu.reg(3) == 0xFFFFFFFF80008000ULL,
+          "PMINH selects signed minimum across eight halfword lanes");
+
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFFFFFF00000001ULL);
+    cpu.set_reg_high(1, 0x7FFFFFFF80000000ULL);
+    cpu.set_reg(2, 0x00000001FFFFFFFFULL);
+    cpu.set_reg_high(2, 0x8000000100000001ULL);
+    check(cpu.step(mmi1(1, 2, 3, 0x10U)) &&
+              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
+              cpu.reg_high(3) == 0xFFFFFFFF80000001ULL,
+          "PADDUW saturates unsigned word additions at UINT32_MAX");
+    check(cpu.step(mmi1(1, 2, 3, 0x11U)) &&
+              cpu.reg(3) == 0xFFFFFFFE00000000ULL &&
+              cpu.reg_high(3) == 0x000000007FFFFFFFULL,
+          "PSUBUW saturates unsigned word underflow at zero");
+
+    cpu.reset();
+    cpu.set_reg(1, 0xFFFF0001FFFF8000ULL);
+    cpu.set_reg(2, 0x0001FFFF00018001ULL);
+    cpu.set_reg_high(1, 0x7FFF800000010000ULL);
+    cpu.set_reg_high(2, 0x800100010001FFFFULL);
+    check(cpu.step(mmi1(1, 2, 3, 0x14U)) &&
+              cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
+              cpu.reg_high(3) == 0xFFFF80010002FFFFULL,
+          "PADDUH saturates unsigned halfword additions at 65535");
+    check(cpu.step(mmi1(1, 2, 3, 0x15U)) &&
+              cpu.reg(3) == 0xFFFE0000FFFE0000ULL &&
+              cpu.reg_high(3) == 0x00007FFF00000000ULL,
+          "PSUBUH saturates unsigned halfword underflow at zero");
+
+    cpu.reset();
+    cpu.set_reg(1, 0xFF0100FE7F8001FFULL);
+    cpu.set_reg(2, 0x0102FF020102FF01ULL);
+    cpu.set_reg_high(1, 0xFFFFFFFF00000000ULL);
+    cpu.set_reg_high(2, 0x0101010101010101ULL);
+    check(cpu.step(mmi1(1, 2, 3, 0x18U)) &&
+              cpu.reg(3) == 0xFF03FFFF8082FFFFULL &&
+              cpu.reg_high(3) == 0xFFFFFFFF01010101ULL,
+          "PADDUB saturates unsigned byte additions at 255");
+    check(cpu.step(mmi1(1, 2, 3, 0x19U)) &&
+              cpu.reg(3) == 0xFE0000FC7E7E00FEULL &&
+              cpu.reg_high(3) == 0xFEFEFEFE00000000ULL,
+          "PSUBUB saturates unsigned byte underflow at zero");
+
     // PPACW/H/B gather the low word/halfword/byte from each wider
     // source element. rt becomes the low 64-bit result and rs the high half.
     const auto mmi0_pack = [](std::uint32_t rs, std::uint32_t rt,

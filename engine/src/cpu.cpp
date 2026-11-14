@@ -640,6 +640,84 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
 
+        if (funct == 0x28U) { // MMI1 packed absolute, minimum, and unsigned saturation.
+            if (sub_op == 1U || sub_op == 5U) { // PABSW / PABSH (unary rt).
+                const unsigned lane_bits = sub_op == 1U ? 32U : 16U;
+                const std::uint64_t lane_mask =
+                    (std::uint64_t{1} << lane_bits) - 1U;
+                const std::uint64_t sign_bit =
+                    std::uint64_t{1} << (lane_bits - 1U);
+                const auto absolute = [=](std::uint64_t source) {
+                    std::uint64_t result = 0;
+                    const unsigned count = 64U / lane_bits;
+                    for (unsigned lane = 0; lane < count; ++lane) {
+                        const unsigned shift = lane * lane_bits;
+                        const std::uint64_t value = (source >> shift) & lane_mask;
+                        std::uint64_t magnitude = value;
+                        if ((value & sign_bit) != 0U)
+                            magnitude = value == sign_bit ? sign_bit - 1U
+                                                          : (0U - value) & lane_mask;
+                        result |= magnitude << shift;
+                    }
+                    return result;
+                };
+                set_reg(rd, absolute(rhs_low));
+                set_reg_high(rd, absolute(rhs_high));
+                return true;
+            }
+
+            if (sub_op == 3U || sub_op == 7U) { // PMINW / PMINH.
+                const unsigned lane_bits = sub_op == 3U ? 32U : 16U;
+                const std::uint64_t lane_mask =
+                    (std::uint64_t{1} << lane_bits) - 1U;
+                const std::uint64_t sign_bit =
+                    std::uint64_t{1} << (lane_bits - 1U);
+                const auto minimum = [=](std::uint64_t lhs, std::uint64_t rhs) {
+                    std::uint64_t result = 0;
+                    const unsigned count = 64U / lane_bits;
+                    for (unsigned lane = 0; lane < count; ++lane) {
+                        const unsigned shift = lane * lane_bits;
+                        const std::uint64_t a = (lhs >> shift) & lane_mask;
+                        const std::uint64_t b = (rhs >> shift) & lane_mask;
+                        const std::uint64_t value =
+                            (a ^ sign_bit) <= (b ^ sign_bit) ? a : b;
+                        result |= value << shift;
+                    }
+                    return result;
+                };
+                set_reg(rd, minimum(lhs_low, rhs_low));
+                set_reg_high(rd, minimum(lhs_high, rhs_high));
+                return true;
+            }
+
+            if (sub_op == 0x10U || sub_op == 0x11U ||
+                sub_op == 0x14U || sub_op == 0x15U ||
+                sub_op == 0x18U || sub_op == 0x19U) {
+                const unsigned lane_bits = sub_op >= 0x18U ? 8U :
+                                           (sub_op >= 0x14U ? 16U : 32U);
+                const bool subtract = (sub_op & 1U) != 0U;
+                const std::uint64_t lane_mask =
+                    (std::uint64_t{1} << lane_bits) - 1U;
+                const auto saturating = [=](std::uint64_t lhs, std::uint64_t rhs) {
+                    std::uint64_t result = 0;
+                    const unsigned count = 64U / lane_bits;
+                    for (unsigned lane = 0; lane < count; ++lane) {
+                        const unsigned shift = lane * lane_bits;
+                        const std::uint64_t a = (lhs >> shift) & lane_mask;
+                        const std::uint64_t b = (rhs >> shift) & lane_mask;
+                        const std::uint64_t value = subtract
+                            ? (a < b ? 0U : a - b)
+                            : (b > lane_mask - a ? lane_mask : a + b);
+                        result |= value << shift;
+                    }
+                    return result;
+                };
+                set_reg(rd, saturating(lhs_low, rhs_low));
+                set_reg_high(rd, saturating(lhs_high, rhs_high));
+                return true;
+            }
+        }
+
         if (funct == 0x28U) { // MMI1 packed equality comparisons.
             if (sub_op != 2U && sub_op != 6U && sub_op != 10U)
                 return unsupported();
