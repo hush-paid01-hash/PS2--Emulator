@@ -206,6 +206,40 @@ int main() {
               cpu.reg_high(3) == 0xFFFFFFFF00000008ULL,
           "MMI1 PADDUW adds four lanes with unsigned saturation");
 
+    // PEXTL operations interleave the low 64-bit source halves into all
+    // 128 destination bits. rt supplies each even (lower) lane; rs supplies
+    // the following odd lane. Check each supported lane width independently.
+    const auto mmi0_interleave = [](std::uint32_t rs, std::uint32_t rt,
+                                    std::uint32_t rd, std::uint32_t sub_op) {
+        return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
+               (rd << 11U) | (sub_op << 6U) | 0x08U;
+    };
+    cpu.reset();
+    cpu.set_reg(1, 0x1122334455667788ULL);
+    cpu.set_reg_high(1, 0xDEADBEEFCAFEBABEULL);
+    cpu.set_reg(2, 0x99AABBCCDDEEFF00ULL);
+    cpu.set_reg_high(2, 0x0123456789ABCDEFULL);
+    check(cpu.step(mmi0_interleave(1, 2, 3, 18U)) &&
+              cpu.reg(3) == 0x55667788DDEEFF00ULL &&
+              cpu.reg_high(3) == 0x1122334499AABBCCULL,
+          "PExtLW interleaves low source words and ignores source high halves");
+
+    cpu.reset();
+    cpu.set_reg(1, 0x1122334455667788ULL);
+    cpu.set_reg(2, 0x99AABBCCDDEEFF00ULL);
+    check(cpu.step(mmi0_interleave(1, 2, 3, 22U)) &&
+              cpu.reg(3) == 0x5566DDEE7788FF00ULL &&
+              cpu.reg_high(3) == 0x112299AA3344BBCCULL,
+          "PExtLH interleaves four low halfwords from each source");
+
+    cpu.reset();
+    cpu.set_reg(1, 0x1122334455667788ULL);
+    cpu.set_reg(2, 0x99AABBCCDDEEFF00ULL);
+    check(cpu.step(mmi0_interleave(1, 2, 3, 26U)) &&
+              cpu.reg(3) == 0x5511DD337799FF00ULL &&
+              cpu.reg_high(3) == 0x11339922BB44AA66ULL,
+          "PExtLB interleaves eight low bytes from each source");
+
     // Signed saturating MMI0 arithmetic is separate from the wrapping
     // PADDB/PADDH/PADDW forms and must operate on all 128 GPR bits.
     const auto mmi0 = [](std::uint32_t rs, std::uint32_t rt,
