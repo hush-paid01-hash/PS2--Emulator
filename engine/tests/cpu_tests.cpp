@@ -206,6 +206,40 @@ int main() {
               cpu.reg_high(3) == 0xFFFFFFFF00000008ULL,
           "MMI1 PADDUW adds four lanes with unsigned saturation");
 
+    // Signed saturating MMI0 arithmetic is separate from the wrapping
+    // PADDB/PADDH/PADDW forms and must operate on all 128 GPR bits.
+    const auto mmi0 = [](std::uint32_t rs, std::uint32_t rt,
+                         std::uint32_t rd, std::uint32_t sub_op) {
+        return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
+               (rd << 11U) | (sub_op << 6U) | 0x08U;
+    };
+    cpu.reset();
+    cpu.set_reg(1, 0x800000007FFFFFFFULL);
+    cpu.set_reg_high(1, 0xFFFFFF9C00000064ULL); // -100, +100
+    cpu.set_reg(2, 0xFFFFFFFF00000001ULL);      // -1, +1
+    cpu.set_reg_high(2, 0xFFFFFFCE00000032ULL); // -50, +50
+    check(cpu.step(mmi0(1, 2, 3, 16U)), "MMI0 PADDSW executes");
+    check(cpu.reg(3) == 0x800000007FFFFFFFULL &&
+              cpu.reg_high(3) == 0xFFFFFF6A00000096ULL,
+          "PADDSW clamps positive and negative overflow in both 64-bit halves");
+
+    cpu.reset();
+    cpu.set_reg(1, 0x0000800000007FFFULL);
+    cpu.set_reg(2, 0x00000001FFFF0001ULL);
+    check(cpu.step(mmi0(1, 2, 3, 21U)), "MMI0 PSUBSH executes");
+    check(cpu.reg(3) == 0x00007FFF8000FFFFULL,
+          "PSUBSH clamps halfword underflow and overflow independently");
+
+    cpu.reset();
+    cpu.set_reg(1, 0x807F7F80FF7F7F80ULL);
+    cpu.set_reg(2, 0xFF018101018101FFULL);
+    cpu.set_reg_high(1, 0x7F807F80FF7F7F80ULL);
+    cpu.set_reg_high(2, 0x01010101FF818101ULL);
+    check(cpu.step(mmi0(1, 2, 3, 24U)), "MMI0 PADDSB executes");
+    check(cpu.reg(3) == 0x807F0080FF7F7F80ULL &&
+              cpu.reg_high(3) == 0x7F817F80FF7F7F80ULL,
+          "PADDSB saturates signed byte lanes at -128 and +127 across both halves");
+
     // CACHE/PREF are hints in this functional interpreter: no cache hierarchy is modeled.
     cpu.reset(); cpu.set_reg(1, 0x1000);
     check(cpu.step(itype(0x2F, 1, 0x1A, 0x20)) && cpu.pc() == 4,
