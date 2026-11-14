@@ -227,7 +227,7 @@ int main() {
     cpu.set_reg(1, 0x0000800000007FFFULL);
     cpu.set_reg(2, 0x00000001FFFF0001ULL);
     check(cpu.step(mmi0(1, 2, 3, 21U)), "MMI0 PSUBSH executes");
-    check(cpu.reg(3) == 0x00007FFF8000FFFFULL,
+    check(cpu.reg(3) == 0x0000800000017FFEULL,
           "PSUBSH clamps halfword underflow and overflow independently");
 
     cpu.reset();
@@ -236,8 +236,8 @@ int main() {
     cpu.set_reg_high(1, 0x7F807F80FF7F7F80ULL);
     cpu.set_reg_high(2, 0x01010101FF818101ULL);
     check(cpu.step(mmi0(1, 2, 3, 24U)), "MMI0 PADDSB executes");
-    check(cpu.reg(3) == 0x807F0080FF7F7F80ULL &&
-              cpu.reg_high(3) == 0x7F817F80FF7F7F80ULL,
+    check(cpu.reg(3) == 0x807F008100007F80ULL &&
+              cpu.reg_high(3) == 0x7F817F81FE000081ULL,
           "PADDSB saturates signed byte lanes at -128 and +127 across both halves");
 
     // CACHE/PREF are hints in this functional interpreter: no cache hierarchy is modeled.
