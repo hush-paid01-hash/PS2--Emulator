@@ -491,6 +491,19 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
 
+        if (funct == 0x08U && sub_op == 0x12U) { // PEXTLW: interleave low words.
+            // Each 64-bit half of the result receives the low word from rt
+            // followed by the corresponding low word from rs.
+            const std::uint64_t result_low =
+                ((lhs_low & 0xFFFFFFFFULL) << 32U) |
+                (rhs_low & 0xFFFFFFFFULL);
+            const std::uint64_t result_high =
+                (((lhs_low >> 32U) & 0xFFFFFFFFULL) << 32U) |
+                ((rhs_low >> 32U) & 0xFFFFFFFFULL);
+            set_reg(rd, result_low);
+            set_reg_high(rd, result_high);
+            return true;
+        }
         if (funct == 0x08U) { // MMI0 packed arithmetic and signed comparisons.
             if (sub_op != 0U && sub_op != 1U && sub_op != 2U && sub_op != 3U &&
                 sub_op != 4U && sub_op != 5U && sub_op != 6U && sub_op != 7U &&

@@ -240,6 +240,17 @@ int main() {
               cpu.reg_high(3) == 0x7F817F81FE000081ULL,
           "PADDSB saturates signed byte lanes at -128 and +127 across both halves");
 
+    // PEXTLW interleaves the low words of rs and rt into all four result words.
+    cpu.reset();
+    cpu.set_reg(1, 0x5566778811223344ULL);
+    cpu.set_reg_high(1, 0xDDEEFF0099AABBCCULL);
+    cpu.set_reg(2, 0x89ABCDEF01234567ULL);
+    cpu.set_reg_high(2, 0x76543210FEDCBA98ULL);
+    check(cpu.step(mmi0(1, 2, 3, 18U)), "MMI0 PEXTLW executes");
+    check(cpu.reg(3) == 0x1122334401234567ULL &&
+              cpu.reg_high(3) == 0x5566778889ABCDEFULL,
+          "PEXLW interleaves the low words into the lower 64-bit result half");
+
     // CACHE/PREF are hints in this functional interpreter: no cache hierarchy is modeled.
     cpu.reset(); cpu.set_reg(1, 0x1000);
     check(cpu.step(itype(0x2F, 1, 0x1A, 0x20)) && cpu.pc() == 4,
