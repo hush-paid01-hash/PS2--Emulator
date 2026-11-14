@@ -224,7 +224,7 @@ int main() {
     cpu.set_reg_high(1, 0xFFFF000180007FFFULL);
     check(cpu.step(mmi1(0, 1, 2, 5U)) &&
               cpu.reg(2) == 0x7FFF7FFF7FFF0001ULL &&
-              cpu.reg_high(2) == 0x00017FFF00017FFFULL,
+              cpu.reg_high(2) == 0x000100017FFF7FFFULL,
           "PABSH computes eight signed absolute values and saturates -32768");
 
     cpu.reset();
@@ -233,14 +233,14 @@ int main() {
     cpu.set_reg(2, 0x7FFFFFFF80000000ULL);
     cpu.set_reg_high(2, 0x00000002FFFFFFFFULL);
     check(cpu.step(mmi1(1, 2, 3, 3U)) &&
-              cpu.reg(3) == 0x7FFFFFFF80000000ULL &&
-              cpu.reg_high(3) == 0xFFFFFFFF00000001ULL,
+              cpu.reg(3) == 0x8000000080000000ULL &&
+              cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
           "PMINW selects the signed minimum independently in all four lanes");
     cpu.reset();
     cpu.set_reg(1, 0xFFFF00017FFF8000ULL);
     cpu.set_reg(2, 0x0000FFFF80007FFFULL);
     check(cpu.step(mmi1(1, 2, 3, 7U)) &&
-              cpu.reg(3) == 0xFFFF000180007FFFULL,
+              cpu.reg(3) == 0xFFFFFFFF80008000ULL,
           "PMINH selects signed minimum across eight halfword lanes");
 
     cpu.reset();
@@ -254,7 +254,7 @@ int main() {
           "PADDUW saturates unsigned word additions at UINT32_MAX");
     check(cpu.step(mmi1(1, 2, 3, 0x11U)) &&
               cpu.reg(3) == 0xFFFFFFFE00000000ULL &&
-              cpu.reg_high(3) == 0x7FFFFFFE7FFFFFFFULL,
+              cpu.reg_high(3) == 0x000000007FFFFFFFULL,
           "PSUBUW saturates unsigned word underflow at zero");
 
     cpu.reset();
@@ -263,11 +263,11 @@ int main() {
     cpu.set_reg_high(1, 0xFFFFFFFF00000000ULL);
     cpu.set_reg_high(2, 0x0101010101010101ULL);
     check(cpu.step(mmi1(1, 2, 3, 0x18U)) &&
-              cpu.reg(3) == 0xFF03FFFF80FF02FFULL &&
+              cpu.reg(3) == 0xFF03FFFF8082FFFFULL &&
               cpu.reg_high(3) == 0xFFFFFFFF01010101ULL,
           "PADDUB saturates unsigned byte additions at 255");
     check(cpu.step(mmi1(1, 2, 3, 0x19U)) &&
-              cpu.reg(3) == 0xFE0000007E0000FEULL &&
+              cpu.reg(3) == 0xFE0000FC7E7E00FEULL &&
               cpu.reg_high(3) == 0xFEFEFEFE00000000ULL,
           "PSUBUB saturates unsigned byte underflow at zero");
 
