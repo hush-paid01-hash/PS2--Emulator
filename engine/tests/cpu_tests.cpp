@@ -250,8 +250,6 @@ int main() {
     check(cpu.reg(3) == 0x1122334401234567ULL &&
               cpu.reg_high(3) == 0x5566778889ABCDEFULL,
           "PEXLW interleaves the low words into the lower 64-bit result half");
-    check(cpu.reg_high(3) != 0xDDEEFF0076543210ULL,
-          "PEXT LW does not mistakenly use the upper 64-bit source halves");
 
     // CACHE/PREF are hints in this functional interpreter: no cache hierarchy is modeled.
     cpu.reset(); cpu.set_reg(1, 0x1000);
