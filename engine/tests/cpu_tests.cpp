@@ -319,7 +319,7 @@ int main() {
     const auto mmi0_pack = [](std::uint32_t rs, std::uint32_t rt,
                               std::uint32_t rd, std::uint32_t sub_op) {
         return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
-               (rd << 11U) | (sub_op << 6U) | 0x08U;
+               (rd << 11U) | (sub_op << 6U) | 0x28U;
     };
     cpu.reset();
     cpu.set_reg(1, 0xA1A2A3A4B1B2B3B4ULL);
@@ -357,7 +357,7 @@ int main() {
     const auto mmi0_interleave = [](std::uint32_t rs, std::uint32_t rt,
                                     std::uint32_t rd, std::uint32_t sub_op) {
         return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
-               (rd << 11U) | (sub_op << 6U) | 0x08U;
+               (rd << 11U) | (sub_op << 6U) | 0x28U;
     };
     cpu.reset();
     cpu.set_reg(1, 0x1122334455667788ULL);
@@ -390,7 +390,7 @@ int main() {
     const auto mmi0 = [](std::uint32_t rs, std::uint32_t rt,
                          std::uint32_t rd, std::uint32_t sub_op) {
         return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
-               (rd << 11U) | (sub_op << 6U) | 0x08U;
+               (rd << 11U) | (sub_op << 6U) | 0x28U;
     };
     cpu.reset();
     cpu.set_reg(1, 0x800000007FFFFFFFULL);
@@ -1357,7 +1357,7 @@ int main() {
     cpu.set_reg_high(1, 0x7FFFFFFF80000000ULL);
     cpu.set_reg(2, 0x0000000100000002ULL);
     cpu.set_reg_high(2, 0x0000000180000001ULL);
-    const std::uint32_t paddw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | 0x08U;
+    const std::uint32_t paddw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | 0x28U;
     check(cpu.step(paddw) &&
               cpu.reg(3) == 0x0000000000000003ULL &&
               cpu.reg_high(3) == 0x8000000000000001ULL,
@@ -1367,7 +1367,7 @@ int main() {
     cpu.set_reg_high(1, 0x8000000000000000ULL);
     cpu.set_reg(2, 0x0000000000000002ULL);
     cpu.set_reg_high(2, 0x0000000100000001ULL);
-    const std::uint32_t psubw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | (1U << 6U) | 0x08U;
+    const std::uint32_t psubw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) | (3U << 11U) | (1U << 6U) | 0x28U;
     check(cpu.step(psubw) &&
               cpu.reg(3) == 0x00000000FFFFFFFFULL &&
               cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
@@ -1379,7 +1379,7 @@ int main() {
     cpu.set_reg(2, 0x0000000500000000ULL);
     cpu.set_reg_high(2, 0x0000000000000001ULL);
     const std::uint32_t pcgtw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (2U << 6U) | 0x08U;
+                                (3U << 11U) | (2U << 6U) | 0x28U;
     check(cpu.step(pcgtw) &&
               cpu.reg(3) == 0xFFFFFFFF00000000ULL &&
               cpu.reg_high(3) == 0x0000000000000000ULL,
@@ -1388,14 +1388,14 @@ int main() {
     cpu.set_reg(1, 0x0000000000018000ULL);
     cpu.set_reg(2, 0x0000000000000001ULL);
     const std::uint32_t pcgth = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (6U << 6U) | 0x08U;
+                                (3U << 11U) | (6U << 6U) | 0x28U;
     check(cpu.step(pcgth) && cpu.reg(3) == 0x00000000FFFF0000ULL,
           "PCGTH compares signed halfwords independently and recognizes a positive lane");
     cpu.reset();
     cpu.set_reg(1, 0x000000000000007FULL);
     cpu.set_reg(2, 0x0000000000000001ULL);
     const std::uint32_t pcgtb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (10U << 6U) | 0x08U;
+                                (3U << 11U) | (10U << 6U) | 0x28U;
     check(cpu.step(pcgtb) && cpu.reg(3) == 0x00000000000000FFULL,
           "PCGTB emits an all-ones byte for a positive signed comparison");
 
@@ -1407,7 +1407,7 @@ int main() {
     cpu.set_reg(2, 0x0000000500000001ULL);
     cpu.set_reg_high(2, 0x7FFFFFFF80000000ULL);
     const std::uint32_t pmaxw = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (3U << 6U) | 0x08U;
+                                (3U << 11U) | (3U << 6U) | 0x28U;
     check(cpu.step(pmaxw) &&
               cpu.reg(3) == 0x0000000700000001ULL &&
               cpu.reg_high(3) == 0x7FFFFFFF7FFFFFFFULL,
@@ -1418,7 +1418,7 @@ int main() {
     cpu.set_reg(2, 0x8000000100010002ULL);
     cpu.set_reg_high(2, 0x7FFF800000010000ULL);
     const std::uint32_t pmaxh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (7U << 6U) | 0x08U;
+                                (3U << 11U) | (7U << 6U) | 0x28U;
     check(cpu.step(pmaxh) &&
               cpu.reg(3) == 0x7FFF000100010002ULL &&
               cpu.reg_high(3) == 0x7FFF7FFF00010000ULL,
@@ -1460,7 +1460,7 @@ int main() {
     cpu.set_reg(2, 0x0101010101010101ULL);
     cpu.set_reg_high(2, 0x0101010101010101ULL);
     const std::uint32_t paddb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (8U << 6U) | 0x08U;
+                                (3U << 11U) | (8U << 6U) | 0x28U;
     check(cpu.step(paddb) &&
               cpu.reg(3) == 0x0000000000000000ULL &&
               cpu.reg_high(3) == 0x8080808080808080ULL,
@@ -1471,7 +1471,7 @@ int main() {
     cpu.set_reg(2, 0x0101010101010101ULL);
     cpu.set_reg_high(2, 0x0101010101010101ULL);
     const std::uint32_t psubb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (9U << 6U) | 0x08U;
+                                (3U << 11U) | (9U << 6U) | 0x28U;
     check(cpu.step(psubb) &&
               cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
               cpu.reg_high(3) == 0x7F7F7F7F7F7F7F7FULL,
@@ -1484,7 +1484,7 @@ int main() {
     cpu.set_reg(2, 0x0001FFFF00010002ULL);
     cpu.set_reg_high(2, 0x0001000200030004ULL);
     const std::uint32_t paddh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (4U << 6U) | 0x08U;
+                                (3U << 11U) | (4U << 6U) | 0x28U;
     check(cpu.step(paddh) &&
               cpu.reg(3) == 0x80007FFF00000003ULL &&
               cpu.reg_high(3) == 0x0002000400060008ULL,
@@ -1495,7 +1495,7 @@ int main() {
     cpu.set_reg(2, 0x0002000100010001ULL);
     cpu.set_reg_high(2, 0x0001000100010001ULL);
     const std::uint32_t psubh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
-                                (3U << 11U) | (5U << 6U) | 0x08U;
+                                (3U << 11U) | (5U << 6U) | 0x28U;
     check(cpu.step(psubh) &&
               cpu.reg(3) == 0xFFFFFFFFFFFFFFFFULL &&
               cpu.reg_high(3) == 0x7FFFFFFFFFFFFFFFULL,
@@ -1506,7 +1506,7 @@ int main() {
     cpu.set_reg_high(1, 0xFFFFFFFFFFFFFFFFULL);
     cpu.set_reg(2, 1U);
     cpu.set_reg_high(2, 1U);
-    const std::uint32_t paddw_zero = (1U << 21U) | (2U << 16U) | 0x08U;
+    const std::uint32_t paddw_zero = (1U << 21U) | (2U << 16U) | 0x28U;
     check(cpu.step(paddw_zero) && cpu.reg(0) == 0U && cpu.reg_high(0) == 0U,
           "PADDW targeting GPR zero preserves both zero-register halves");
 
@@ -1954,7 +1954,7 @@ int main() {
     const auto mmi0_color = [](std::uint32_t rt, std::uint32_t rd,
                                std::uint32_t sub_op) {
         return (0x1CU << 26U) | (rt << 16U) | (rd << 11U) |
-               (sub_op << 6U) | 0x08U;
+               (sub_op << 6U) | 0x28U;
     };
     cpu.set_reg(1, 0x7C1F03E0F801FFFFULL);
     cpu.set_reg_high(1, 0xFFFFFFFFFFFFFFFFULL);
@@ -1983,7 +1983,7 @@ int main() {
     cpu.set_reg_high(3, 0xFEDCBA9876543210ULL);
     constexpr std::uint32_t qfsrv =
         (0x1CU << 26U) | (3U << 21U) | (2U << 16U) |
-        (5U << 11U) | (0x1BU << 6U) | 0x08U;
+        (5U << 11U) | (0x1BU << 6U) | 0x28U;
     check(cpu.step(qfsrv), "QFSRV executes with the byte shift amount");
     check(cpu.reg(5) == 0x1100FFEEDDCCBBAAULL &&
               cpu.reg_high(5) == 0xCDEF776655443322ULL,
@@ -2003,3 +2003,4 @@ int main() {
 
     return failures == 0 ? 0 : 1;
 }
+
