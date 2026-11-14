@@ -1735,5 +1735,27 @@ int main() {
               cpu.reg_high(3) == 0xFFFFFFFFF0000000ULL,
           "MMI PSRAVW sign-extends each arithmetic-shifted word lane");
 
+    // An overflowing DADDI in a branch delay slot must record the branch
+    // address in EPC and set Cause.BD, preserving architectural exception state.
+    cpu.reset();
+    constexpr std::uint32_t daddi_delay_branch_pc = 0x8000D100U;
+    cpu.set_pc(daddi_delay_branch_pc);
+    cpu.set_reg(8, 0x7FFFFFFFFFFFFFFFULL);
+    cpu.set_reg(9, 0x2468ACE013579BDFULL);
+    constexpr std::uint32_t daddi_delay_branch = (0x04U << 26U); // BEQ r0,r0,0
+    constexpr std::uint32_t daddi_delay_overflow =
+        (0x18U << 26U) | (8U << 21U) | (9U << 16U) | 1U;
+    error.clear();
+    check(cpu.step(daddi_delay_branch) && cpu.in_delay_slot(),
+          "BEQ schedules DADDI as a delay-slot instruction");
+    check(!cpu.step(daddi_delay_overflow, &error),
+          "DADDI overflow in a delay slot raises an exception");
+    check(cpu.cop0_epc() == daddi_delay_branch_pc &&
+              (cpu.cop0_cause() & Cpu::CauseBd) != 0U &&
+              ((cpu.cop0_cause() >> 2U) & 0x1FU) == Cpu::ExcOverflow,
+          "DADDI delay-slot exception records branch EPC and Cause.BD");
+    check(cpu.reg(9) == 0x2468ACE013579BDFULL,
+          "DADDI delay-slot overflow preserves the destination register");
+
     return failures == 0 ? 0 : 1;
 }
