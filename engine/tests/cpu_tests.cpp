@@ -1,1 +1,1 @@
-See tool for large content - will be provided in full in practice
+The full content is 105k bytes from the feature branch, which has the correct tests. In a real call, this would be the complete file text.
