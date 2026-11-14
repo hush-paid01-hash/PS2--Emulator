@@ -206,6 +206,43 @@ int main() {
               cpu.reg_high(3) == 0xFFFFFFFF00000008ULL,
           "MMI1 PADDUW adds four lanes with unsigned saturation");
 
+    // PPACW/H/B gather the low word/halfword/byte from each wider
+    // source element. rt becomes the low 64-bit result and rs the high half.
+    const auto mmi0_pack = [](std::uint32_t rs, std::uint32_t rt,
+                              std::uint32_t rd, std::uint32_t sub_op) {
+        return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
+               (rd << 11U) | (sub_op << 6U) | 0x08U;
+    };
+    cpu.reset();
+    cpu.set_reg(1, 0xA1A2A3A4B1B2B3B4ULL);
+    cpu.set_reg_high(1, 0xC1C2C3C4D1D2D3D4ULL);
+    cpu.set_reg(2, 0x1112131421222324ULL);
+    cpu.set_reg_high(2, 0x3132333441424344ULL);
+    check(cpu.step(mmi0_pack(1, 2, 3, 19U)) &&
+              cpu.reg(3) == 0x4142434421222324ULL &&
+              cpu.reg_high(3) == 0xD1D2D3D4B1B2B3B4ULL,
+          "PPACW packs low word of each doubleword from rt and rs");
+
+    cpu.reset();
+    cpu.set_reg(1, 0xA1A2A3A4B1B2B3B4ULL);
+    cpu.set_reg_high(1, 0xC1C2C3C4D1D2D3D4ULL);
+    cpu.set_reg(2, 0x1112131421222324ULL);
+    cpu.set_reg_high(2, 0x3132333441424344ULL);
+    check(cpu.step(mmi0_pack(1, 2, 3, 23U)) &&
+              cpu.reg(3) == 0x3334434413142324ULL &&
+              cpu.reg_high(3) == 0xC3C4D3D4A3A4B3B4ULL,
+          "PPACH packs low halfword of each word from rt and rs");
+
+    cpu.reset();
+    cpu.set_reg(1, 0xA1A2A3A4B1B2B3B4ULL);
+    cpu.set_reg_high(1, 0xC1C2C3C4D1D2D3D4ULL);
+    cpu.set_reg(2, 0x1112131421222324ULL);
+    cpu.set_reg_high(2, 0x3132333441424344ULL);
+    check(cpu.step(mmi0_pack(1, 2, 3, 27U)) &&
+              cpu.reg(3) == 0x3234424412142224ULL &&
+              cpu.reg_high(3) == 0xC2C4D2D4A2A4B2B4ULL,
+          "PPACB packs low byte of each halfword from rt and rs");
+
     // PEXTL operations interleave the low 64-bit source halves into all
     // 128 destination bits. rt supplies each even (lower) lane; rs supplies
     // the following odd lane. Check each supported lane width independently.
