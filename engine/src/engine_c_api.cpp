@@ -11,6 +11,9 @@
 #include "retroshelf/ps2_disc_execution.hpp"
 #include "retroshelf/ps2_ee_memory_map.hpp"
 #include "retroshelf/ps2_boot_image.hpp"
+#include "retroshelf/system_bus.hpp"
+#include "retroshelf/ee_interrupt_controller.hpp"
+#include "retroshelf/ee_timer.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -170,10 +173,19 @@ extern "C" int32_t retroshelf_engine_run_bios_reset_vector(
     if (!memory.load_bios_image(image, &error)) return 0;
 
     retroshelf::Cpu cpu;
+    retroshelf::SystemBus bus(memory);
+    auto intc = std::make_shared<retroshelf::EeInterruptController>();
+    auto timers = std::make_shared<retroshelf::EeTimerBlock>();
+    if (!bus.map_mmio(retroshelf::EeTimerBlock::RegisterBase,
+                      retroshelf::EeTimerBlock::RegisterSize, timers, &error) ||
+        !bus.map_mmio(retroshelf::EeInterruptController::RegisterBase,
+                      retroshelf::EeInterruptController::RegisterSize, intc, &error))
+        return 0;
+
     const std::uint64_t budget = std::min<std::uint64_t>(instruction_budget, 1000000U);
-    retroshelf::EeExecutionRunner runner(cpu, memory);
-    // Exercise the same explicit reset-vector entrypoint used by engine tests.
-    // This remains a bounded smoke test, not a complete BIOS boot.
+    retroshelf::EeExecutionRunner runner(cpu, memory, bus, *intc, *timers);
+    // Exercise the reset vector with the currently modelled EE timer and INTC
+    // devices connected. This remains a bounded smoke test, not a full BIOS boot.
     const auto result = runner.run_from_bios_reset_vector(static_cast<std::size_t>(budget));
     g_last_trace = result.trace;
 

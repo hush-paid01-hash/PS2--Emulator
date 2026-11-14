@@ -1,4 +1,7 @@
 #include "retroshelf/ee_execution_runner.hpp"
+#include "retroshelf/system_bus.hpp"
+#include "retroshelf/ee_interrupt_controller.hpp"
+#include "retroshelf/ee_timer.hpp"
 
 #include <cassert>
 #include <cstdint>
@@ -220,6 +223,59 @@ int main() {
     // The BIOS mapping must stay read-only even when accessed through KSEG1.
     assert(!bios_memory.write(0xBFC00000U, 4, 0U, &error));
     assert(!error.empty());
+
+
+    // The BIOS runner's device path must route CPU MMIO stores through the
+    // mapped timer block, advance it, and forward timer IRQs into EE INTC.
+    retroshelf::Ps2EeMemoryMap device_memory(64U * 1024U);
+    retroshelf::Cpu device_cpu;
+    retroshelf::SystemBus device_bus(device_memory);
+    auto device_intc = std::make_shared<retroshelf::EeInterruptController>();
+    auto device_timers = std::make_shared<retroshelf::EeTimerBlock>();
+    assert(device_bus.map_mmio(retroshelf::EeTimerBlock::RegisterBase,
+                               retroshelf::EeTimerBlock::RegisterSize,
+                               device_timers, &error));
+    assert(device_bus.map_mmio(retroshelf::EeInterruptController::RegisterBase,
+                               retroshelf::EeInterruptController::RegisterSize,
+                               device_intc, &error));
+    constexpr std::uint32_t device_start = 0x80002000U;
+    constexpr std::uint32_t lui_t0_timer = (0x0FU << 26U) | (8U << 16U) | 0x1000U;
+    constexpr std::uint32_t addiu_t1_enable = (0x09U << 26U) | (9U << 16U) |
+                                               retroshelf::EeTimerBlock::ModeCountEnable;
+    constexpr std::uint32_t sw_t1_mode = (0x2BU << 26U) | (8U << 21U) |
+                                          (9U << 16U) | retroshelf::EeTimerBlock::ModeOffset;
+    constexpr std::uint32_t addiu_t1_count = (0x09U << 26U) | (9U << 16U) | 128U;
+    constexpr std::uint32_t sw_t1_count = (0x2BU << 26U) | (8U << 21U) |
+                                           (9U << 16U) | retroshelf::EeTimerBlock::CountOffset;
+    assert(device_memory.write(device_start, 4, lui_t0_timer, &error));
+    assert(device_memory.write(device_start + 4U, 4, addiu_t1_enable, &error));
+    assert(device_memory.write(device_start + 8U, 4, sw_t1_mode, &error));
+    assert(device_memory.write(device_start + 12U, 4, addiu_t1_count, &error));
+    assert(device_memory.write(device_start + 16U, 4, sw_t1_count, &error));
+    device_cpu.set_pc(device_start);
+    retroshelf::EeExecutionRunner device_runner(device_cpu, device_memory,
+                                                 device_bus, *device_intc,
+                                                 *device_timers);
+    const auto device_run = device_runner.run(5U);
+    assert(device_run.instructions_executed == 5U);
+    assert(device_timers->count(0U) == 129U); // MMIO count write, then one timer tick.
+    const std::uint32_t compare_value = 130U;
+    std::vector<std::uint8_t> compare_bytes(4U);
+    for (unsigned i = 0; i < 4U; ++i)
+        compare_bytes[i] = static_cast<std::uint8_t>(compare_value >> (i * 8U));
+    assert(device_timers->write(retroshelf::EeTimerBlock::CompareOffset,
+                                compare_bytes, &error));
+    const std::uint32_t compare_enable = retroshelf::EeTimerBlock::ModeCountEnable |
+                                         retroshelf::EeTimerBlock::ModeCompareEnable;
+    std::vector<std::uint8_t> mode_bytes(4U);
+    for (unsigned i = 0; i < 4U; ++i)
+        mode_bytes[i] = static_cast<std::uint8_t>(compare_enable >> (i * 8U));
+    assert(device_timers->write(retroshelf::EeTimerBlock::ModeOffset,
+                                mode_bytes, &error));
+    const auto timer_irq_run = device_runner.run(1U);
+    assert(timer_irq_run.instructions_executed == 1U);
+    assert((device_timers->pending_interrupts() & 1U) != 0U);
+    assert((device_intc->status() & (1U << 9U)) != 0U);
 
     return 0;
 }
