@@ -1,1 +1,1 @@
-See /tmp/cpu_tests.cpp for full content - in practice this would be the full file
+PLACEHOLDER_CONTENT
