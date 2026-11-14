@@ -640,6 +640,33 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
 
+        if (funct == 0x28U &&
+            (sub_op == 0x12U || sub_op == 0x16U || sub_op == 0x1AU)) {
+            // PEXTUW/PEXTUH/PEXTUB interleave lanes from the upper
+            // 64-bit halves of rs and rt; rt supplies even destination lanes.
+            const unsigned lane_bits = sub_op == 0x12U ? 32U :
+                                       (sub_op == 0x16U ? 16U : 8U);
+            const unsigned lane_count = 64U / lane_bits;
+            const std::uint64_t lane_mask =
+                (std::uint64_t{1} << lane_bits) - 1U;
+            std::uint64_t out_low = 0;
+            std::uint64_t out_high = 0;
+            for (unsigned lane = 0; lane < lane_count; ++lane) {
+                const unsigned source_shift = lane * lane_bits;
+                const std::uint64_t from_rs = (lhs_high >> source_shift) & lane_mask;
+                const std::uint64_t from_rt = (rhs_high >> source_shift) & lane_mask;
+                const unsigned rt_dest_shift = (lane * 2U) * lane_bits;
+                const unsigned rs_dest_shift = rt_dest_shift + lane_bits;
+                if (rt_dest_shift < 64U) out_low |= from_rt << rt_dest_shift;
+                else out_high |= from_rt << (rt_dest_shift - 64U);
+                if (rs_dest_shift < 64U) out_low |= from_rs << rs_dest_shift;
+                else out_high |= from_rs << (rs_dest_shift - 64U);
+            }
+            set_reg(rd, out_low);
+            set_reg_high(rd, out_high);
+            return true;
+        }
+
         if (funct == 0x28U) { // MMI1 packed absolute, minimum, and unsigned saturation.
             if (sub_op == 1U || sub_op == 5U) { // PABSW / PABSH (unary rt).
                 const unsigned lane_bits = sub_op == 1U ? 32U : 16U;
