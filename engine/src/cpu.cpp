@@ -701,7 +701,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             default: return unsupported();
             }
         }
-        if (rs == 0x10 && funct == 0x18) { // ERET: ERL/ErrorEPC takes priority over EXL/EPC.
+        // ERET is a privileged instruction with all fields between rs and
+        // funct reserved as zero. Do not accept malformed encodings that only
+        // happen to share the ERET rs/funct fields.
+        if (rs == 0x10 && funct == 0x18 &&
+            (instruction & 0x001FFFC0U) == 0U) { // ERET: ERL/ErrorEPC takes priority over EXL/EPC.
             if ((status_ & StatusErl) != 0U) {
                 pc_ = cop0_regs_[30]; // ErrorEPC
                 next_pc_ = pc_ + 4;
