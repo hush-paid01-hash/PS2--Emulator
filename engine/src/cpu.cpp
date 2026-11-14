@@ -515,7 +515,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
                 }
             } else { // PPAC5: four words -> four halfwords
                 for (unsigned lane = 0; lane < 4U; ++lane) {
-                    const unsigned source_shift = lane * 32U;
+                    const unsigned source_shift = (lane % 2U) * 32U;
                     const std::uint32_t word = static_cast<std::uint32_t>(
                         (source[lane / 2U] >> source_shift) & 0xFFFFFFFFU);
                     const std::uint16_t pixel = static_cast<std::uint16_t>(
