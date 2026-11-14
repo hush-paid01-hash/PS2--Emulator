@@ -39,7 +39,7 @@ bool normalize_ee_address(std::uint64_t address, std::uint32_t& normalized) {
 Cpu::Cpu() { reset(); }
 void Cpu::reset() {
     gpr_.fill(0); gpr_high_.fill(0); memory_.fill(0); vu0_vf_ = {}; vu0_control_.fill(0); vu0_vf_[0][3] = 0x3F800000U; active_ram_ = nullptr; active_ram_base_ = 0; active_ee_memory_ = nullptr; active_system_bus_ = nullptr; pc_ = 0; next_pc_ = 4;
-    delay_slot_pending_ = false; delay_branch_pc_ = 0; cop0_regs_.fill(0); status_ = 0; cause_ = 0; epc_ = 0; bad_vaddr_ = 0; hi_ = 0; lo_ = 0;
+    delay_slot_pending_ = false; delay_branch_pc_ = 0; cop0_regs_.fill(0); status_ = 0; cause_ = 0; epc_ = 0; bad_vaddr_ = 0; hi_ = 0; lo_ = 0; sa_ = 0;
 }
 std::uint64_t Cpu::reg(std::size_t index) const { return index < RegisterCount ? gpr_[index] : 0; }
 void Cpu::set_reg(std::size_t index, std::uint64_t value) {
@@ -221,6 +221,8 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         case 0x11: hi_ = reg(rs); return true; // MTHI
         case 0x12: set_reg(rd, lo_); return true; // MFLO
         case 0x13: lo_ = reg(rs); return true; // MTLO
+        case 0x28: set_reg(rd, sa_); return true; // MFSA
+        case 0x29: sa_ = static_cast<std::uint32_t>(reg(rs)); return true; // MTSA
         case 0x18: { // MULT: signed 32-bit product into HI:LO
             const auto product = static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rs))) *
                                  static_cast<std::int64_t>(static_cast<std::int32_t>(reg(rt)));
@@ -667,6 +669,36 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
 
+        if (funct == 0x28U && sub_op == 0x1BU) { // QFSRV: 128-bit funnel shift.
+            // The low 128 bits of (GPR[rs] || GPR[rt]) shifted right by SA.
+            const unsigned shift = sa_ & 0x7FU;
+            if (shift == 0U) {
+                set_reg(rd, rhs_low);
+                set_reg_high(rd, rhs_high);
+            } else {
+                const unsigned whole = shift / 64U;
+                const unsigned bits = shift % 64U;
+                std::uint64_t out_low = 0;
+                std::uint64_t out_high = 0;
+                if (whole == 0U) {
+                    out_low = bits == 0U ? rhs_low :
+                        (rhs_low >> bits) | (rhs_high << (64U - bits));
+                    out_high = bits == 0U ? rhs_high :
+                        (rhs_high >> bits) | (lhs_low << (64U - bits));
+                } else {
+                    out_low = rhs_high;
+                    out_high = lhs_low;
+                    if (bits != 0U) {
+                        out_low = (rhs_high >> bits) | (lhs_low << (64U - bits));
+                        out_high = (lhs_low >> bits) | (lhs_high << (64U - bits));
+                    }
+                }
+                set_reg(rd, out_low);
+                set_reg_high(rd, out_high);
+            }
+            return true;
+        }
+
         if (funct == 0x28U) { // MMI1 packed absolute, minimum, and unsigned saturation.
             if (sub_op == 4U) { // PADSBH: subtract low four, add high four halfwords.
                 const auto add_sub_halfwords = [](std::uint64_t lhs,
@@ -1000,6 +1032,16 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         return unsupported();
     }
     case 0x01: { // REGIMM branches and immediate trap instructions.
+        if (rt == 0x18U) { // MTSAB rs, immediate: byte shift count.
+            sa_ = static_cast<std::uint32_t>(
+                ((reg(rs) & 0x0FU) ^ (instruction & 0x0FU)) * 8U);
+            return true;
+        }
+        if (rt == 0x19U) { // MTSAH rs, immediate: halfword shift count.
+            sa_ = static_cast<std::uint32_t>(
+                ((reg(rs) & 0x07U) ^ (instruction & 0x07U)) * 16U);
+            return true;
+        }
         if (rt == 0x08 || rt == 0x09 || rt == 0x0A ||
             rt == 0x0B || rt == 0x0C || rt == 0x0E) {
             const auto immediate_unsigned = static_cast<std::uint64_t>(simm);
