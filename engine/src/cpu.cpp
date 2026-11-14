@@ -451,7 +451,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             set_reg_high(rd, out[1]);
             return true;
         }
-        if (funct == 0x28U &&
+        if (funct == 0x08U &&
             (sub_op == 19U || sub_op == 23U || sub_op == 27U)) {
             // PPACW/H/B pack the least-significant lane from each source
             // element. rt's packed lanes occupy the low 64 bits; rs's
@@ -490,7 +490,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             set_reg_high(rd, out_high);
             return true;
         }
-        if (funct == 0x28U && (sub_op == 30U || sub_op == 31U)) {
+        if (funct == 0x08U && (sub_op == 30U || sub_op == 31U)) {
             // PEXT5/PPAC5 convert four 1-5-5-5 halfwords and four
             // 8-8-8-8 words. The alpha bit occupies bit 15/31;
             // each 5-bit color channel occupies bits 10, 5, and 0,
@@ -534,7 +534,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
 
-        if (funct == 0x28U &&
+        if (funct == 0x08U &&
             (sub_op == 18U || sub_op == 22U || sub_op == 26U)) {
             // PEXTLW/PEXTLH/PEXTLB interleave the low 64-bit portions of
             // rt and rs, placing the rt lane in the lower destination lane.
@@ -562,7 +562,7 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
 
-        if (funct == 0x28U &&
+        if (funct == 0x08U &&
             (sub_op == 16U || sub_op == 17U ||
              sub_op == 20U || sub_op == 21U ||
              sub_op == 24U || sub_op == 25U)) {
@@ -604,10 +604,11 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
 
-        if (funct == 0x28U &&
-            (sub_op == 0U || sub_op == 1U || sub_op == 2U || sub_op == 3U ||
-             sub_op == 4U || sub_op == 5U || sub_op == 6U || sub_op == 7U ||
-             sub_op == 8U || sub_op == 9U || sub_op == 10U)) { // MMI0 packed arithmetic and signed comparisons.
+        if (funct == 0x08U) { // MMI0 packed arithmetic and signed comparisons.
+            if (sub_op != 0U && sub_op != 1U && sub_op != 2U && sub_op != 3U &&
+                sub_op != 4U && sub_op != 5U && sub_op != 6U && sub_op != 7U &&
+                sub_op != 8U && sub_op != 9U && sub_op != 10U)
+                return unsupported();
             const unsigned lane_bits = sub_op >= 8U ? 8U : (sub_op >= 4U ? 16U : 32U);
             const bool compare_greater = sub_op == 2U || sub_op == 6U || sub_op == 10U;
             const bool compare_max = sub_op == 3U || sub_op == 7U;
