@@ -8,12 +8,14 @@ This document records the implementation visible in `engine/src/cpu.cpp` and the
 
 The current `Cpu::step` decoder has code paths for:
 
-- MMI0 (`SPECIAL2`, function `0x08`): packed add/subtract and signed greater-than/max lane operations for selected 32-, 16-, and 8-bit sub-op encodings.
+- MMI0 (`SPECIAL2`, function `0x08`): packed wrapping add/subtract, signed greater-than/max, and signed saturating add/subtract for selected 32-, 16-, and 8-bit sub-op encodings.
 - MMI1 (function `0x28`): packed equality comparisons for selected 32-, 16-, and 8-bit sub-op encodings.
 - MMI2/MMI3 (functions `0x09`/`0x29`): selected 128-bit bitwise operations, variable word shifts, and fixed packed halfword/word shifts.
 - 128-bit GPR values are represented as independent low/high 64-bit halves.
 
 These are selected subsets, not complete MMI0/MMI1/MMI2/MMI3 coverage. Unsupported encodings currently raise a reserved-instruction exception.
+
+The signed saturating MMI0 subset currently includes PADDSW/PSUBSW, PADDSH/PSUBSH, and PADDSB/PSUBSB. Tests cover signed minimum/maximum clipping and both 64-bit halves of the 128-bit GPR. The remaining unpack/pack, multiply/accumulate, HI1/LO1, and other listed operations are not thereby implemented.
 
 ## Required next work
 
