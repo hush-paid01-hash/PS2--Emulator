@@ -488,6 +488,50 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             set_reg_high(rd, out_high);
             return true;
         }
+        if (funct == 0x08U && (sub_op == 30U || sub_op == 31U)) {
+            // PEXT5/PPAC5 convert four 1-5-5-5 halfwords and four
+            // 8-8-8-8 words. The alpha bit occupies bit 15/31;
+            // each 5-bit color channel occupies bits 10, 5, and 0,
+            // with the low three bits of each expanded byte cleared.
+            if (rs != 0U) return unsupported();
+            std::uint64_t out_low = 0;
+            std::uint64_t out_high = 0;
+            const std::uint64_t source[2] = {reg(rt), reg_high(rt)};
+            if (sub_op == 30U) { // PEXT5: four halfwords -> four words
+                for (unsigned lane = 0; lane < 4U; ++lane) {
+                    const unsigned source_shift = lane * 16U;
+                    const std::uint16_t pixel = static_cast<std::uint16_t>(
+                        (source[lane / 4U] >> source_shift) & 0xFFFFU);
+                    const std::uint32_t word =
+                        (static_cast<std::uint32_t>(pixel & 0x8000U) << 16U) |
+                        (static_cast<std::uint32_t>((pixel >> 10U) & 0x1FU) << 23U) |
+                        (static_cast<std::uint32_t>((pixel >> 5U) & 0x1FU) << 15U) |
+                        (static_cast<std::uint32_t>(pixel & 0x1FU) << 7U);
+                    const unsigned destination_shift = lane * 32U;
+                    if (destination_shift < 64U)
+                        out_low |= static_cast<std::uint64_t>(word) << destination_shift;
+                    else
+                        out_high |= static_cast<std::uint64_t>(word) << (destination_shift - 64U);
+                }
+            } else { // PPAC5: four words -> four halfwords
+                for (unsigned lane = 0; lane < 4U; ++lane) {
+                    const unsigned source_shift = (lane % 2U) * 32U;
+                    const std::uint32_t word = static_cast<std::uint32_t>(
+                        (source[lane / 2U] >> source_shift) & 0xFFFFFFFFU);
+                    const std::uint16_t pixel = static_cast<std::uint16_t>(
+                        ((word >> 16U) & 0x8000U) |
+                        ((word >> 13U) & 0x7C00U) |
+                        ((word >> 10U) & 0x03E0U) |
+                        ((word >> 7U) & 0x001FU));
+                    const unsigned destination_shift = lane * 16U;
+                    out_low |= static_cast<std::uint64_t>(pixel) << destination_shift;
+                }
+            }
+            set_reg(rd, out_low);
+            set_reg_high(rd, out_high);
+            return true;
+        }
+
         if (funct == 0x08U &&
             (sub_op == 18U || sub_op == 22U || sub_op == 26U)) {
             // PEXTLW/PEXTLH/PEXTLB interleave the low 64-bit portions of

@@ -1405,7 +1405,7 @@ int main() {
     // MMI primary opcode rejects unsupported sub-operations rather than
     // accidentally treating unrelated encodings as packed arithmetic.
     cpu.reset();
-    check(!cpu.step((0x1CU << 26U) | (31U << 6U) | 0x08U),
+    check(!cpu.step((0x1CU << 26U) | (29U << 6U) | 0x08U),
           "unsupported MMI function encoding raises Reserved Instruction");
 
     // Fixed-count EE MMI shifts operate independently on every lane in
@@ -1839,6 +1839,27 @@ int main() {
     check(cpu.reg(3) == 0xFFFFFFFFC0000000ULL &&
               cpu.reg_high(3) == 0xFFFFFFFFF0000000ULL,
           "MMI PSRAVW sign-extends each arithmetic-shifted word lane");
+
+    // PEXT5 and PPAC5 convert the PS2 1-5-5-5 pixel format to and
+    // from 8-8-8-8 words. Round-trip preserves all four source pixels.
+    cpu.reset();
+    const auto mmi0_color = [](std::uint32_t rt, std::uint32_t rd,
+                               std::uint32_t sub_op) {
+        return (0x1CU << 26U) | (rt << 16U) | (rd << 11U) |
+               (sub_op << 6U) | 0x08U;
+    };
+    cpu.set_reg(1, 0x7C1F03E0F801FFFFULL);
+    cpu.set_reg_high(1, 0xFFFFFFFFFFFFFFFFULL);
+    check(cpu.step(mmi0_color(1, 2, 30U)),
+          "PEXT5 expands four packed 1-5-5-5 pixels");
+    check(cpu.reg(2) == 0x8F0000808F8F8F80ULL &&
+              cpu.reg_high(2) == 0x0F800F80000F8000ULL,
+          "PEXT5 places alpha and 5-bit color channels in 8-8-8-8 words");
+    check(cpu.step(mmi0_color(2, 3, 31U)),
+          "PPAC5 packs four 8-8-8-8 words into 1-5-5-5 halfwords");
+    check(cpu.reg(3) == 0x7C1F03E0F801FFFFULL &&
+              cpu.reg_high(3) == 0,
+          "PPAC5 restores the four packed pixels and clears unused upper lanes");
 
     return failures == 0 ? 0 : 1;
 }
