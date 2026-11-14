@@ -449,6 +449,48 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             set_reg_high(rd, out[1]);
             return true;
         }
+        if (funct == 0x08U &&
+            (sub_op == 16U || sub_op == 17U ||
+             sub_op == 20U || sub_op == 21U ||
+             sub_op == 24U || sub_op == 25U)) {
+            // PADDSW/PSUBSW, PADDSH/PSUBSH, PADDSB/PSUBSB.
+            // Each lane is interpreted as a signed integer and clamped to
+            // that lane's signed range; both 64-bit halves of the EE GPR
+            // participate independently.
+            const unsigned lane_bits = sub_op >= 24U ? 8U :
+                                       (sub_op >= 20U ? 16U : 32U);
+            const bool subtract = (sub_op & 1U) != 0U;
+            const std::uint64_t lane_mask =
+                (std::uint64_t{1} << lane_bits) - 1U;
+            const std::int64_t sign_bit =
+                static_cast<std::int64_t>(std::uint64_t{1} << (lane_bits - 1U));
+            const std::int64_t minimum = -sign_bit;
+            const std::int64_t maximum = sign_bit - 1;
+            const auto saturated = [=](std::uint64_t lhs, std::uint64_t rhs) {
+                std::uint64_t result = 0;
+                const unsigned lane_count = 64U / lane_bits;
+                for (unsigned lane = 0; lane < lane_count; ++lane) {
+                    const unsigned shift = lane * lane_bits;
+                    const std::uint64_t raw_a = (lhs >> shift) & lane_mask;
+                    const std::uint64_t raw_b = (rhs >> shift) & lane_mask;
+                    const std::int64_t a = (raw_a & static_cast<std::uint64_t>(sign_bit))
+                        ? static_cast<std::int64_t>(raw_a) - (sign_bit * 2)
+                        : static_cast<std::int64_t>(raw_a);
+                    const std::int64_t b = (raw_b & static_cast<std::uint64_t>(sign_bit))
+                        ? static_cast<std::int64_t>(raw_b) - (sign_bit * 2)
+                        : static_cast<std::int64_t>(raw_b);
+                    std::int64_t value = subtract ? a - b : a + b;
+                    if (value < minimum) value = minimum;
+                    if (value > maximum) value = maximum;
+                    result |= (static_cast<std::uint64_t>(value) & lane_mask) << shift;
+                }
+                return result;
+            };
+            set_reg(rd, saturated(lhs_low, rhs_low));
+            set_reg_high(rd, saturated(lhs_high, rhs_high));
+            return true;
+        }
+
         if (funct == 0x08U) { // MMI0 packed arithmetic and signed comparisons.
             if (sub_op != 0U && sub_op != 1U && sub_op != 2U && sub_op != 3U &&
                 sub_op != 4U && sub_op != 5U && sub_op != 6U && sub_op != 7U &&
