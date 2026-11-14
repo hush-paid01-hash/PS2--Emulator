@@ -1405,7 +1405,7 @@ int main() {
     // MMI primary opcode rejects unsupported sub-operations rather than
     // accidentally treating unrelated encodings as packed arithmetic.
     cpu.reset();
-    check(!cpu.step((0x1CU << 26U) | (31U << 6U) | 0x08U),
+    check(!cpu.step((0x1CU << 26U) | (29U << 6U) | 0x08U),
           "unsupported MMI function encoding raises Reserved Instruction");
 
     // Fixed-count EE MMI shifts operate independently on every lane in
