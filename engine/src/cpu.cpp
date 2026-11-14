@@ -450,6 +450,45 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
             return true;
         }
         if (funct == 0x08U &&
+            (sub_op == 19U || sub_op == 23U || sub_op == 27U)) {
+            // PPACW/H/B pack the least-significant lane from each source
+            // element. rt's packed lanes occupy the low 64 bits; rs's
+            // packed lanes occupy the high 64 bits of the destination.
+            const unsigned lane_bits = sub_op == 19U ? 32U :
+                                       (sub_op == 23U ? 16U : 8U);
+            const unsigned source_lane_bits = lane_bits * 2U;
+            const unsigned lanes_per_half = 64U / source_lane_bits;
+            const std::uint64_t lane_mask =
+                (std::uint64_t{1} << lane_bits) - 1U;
+            const std::uint64_t source[2] = {rhs_low, rhs_high};
+            const std::uint64_t from_rs[2] = {lhs_low, lhs_high};
+            std::uint64_t out_low = 0;
+            std::uint64_t out_high = 0;
+            for (unsigned lane = 0; lane < lanes_per_half * 2U; ++lane) {
+                const unsigned half = lane / lanes_per_half;
+                const unsigned within_half = lane % lanes_per_half;
+                const unsigned source_shift = within_half * source_lane_bits;
+                const std::uint64_t rt_value =
+                    (source[half] >> source_shift) & lane_mask;
+                const std::uint64_t rs_value =
+                    (from_rs[half] >> source_shift) & lane_mask;
+                const unsigned destination_shift = lane * lane_bits;
+                if (destination_shift < 64U) {
+                    out_low |= rt_value << destination_shift;
+                    out_high |= rs_value << destination_shift;
+                } else {
+                    // lane ordering across the two source halves is kept
+                    // in the corresponding 64-bit destination half.
+                    const unsigned shift = destination_shift - 64U;
+                    out_low |= rt_value << shift;
+                    out_high |= rs_value << shift;
+                }
+            }
+            set_reg(rd, out_low);
+            set_reg_high(rd, out_high);
+            return true;
+        }
+        if (funct == 0x08U &&
             (sub_op == 18U || sub_op == 22U || sub_op == 26U)) {
             // PEXTLW/PEXTLH/PEXTLB interleave the low 64-bit portions of
             // rt and rs, placing the rt lane in the lower destination lane.
