@@ -217,7 +217,7 @@ int main() {
     cpu.set_reg_high(1, 0xFFFFFFFF80000001ULL);
     check(cpu.step(mmi1(0, 1, 2, 1U)) &&
               cpu.reg(2) == 0x7FFFFFFF7FFFFFFFULL &&
-              cpu.reg_high(2) == 0x7FFFFFFF7FFFFFFFULL,
+              cpu.reg_high(2) == 0x000000017FFFFFFFULL,
           "PABSW computes four signed absolute values and saturates INT_MIN");
     cpu.reset();
     cpu.set_reg(1, 0x80017FFF8000FFFFULL);
