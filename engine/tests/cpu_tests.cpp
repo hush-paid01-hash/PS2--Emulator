@@ -212,6 +212,16 @@ int main() {
         return (0x1CU << 26U) | (rs << 21U) | (rt << 16U) |
                (rd << 11U) | (sub_op << 6U) | 0x28U;
     };
+    cpu.reset();
+    cpu.set_reg(1, 0x0001000200030004ULL);
+    cpu.set_reg(2, 0x0005000600070008ULL);
+    cpu.set_reg_high(1, 0x0009000A000B000CULL);
+    cpu.set_reg_high(2, 0x0001000200030004ULL);
+    check(cpu.step(mmi1(1, 2, 3, 4U)) &&
+              cpu.reg(3) == 0xFFFCFFFCFFFCFFFCULL &&
+              cpu.reg_high(3) == 0x000A000C000E0010ULL,
+          "PADSBH subtracts low halfwords and adds high halfwords modulo 16 bits");
+
     // PEXTU extracts and interleaves the upper 64 bits of each source.
     cpu.reset();
     cpu.set_reg(1, 0x1122334455667788ULL);
