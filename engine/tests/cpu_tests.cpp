@@ -236,8 +236,8 @@ int main() {
     cpu.set_reg(1, 0x1122334455667788ULL);
     cpu.set_reg(2, 0x99AABBCCDDEEFF00ULL);
     check(cpu.step(mmi0_interleave(1, 2, 3, 26U)) &&
-              cpu.reg(3) == 0x5511DD337799FF00ULL &&
-              cpu.reg_high(3) == 0x11339922BB44AA66ULL,
+              cpu.reg(3) == 0x55DD66EE77FF8800ULL &&
+              cpu.reg_high(3) == 0x119922AA33BB44CCULL,
           "PExtLB interleaves eight low bytes from each source");
 
     // Signed saturating MMI0 arithmetic is separate from the wrapping
