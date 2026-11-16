@@ -1456,19 +1456,23 @@ int main() {
           "MMI1 PCEQW compares four independent 32-bit lanes across both GPR halves");
     cpu.reset();
     cpu.set_reg(1, 0x0002000100020001ULL);
+    cpu.set_reg_high(1, 0x0001000200030004ULL);
     cpu.set_reg(2, 0x0002000000020001ULL);
+    cpu.set_reg_high(2, 0x0001000200030005ULL);
     const std::uint32_t pceqh = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
                                 (3U << 11U) | (6U << 6U) | 0x28U;
     check(cpu.step(pceqh) && cpu.reg(3) == 0xFFFF0000FFFFFFFFULL &&
-              cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
+              cpu.reg_high(3) == 0xFFFFFFFFFFFF0000ULL,
           "MMI1 PCEQH compares eight independent 16-bit lanes");
     cpu.reset();
     cpu.set_reg(1, 0x0000000004030201ULL);
+    cpu.set_reg_high(1, 0x0807060504030201ULL);
     cpu.set_reg(2, 0x000000000403FF01ULL);
+    cpu.set_reg_high(2, 0x0807060504030200ULL);
     const std::uint32_t pceqb = (0x1CU << 26U) | (1U << 21U) | (2U << 16U) |
                                 (3U << 11U) | (10U << 6U) | 0x28U;
     check(cpu.step(pceqb) && cpu.reg(3) == 0xFFFFFFFFFFFF00FFULL &&
-              cpu.reg_high(3) == 0xFFFFFFFFFFFFFFFFULL,
+              cpu.reg_high(3) == 0xFFFFFFFFFFFFFF00ULL,
           "MMI1 PCEQB compares sixteen independent 8-bit lanes");
 
     // Byte packed operations use sixteen independent 8-bit lanes.

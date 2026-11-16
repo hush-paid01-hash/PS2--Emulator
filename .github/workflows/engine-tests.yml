@@ -2,7 +2,7 @@ name: Original PS2 engine tests
 
 on:
   push:
-    branches: [main, work/native-engine-test-ci]
+    branches: [main, work/native-engine-test-ci, fix/restore-write-access-pceq]
     paths:
       - "engine/**"
       - ".github/workflows/engine-tests.yml"
