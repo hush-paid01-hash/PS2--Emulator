@@ -434,29 +434,6 @@ bool Cpu::step(std::uint32_t instruction, std::string* error) {
         const std::uint64_t lhs_high = reg_high(rs);
         const std::uint64_t rhs_low = reg(rt);
         const std::uint64_t rhs_high = reg_high(rt);
-        if (funct == 0x28U &&
-            (sub_op == 2U || sub_op == 6U || sub_op == 10U)) {
-            // PCEQW/PCEQH/PCEQB compare every lane across the full 128-bit
-            // GPR. Equal lanes become all ones at that lane width.
-            const unsigned lane_bits = sub_op == 2U ? 32U :
-                                       (sub_op == 6U ? 16U : 8U);
-            const unsigned lanes_per_half = 64U / lane_bits;
-            const std::uint64_t lane_mask =
-                (std::uint64_t{1} << lane_bits) - 1U;
-            const std::uint64_t lhs[2] = {lhs_low, lhs_high};
-            const std::uint64_t rhs[2] = {rhs_low, rhs_high};
-            std::uint64_t out[2] = {0, 0};
-            for (unsigned lane = 0; lane < lanes_per_half * 2U; ++lane) {
-                const unsigned half = lane / lanes_per_half;
-                const unsigned shift = (lane % lanes_per_half) * lane_bits;
-                const std::uint64_t a = (lhs[half] >> shift) & lane_mask;
-                const std::uint64_t b = (rhs[half] >> shift) & lane_mask;
-                if (a == b) out[half] |= lane_mask << shift;
-            }
-            set_reg(rd, out[0]);
-            set_reg_high(rd, out[1]);
-            return true;
-        }
         if (funct == 0x28U && sub_op == 0x10U) { // PADDUW: four unsigned saturated word additions.
             const std::uint64_t lhs[2] = {lhs_low, lhs_high};
             const std::uint64_t rhs[2] = {rhs_low, rhs_high};
